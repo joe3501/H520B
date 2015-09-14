@@ -1,0 +1,262 @@
+###############################################################################
+#                                                                             #
+# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     12/Sep/2015  15:19:07 #
+# Copyright 1999-2009 IAR Systems AB.                                         #
+#                                                                             #
+#    Cpu mode     =  thumb                                                    #
+#    Endian       =  little                                                   #
+#    Source file  =  E:\H520B\FW\src\usb_lib\hw_config.c                      #
+#    Command line =  E:\H520B\FW\src\usb_lib\hw_config.c -D DEBUG_VER -lcN    #
+#                    E:\H520B\FW\src\Project\EWARMv5\Debug\List\ -o           #
+#                    E:\H520B\FW\src\Project\EWARMv5\Debug\Obj\ --no_cse      #
+#                    --no_unroll --no_inline --no_code_motion --no_tbaa       #
+#                    --no_clustering --no_scheduling --debug --endian=little  #
+#                    --cpu=Cortex-M3 -e --fpu=None --dlib_config "C:\Program  #
+#                    Files\IAR Systems\Embedded Workbench                     #
+#                    5.4\arm\INC\DLib_Config_Full.h" -I                       #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\ -I                   #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\App\ -I            #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\Drivers\ -I        #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\FatFs\ -I          #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\Lib\inc\ -I        #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\uCOS\uC-CPU\ -I    #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\uCOS\uC-LIB\ -I    #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\uCOS\uCOS-II\Ports #
+#                    \ -I E:\H520B\FW\src\Project\EWARMv5\..\..\uCOS\uCOS-II\ #
+#                    Source\ -I E:\H520B\FW\src\Project\EWARMv5\..\..\uCOS\uC #
+#                    -Probe\ -I E:\H520B\FW\src\Project\EWARMv5\..\..\usb_lib #
+#                    \ -I "C:\Program Files\IAR Systems\Embedded Workbench    #
+#                    5.4\arm\INC\" -Ol                                        #
+#    List file    =  E:\H520B\FW\src\Project\EWARMv5\Debug\List\hw_config.lst #
+#    Object file  =  E:\H520B\FW\src\Project\EWARMv5\Debug\Obj\hw_config.o    #
+#                                                                             #
+#                                                                             #
+###############################################################################
+
+E:\H520B\FW\src\usb_lib\hw_config.c
+      1          /******************** (C) COPYRIGHT 2008 STMicroelectronics ********************
+      2          * File Name          : hw_config.c
+      3          * Author             : MCD Application Team
+      4          * Version            : V2.2.1
+      5          * Date               : 09/22/2008
+      6          * Description        : Hardware Configuration & Setup
+      7          ********************************************************************************
+      8          * THE PRESENT FIRMWARE WHICH IS FOR GUIDANCE ONLY AIMS AT PROVIDING CUSTOMERS
+      9          * WITH CODING INFORMATION REGARDING THEIR PRODUCTS IN ORDER FOR THEM TO SAVE TIME.
+     10          * AS A RESULT, STMICROELECTRONICS SHALL NOT BE HELD LIABLE FOR ANY DIRECT,
+     11          * INDIRECT OR CONSEQUENTIAL DAMAGES WITH RESPECT TO ANY CLAIMS ARISING FROM THE
+     12          * CONTENT OF SUCH FIRMWARE AND/OR THE USE MADE BY CUSTOMERS OF THE CODING
+     13          * INFORMATION CONTAINED HEREIN IN CONNECTION WITH THEIR PRODUCTS.
+     14          *******************************************************************************/
+     15          
+     16          /* Includes ------------------------------------------------------------------*/
+     17          #include "stm32f10x_lib.h"
+     18          #include "hw_config.h"
+     19          #include "usb_lib.h"
+     20          #include "usb_desc.h"
+     21          #include "usb_pwr.h"
+     22          #include "usb_prop.h"
+     23          #include "TimeBase.h"
+     24          #include "PCUsart.h"
+     25          
+     26          /* Private typedef -----------------------------------------------------------*/
+     27          /* Private define ------------------------------------------------------------*/
+     28          /* Private macro -------------------------------------------------------------*/
+     29          /* Private variables ---------------------------------------------------------*/
+     30          //ErrorStatus HSEStartUpStatus;
+     31          //EXTI_InitTypeDef EXTI_InitStructure;
+     32          unsigned char g_usb_type;
+     33          
+     34          /* Extern variables ----------------------------------------------------------*/
+     35          extern u32 count_in;
+     36          //extern LINE_CODING linecoding;
+     37          /* Private function prototypes -----------------------------------------------*/
+     38          /* Private functions ---------------------------------------------------------*/
+     39          
+     40          /*******************************************************************************
+     41          * Function Name  : Enter_LowPowerMode.
+     42          * Description    : Power-off system clocks and power while entering suspend mode.
+     43          * Input          : None.
+     44          * Output         : None.
+     45          * Return         : None.
+     46          *******************************************************************************/
+     47          void Enter_LowPowerMode(void)
+     48          {
+     49            /* Set the device state to suspend */
+     50            bDeviceState = SUSPENDED;
+     51          }
+     52          
+     53          /*******************************************************************************
+     54          * Function Name  : Leave_LowPowerMode.
+     55          * Description    : Restores system clocks and power while exiting suspend mode.
+     56          * Input          : None.
+     57          * Output         : None.
+     58          * Return         : None.
+     59          *******************************************************************************/
+     60          void Leave_LowPowerMode(void)
+     61          {
+     62            DEVICE_INFO *pInfo = &Device_Info;
+     63          
+     64            /* Set the device state to the correct state */
+     65            if (pInfo->Current_Configuration != 0)
+     66            {
+     67              /* Device configured */
+     68              bDeviceState = CONFIGURED;
+     69            }
+     70            else
+     71            {
+     72              bDeviceState = ATTACHED;
+     73            }
+     74          }
+     75          
+     76          void SendData_To_PC(unsigned char *pData, int length)
+     77          {
+     78          	volatile int i = 0;
+     79          	//int batch = length/VIRTUAL_COM_PORT_DATA_SIZE;
+     80          	//int res	  = length%VIRTUAL_COM_PORT_DATA_SIZE;
+     81          	unsigned int	delay_cnt;
+     82          
+     83          	if (g_usb_type == USB_KEYBOARD)	//按键
+     84          	{
+     85          		count_in = length;
+     86          		UserToPMABufferCopy(pData, GetEPTxAddr(ENDP1), count_in);
+     87          		SetEPTxCount(ENDP1, count_in);
+     88          		/* enable endpoint for transmission */
+     89          		SetEPTxValid(ENDP1);
+     90          		//StartDelay(600);	//3S的延时
+     91          		delay_cnt = 300;
+     92          		while (count_in != 0 && delay_cnt != 0 &&(bDeviceState == CONFIGURED))
+     93          		{
+     94          			delay_cnt--;
+     95          			Delay(20000);
+     96          		}
+     97          	}
+     98          	//else if(g_usb_type == USB_VIRTUAL_PORT)
+     99          	//{
+    100          	//	for (i = 0; i < batch; i++)
+    101          	//	{
+    102          	//		count_in	= VIRTUAL_COM_PORT_DATA_SIZE;
+    103          	//		UserToPMABufferCopy(pData+i*VIRTUAL_COM_PORT_DATA_SIZE, ENDP1_TXADDR, count_in);
+    104          	//		SetEPTxCount(ENDP1, count_in);
+    105          	//		SetEPTxValid(ENDP1);
+    106          	//		//StartDelay(600);
+    107          	//		delay_cnt = 300;
+    108          	//		while (count_in != 0 && delay_cnt != 0 && (bDeviceState == CONFIGURED))
+    109          	//		{
+    110          	//			delay_cnt--;
+    111          	//			Delay(20000);
+    112          	//		}
+    113          	//	}
+    114          	//	if (res > 0)
+    115          	//	{
+    116          	//		//最后一包
+    117          	//		count_in	= res;
+    118          	//		UserToPMABufferCopy(pData+batch*VIRTUAL_COM_PORT_DATA_SIZE, ENDP1_TXADDR, count_in);
+    119          	//		SetEPTxCount(ENDP1, count_in);
+    120          	//		SetEPTxValid(ENDP1);
+    121          	//		//StartDelay(600);
+    122          	//		delay_cnt = 300;
+    123          	//		while (count_in != 0 && delay_cnt != 0 &&(bDeviceState == CONFIGURED))
+    124          	//		{
+    125          	//			delay_cnt--;
+    126          	//			Delay(20000);
+    127          	//		}
+    128          	//	}
+    129          	//}//Virtual port
+    130          	//else
+    131          	//{
+    132          	//	if (length > G_SEND_BUF_LENGTH)
+    133          	//	{
+    134          	//		length = G_SEND_BUF_LENGTH;
+    135          	//	}
+    136          	//	memcpy(g_send_buff,pData,length);
+    137          	//}//USB_Masstorage
+    138          	
+    139          }
+    140          
+    141          //int usb_test_connect(void)
+    142          //{
+    143          //	volatile int i = 0;
+    144          //	unsigned char pData[2] = {0};
+    145          //
+    146          //	count_in = 1;
+    147          //	UserToPMABufferCopy(pData, GetEPTxAddr(ENDP1), count_in);
+    148          //	/* enable endpoint for transmission */
+    149          //	SetEPTxValid(ENDP1);
+    150          //	while (count_in != 0 && i < 100000)
+    151          //	{
+    152          //		i++;
+    153          //	}
+    154          //	if (count_in == 0)
+    155          //	{
+    156          //		return 0;
+    157          //	}
+    158          //	return -1;
+    159          //}
+    160          
+    161          /*******************************************************************************
+    162          * Function Name  : Get_SerialNum.
+    163          * Description    : Create the serial number string descriptor.
+    164          * Input          : None.
+    165          * Output         : None.
+    166          * Return         : None.
+    167          *******************************************************************************/
+    168          void Get_SerialNum(void)
+    169          {
+    170            u32 Device_Serial0, Device_Serial1, Device_Serial2;
+    171          
+    172            Device_Serial0 = *(u32*)(0x1FFFF7E8);
+    173            Device_Serial1 = *(u32*)(0x1FFFF7EC);
+    174            Device_Serial2 = *(u32*)(0x1FFFF7F0);
+    175          
+    176            if (Device_Serial0 != 0)
+    177            {
+    178          	USB_APP_StringSerial[2] = (u8)(Device_Serial0 & 0x000000FF);
+    179              USB_APP_StringSerial[4] = (u8)((Device_Serial0 & 0x0000FF00) >> 8);
+    180              USB_APP_StringSerial[6] = (u8)((Device_Serial0 & 0x00FF0000) >> 16);
+    181              USB_APP_StringSerial[8] = (u8)((Device_Serial0 & 0xFF000000) >> 24);
+    182          
+    183              USB_APP_StringSerial[10] = (u8)(Device_Serial1 & 0x000000FF);
+    184              USB_APP_StringSerial[12] = (u8)((Device_Serial1 & 0x0000FF00) >> 8);
+    185              USB_APP_StringSerial[14] = (u8)((Device_Serial1 & 0x00FF0000) >> 16);
+    186              USB_APP_StringSerial[16] = (u8)((Device_Serial1 & 0xFF000000) >> 24);
+    187          
+    188              USB_APP_StringSerial[18] = (u8)(Device_Serial2 & 0x000000FF);
+    189              USB_APP_StringSerial[20] = (u8)((Device_Serial2 & 0x0000FF00) >> 8);
+    190              USB_APP_StringSerial[22] = (u8)((Device_Serial2 & 0x00FF0000) >> 16);
+    191              USB_APP_StringSerial[24] = (u8)((Device_Serial2 & 0xFF000000) >> 24);
+    192            }
+    193          }
+    194          
+    195          /******************* (C) COPYRIGHT 2008 STMicroelectronics *****END OF FILE****/
+
+   Maximum stack usage in bytes:
+
+     Function           .cstack
+     --------           -------
+     Enter_LowPowerMode      0
+     Get_SerialNum           8
+     Leave_LowPowerMode      0
+     SendData_To_PC         16
+
+
+   Section sizes:
+
+     Function/Label     Bytes
+     --------------     -----
+     g_usb_type            1
+     Enter_LowPowerMode    8
+     Leave_LowPowerMode   28
+     SendData_To_PC      108
+     Get_SerialNum       104
+     ??DataTable3          4
+
+ 
+   1 byte  in section .bss
+ 252 bytes in section .text
+ 
+ 252 bytes of CODE memory
+   1 byte  of DATA memory
+
+Errors: none
+Warnings: none

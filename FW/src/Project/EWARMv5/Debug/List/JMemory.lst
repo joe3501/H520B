@@ -1,0 +1,149 @@
+###############################################################################
+#                                                                             #
+# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     12/Sep/2015  15:19:06 #
+# Copyright 1999-2009 IAR Systems AB.                                         #
+#                                                                             #
+#    Cpu mode     =  thumb                                                    #
+#    Endian       =  little                                                   #
+#    Source file  =  E:\H520B\FW\src\App\JMemory.c                            #
+#    Command line =  E:\H520B\FW\src\App\JMemory.c -D DEBUG_VER -lcN          #
+#                    E:\H520B\FW\src\Project\EWARMv5\Debug\List\ -o           #
+#                    E:\H520B\FW\src\Project\EWARMv5\Debug\Obj\ --no_cse      #
+#                    --no_unroll --no_inline --no_code_motion --no_tbaa       #
+#                    --no_clustering --no_scheduling --debug --endian=little  #
+#                    --cpu=Cortex-M3 -e --fpu=None --dlib_config "C:\Program  #
+#                    Files\IAR Systems\Embedded Workbench                     #
+#                    5.4\arm\INC\DLib_Config_Full.h" -I                       #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\ -I                   #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\App\ -I            #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\Drivers\ -I        #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\FatFs\ -I          #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\Lib\inc\ -I        #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\uCOS\uC-CPU\ -I    #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\uCOS\uC-LIB\ -I    #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\uCOS\uCOS-II\Ports #
+#                    \ -I E:\H520B\FW\src\Project\EWARMv5\..\..\uCOS\uCOS-II\ #
+#                    Source\ -I E:\H520B\FW\src\Project\EWARMv5\..\..\uCOS\uC #
+#                    -Probe\ -I E:\H520B\FW\src\Project\EWARMv5\..\..\usb_lib #
+#                    \ -I "C:\Program Files\IAR Systems\Embedded Workbench    #
+#                    5.4\arm\INC\" -Ol                                        #
+#    List file    =  E:\H520B\FW\src\Project\EWARMv5\Debug\List\JMemory.lst   #
+#    Object file  =  E:\H520B\FW\src\Project\EWARMv5\Debug\Obj\JMemory.o      #
+#                                                                             #
+#                                                                             #
+###############################################################################
+
+E:\H520B\FW\src\App\JMemory.c
+      1          /**
+      2          * @file JMemory.c
+      3          * @brief 管理动态申请内存的模块
+      4          *
+      5          * @version V0.0.1
+      6          * @author joe
+      7          * @date 2012年3月27日
+      8          * @note
+      9          *		none
+     10          *
+     11          * @copy
+     12          *
+     13          * 此代码为深圳合杰电子有限公司项目代码，任何人及公司未经许可不得复制传播，或用于
+     14          * 本公司以外的项目。本司保留一切追究权利。
+     15          *
+     16          * <h1><center>&copy; COPYRIGHT 2012 heroje</center></h1>
+     17          */
+     18          
+     19          #include "JMemory.h"
+     20          #include <stdlib.h>
+     21          #define ALLOCATE_ADDR_TABLE_SIZE  100
+     22          
+     23          static int  p_allocate_addr[ALLOCATE_ADDR_TABLE_SIZE];		//每次动态申请的地址都会保存在此数组里面
+     24          
+     25          void JMemory_init(void)
+     26          {
+     27          	memset((void*)p_allocate_addr,0,ALLOCATE_ADDR_TABLE_SIZE*sizeof(int));
+     28          }
+     29          
+     30          void * Jmalloc(int size)
+     31          {
+     32          	void *p;
+     33          	int		i;
+     34          
+     35          	p = malloc(size);
+     36          	if(p)
+     37          	{
+     38          		for(i = 0;i < ALLOCATE_ADDR_TABLE_SIZE;i++)
+     39          		{
+     40          			if(p_allocate_addr[i] == 0)
+     41          			{
+     42          				p_allocate_addr[i] = (int)p;
+     43          				break;
+     44          			}
+     45          		}
+     46          
+     47          		if(i == ALLOCATE_ADDR_TABLE_SIZE)
+     48          		{
+     49          			p_allocate_addr[0] = (int)p;
+     50          		}
+     51          	}
+     52          
+     53          	return p;
+     54          }
+     55          
+     56          
+     57          void Jfree(void * p)
+     58          {
+     59          	int	i;
+     60          	for(i = 0;i < ALLOCATE_ADDR_TABLE_SIZE;i++)
+     61          	{
+     62          		if((int)p == p_allocate_addr[i])
+     63          		{
+     64          			free(p);
+     65          			p_allocate_addr[i] = 0;
+     66          			break;
+     67          		}
+     68          	}
+     69          }
+     70          
+     71          
+     72          void Jfree_all(void)
+     73          {
+     74          	int	i;
+     75          	for(i = 0;i < ALLOCATE_ADDR_TABLE_SIZE;i++)
+     76          	{
+     77          		if(p_allocate_addr[i])
+     78          		{
+     79          			free((void*)p_allocate_addr[i]);
+     80          		}
+     81          	}
+     82          }
+
+   Maximum stack usage in bytes:
+
+     Function     .cstack
+     --------     -------
+     JMemory_init      8
+     Jfree             8
+     Jfree_all         8
+     Jmalloc           8
+
+
+   Section sizes:
+
+     Function/Label  Bytes
+     --------------  -----
+     p_allocate_addr  400
+     JMemory_init      16
+     Jmalloc           48
+     Jfree             38
+     Jfree_all         34
+     ??DataTable7       4
+
+ 
+ 400 bytes in section .bss
+ 140 bytes in section .text
+ 
+ 140 bytes of CODE memory
+ 400 bytes of DATA memory
+
+Errors: none
+Warnings: 1

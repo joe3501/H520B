@@ -10,7 +10,7 @@
 * 此代码为深圳合杰电子有限公司项目代码，任何人及公司未经许可不得复制传播，或用于
 * 本公司以外的项目。本司保留一切追究权利。
 *
-* <h1><center>&copy; COPYRIGHT 2009 netcom</center></h1>
+* <h1><center>&copy; COPYRIGHT 2015 heroje</center></h1>
 *
 */
 #include "stm32f10x_lib.h"
@@ -19,14 +19,18 @@
 #include "keypad.h"
 #include "cpu.h"
 #include "app.h"
+#include "TimeBase.h"
+#include "hw_platform.h"
 
 static  unsigned char		current_press_key;
 static  unsigned int		press_cnt;
+static  unsigned int		release_cnt; 
 static  unsigned char		keypad_state;
 
 
-extern OS_EVENT	*pEvent_Queue;			//事件消息队列
-
+extern	unsigned int	device_current_state;		//设备主状态机
+extern	OS_EVENT		*pEvent_Queue;			//事件消息队列
+extern unsigned int		keypress_timeout;
 /**
 * @brief   		Intialize the KeyBoard IO
 * @param[in]   none
@@ -193,9 +197,11 @@ void Keypad_Init(void)
 }
 
 
-#define KEYPAD_STATE_INIT				0
-#define KEYPAD_STATE_AT_LEAST_CLICK		1
-#define KEYPAD_STATE_LONG_PRESS			2
+#define KEYPAD_STATE_INIT					0
+#define KEYPAD_STATE_AT_LEAST_CLICK			1
+#define KEYPAD_STATE_FIRST_CLICK_RELEASE	2
+#define KEYPAD_STATE_SECOND_CLICK			3
+#define KEYPAD_STATE_LONG_PRESS				4
 
 /**
  * @brief keypad 三个Key对应的IO外部中断ISR
@@ -211,7 +217,7 @@ void Keypad_EXTI_ISRHandler(unsigned char	exti_line)
 
 	if (exti_line == SCAN_KEY_EXTI_INT)
 	{
-		current_press_key = SCAN_KEY_EXTI_INT;
+		current_press_key = SCAN_KEY;
 	}
 	else if (exti_line == ERASE_KEY_EXTI_INT)
 	{
@@ -228,19 +234,19 @@ void Keypad_EXTI_ISRHandler(unsigned char	exti_line)
 
 /**
  * @brief 读取keypad IO，返回IO状态
- * @param[in] unsigned char key_io		需要读取的是哪个Key对应的IO
+ * @param[in] unsigned char key		需要读取的是哪个Key对应的IO
  * @return  0: low  else: high  
 */
-static unsigned char Keypad_ReadIO(unsigned char key_io)
+static unsigned char Keypad_ReadIO(unsigned char key)
 {
 	unsigned char h1,h2;
 	unsigned int	i;
 reread:
-	if (key_io == SCAN_KEY_EXTI_INT)
+	if (key == SCAN_KEY)
 	{
 		h1 = GPIO_ReadInputDataBit(GPIOA,GPIO_Pin_0);
 	}
-	else if (key_io == ERASE_KEY)
+	else if (key == ERASE_KEY)
 	{
 		h1 = GPIO_ReadInputDataBit(GPIOB,GPIO_Pin_3);
 	}
@@ -251,11 +257,11 @@ reread:
 
 	for(i=0;i < 6000;i++);	//约2ms
 
-	if (key_io == SCAN_KEY_EXTI_INT)
+	if (key == SCAN_KEY)
 	{
 		h1 = GPIO_ReadInputDataBit(GPIOA,GPIO_Pin_0);
 	}
-	else if (key_io == ERASE_KEY)
+	else if (key == ERASE_KEY)
 	{
 		h1 = GPIO_ReadInputDataBit(GPIOA,GPIO_Pin_3);
 	}
@@ -277,7 +283,7 @@ reread:
 //按住超过2个按键低电平判断周期即认为至少是一次按键单击事件的发生，以20ms周期为例，就是只要按住超过40ms即认为至少发生了有效的按键单击事件
 #define SINGLE_CLICK_TH			2		
 #define LONG_PRESS_TH			250		//按住超过250个按键低电平判断周期即认为是一次按键长按事件的发生，按住超过5S即认为按键长按
-
+#define DOUBLE_CLICK_INTERVAL	3		//双击，连续两次按键之间的时间不超过60ms即认为是双击
 //定义一个回调函数指针，以供中断处理函数在获取到按键键值时post给其余模块使用时，可以提供不同的方法
 //typedef void (* post_key_method)(unsigned char key_value);
 
@@ -299,6 +305,7 @@ void Keypad_Timer_ISRHandler(void)
 			press_cnt++;
 			if (press_cnt == SINGLE_CLICK_TH)
 			{
+				keypress_timeout = 0;
 				keypad_state = KEYPAD_STATE_AT_LEAST_CLICK;
 				if (current_press_key == RESET_KEY)
 				{
@@ -306,6 +313,17 @@ void Keypad_Timer_ISRHandler(void)
 					//keypad_state = KEYPAD_STATE_INIT;
 					Keypad_Timer_Disable();
 					Keypad_Int_Enable();
+				}
+				else if (current_press_key == SCAN_KEY)
+				{
+					hw_platform_start_led_blink(LED_GREEN,3);
+					if (device_current_state == STATE_HID_Mode)
+					{
+						OSQPost(pEvent_Queue,(void*)EVENT_SCAN_KEY_SINGLE_CLICK);
+						//keypad_state = KEYPAD_STATE_INIT;
+						Keypad_Timer_Disable();
+						Keypad_Int_Enable();
+					}
 				}
 			}
 		}
@@ -328,7 +346,21 @@ void Keypad_Timer_ISRHandler(void)
 				Keypad_Int_Enable();
 			}
 		}
-		
+		else if (keypad_state == KEYPAD_STATE_FIRST_CLICK_RELEASE)
+		{
+			keypad_state = KEYPAD_STATE_SECOND_CLICK;
+			press_cnt = 0;
+		}
+		else if (keypad_state == KEYPAD_STATE_SECOND_CLICK)
+		{
+			press_cnt++;
+			if (press_cnt == LONG_PRESS_TH)
+			{
+				OSQPost(pEvent_Queue,(void*)EVENT_SCAN_KEY_LONG_PRESS);
+				Keypad_Timer_Disable();
+				Keypad_Int_Enable();
+			}
+		}
 	}
 	else
 	{
@@ -342,16 +374,49 @@ void Keypad_Timer_ISRHandler(void)
 		{
 			if (current_press_key == SCAN_KEY)
 			{
-				OSQPost(pEvent_Queue,(void*)EVENT_SCAN_KEY_SINGLE_CLICK);
+				//OSQPost(pEvent_Queue,(void*)EVENT_SCAN_KEY_SINGLE_CLICK);
+				if (device_current_state == STATE_BT_Mode_Connect)
+				{
+					//只有在蓝牙连接状态下，才需要检测SCAN键的双击行为
+					keypad_state = 	KEYPAD_STATE_FIRST_CLICK_RELEASE;
+					release_cnt = 0;
+				}
+				else
+				{
+					//其余状态下没有必要检测SCAN键的双击行为
+					OSQPost(pEvent_Queue,(void*)EVENT_SCAN_KEY_SINGLE_CLICK);
+					Keypad_Timer_Disable();
+					Keypad_Int_Enable();
+				}
+				
 			}
 			else if (current_press_key == ERASE_KEY)
 			{
 				OSQPost(pEvent_Queue,(void*)EVENT_ERASE_KEY_SINGLE_CLICK);
+				//keypad_state = KEYPAD_STATE_INIT;
+				Keypad_Timer_Disable();
+				Keypad_Int_Enable();
 			}
-
+		}
+		else if (keypad_state == KEYPAD_STATE_FIRST_CLICK_RELEASE)
+		{
+			release_cnt++;
+			if (release_cnt == DOUBLE_CLICK_INTERVAL)
+			{
+				//单击后，在双击间隔时间内没有再次按下按键，及可以确认单击事件的发生
+				OSQPost(pEvent_Queue,(void*)EVENT_SCAN_KEY_SINGLE_CLICK);
+				//keypad_state = KEYPAD_STATE_INIT;
+				Keypad_Timer_Disable();
+				Keypad_Int_Enable();
+			}
+		}
+		else if (keypad_state == KEYPAD_STATE_SECOND_CLICK)
+		{
+			OSQPost(pEvent_Queue,(void*)EVENT_SCAN_KEY_DOUBLE_CLICK);
 			//keypad_state = KEYPAD_STATE_INIT;
 			Keypad_Timer_Disable();
 			Keypad_Int_Enable();
+			hw_platform_stop_led_blink();
 		}
 	}
 }

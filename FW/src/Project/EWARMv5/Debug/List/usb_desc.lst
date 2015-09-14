@@ -1,0 +1,457 @@
+###############################################################################
+#                                                                             #
+# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     12/Sep/2015  15:19:25 #
+# Copyright 1999-2009 IAR Systems AB.                                         #
+#                                                                             #
+#    Cpu mode     =  thumb                                                    #
+#    Endian       =  little                                                   #
+#    Source file  =  E:\H520B\FW\src\usb_lib\usb_desc.c                       #
+#    Command line =  E:\H520B\FW\src\usb_lib\usb_desc.c -D DEBUG_VER -lcN     #
+#                    E:\H520B\FW\src\Project\EWARMv5\Debug\List\ -o           #
+#                    E:\H520B\FW\src\Project\EWARMv5\Debug\Obj\ --no_cse      #
+#                    --no_unroll --no_inline --no_code_motion --no_tbaa       #
+#                    --no_clustering --no_scheduling --debug --endian=little  #
+#                    --cpu=Cortex-M3 -e --fpu=None --dlib_config "C:\Program  #
+#                    Files\IAR Systems\Embedded Workbench                     #
+#                    5.4\arm\INC\DLib_Config_Full.h" -I                       #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\ -I                   #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\App\ -I            #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\Drivers\ -I        #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\FatFs\ -I          #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\Lib\inc\ -I        #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\uCOS\uC-CPU\ -I    #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\uCOS\uC-LIB\ -I    #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\uCOS\uCOS-II\Ports #
+#                    \ -I E:\H520B\FW\src\Project\EWARMv5\..\..\uCOS\uCOS-II\ #
+#                    Source\ -I E:\H520B\FW\src\Project\EWARMv5\..\..\uCOS\uC #
+#                    -Probe\ -I E:\H520B\FW\src\Project\EWARMv5\..\..\usb_lib #
+#                    \ -I "C:\Program Files\IAR Systems\Embedded Workbench    #
+#                    5.4\arm\INC\" -Ol                                        #
+#    List file    =  E:\H520B\FW\src\Project\EWARMv5\Debug\List\usb_desc.lst  #
+#    Object file  =  E:\H520B\FW\src\Project\EWARMv5\Debug\Obj\usb_desc.o     #
+#                                                                             #
+#                                                                             #
+###############################################################################
+
+E:\H520B\FW\src\usb_lib\usb_desc.c
+      1          /******************** (C) COPYRIGHT 2008 STMicroelectronics ********************
+      2          * File Name          : usb_desc.c
+      3          * Author             : MCD Application Team
+      4          * Version            : V2.2.1
+      5          * Date               : 09/22/2008
+      6          * Description        : Descriptors for Joystick Mouse Demo
+      7          ********************************************************************************
+      8          * THE PRESENT FIRMWARE WHICH IS FOR GUIDANCE ONLY AIMS AT PROVIDING CUSTOMERS
+      9          * WITH CODING INFORMATION REGARDING THEIR PRODUCTS IN ORDER FOR THEM TO SAVE TIME.
+     10          * AS A RESULT, STMICROELECTRONICS SHALL NOT BE HELD LIABLE FOR ANY DIRECT,
+     11          * INDIRECT OR CONSEQUENTIAL DAMAGES WITH RESPECT TO ANY CLAIMS ARISING FROM THE
+     12          * CONTENT OF SUCH FIRMWARE AND/OR THE USE MADE BY CUSTOMERS OF THE CODING
+     13          * INFORMATION CONTAINED HEREIN IN CONNECTION WITH THEIR PRODUCTS.
+     14          *******************************************************************************/
+     15          
+     16          /* Includes ------------------------------------------------------------------*/
+     17          #include "usb_lib.h"
+     18          #include "usb_desc.h"
+     19          
+     20          
+     21          /* Private typedef -----------------------------------------------------------*/
+     22          /* Private define ------------------------------------------------------------*/
+     23          /* Private macro -------------------------------------------------------------*/
+     24          /* Private variables ---------------------------------------------------------*/
+     25          /* Extern variables ----------------------------------------------------------*/
+     26          /* Private function prototypes -----------------------------------------------*/
+     27          /* Private functions ---------------------------------------------------------*/
+     28          
+     29          /* USB Standard Device Descriptor */
+     30          //const u8 Virtual_Com_Port_DeviceDescriptor[] =
+     31          //{
+     32          //	0x12,   /* bLength */
+     33          //	USB_DEVICE_DESCRIPTOR_TYPE,     /* bDescriptorType */
+     34          //	0x00,
+     35          //	0x02,   /* bcdUSB = 2.00 */
+     36          //	0x02,   /* bDeviceClass: CDC */
+     37          //	0x00,   /* bDeviceSubClass */
+     38          //	0x00,   /* bDeviceProtocol */
+     39          //	0x40,   /* bMaxPacketSize0 */
+     40          //	0x83,
+     41          //	0x04,   /* idVendor = 0x0483 */
+     42          //	0x40,
+     43          //	0x57,   /* idProduct = 0x5740 */
+     44          //	0x00,
+     45          //	0x02,   /* bcdDevice = 2.00 */
+     46          //	1,              /* Index of string descriptor describing manufacturer */
+     47          //	2,              /* Index of string descriptor describing product */
+     48          //	3,              /* Index of string descriptor describing the device's serial number */
+     49          //	0x01    /* bNumConfigurations */
+     50          //};
+     51          
+     52          const u8 Keyboard_DeviceDescriptor[USB_APP_SIZ_DEVICE_DESC] =
+     53            {
+     54              0x12,                       /*bLength */
+     55              USB_DEVICE_DESCRIPTOR_TYPE, /*bDescriptorType*/
+     56              0x00,                       /*bcdUSB */
+     57              0x02,
+     58              0x00,                       /*bDeviceClass*/
+     59              0x00,                       /*bDeviceSubClass*/
+     60              0x00,                       /*bDeviceProtocol*/
+     61              0x40,                       /*bMaxPacketSize40*/
+     62              0x80,                       /*idVendor (0x0483)*/
+     63              0x04,
+     64              0x10,                       /*idProduct = 0x5710*/
+     65              0x60,
+     66              0x00,                       /*bcdDevice rel. 2.00*/
+     67              0x02,
+     68              1,                          /*Index of string descriptor describing
+     69                                                            manufacturer */
+     70              2,                          /*Index of string descriptor describing
+     71                                                           product*/
+     72              3,                          /*Index of string descriptor describing the
+     73                                                           device serial number */
+     74              0x01                        /*bNumConfigurations*/
+     75            }
+     76            ; /* Joystick_DeviceDescriptor */
+     77          
+     78          
+     79          /* USB Configuration Descriptor */
+     80          /*   All Descriptors (Configuration, Interface, Endpoint, Class, Vendor */
+     81          
+     82            //const u8 Virtual_Com_Port_ConfigDescriptor[] =
+     83            //{
+     84          	 // /*Configuation Descriptor*/
+     85          	 // 0x09,   /* bLength: Configuation Descriptor size */
+     86          	 // USB_CONFIGURATION_DESCRIPTOR_TYPE,      /* bDescriptorType: Configuration */
+     87          	 // VIRTUAL_COM_PORT_SIZ_CONFIG_DESC,       /* wTotalLength:no of returned bytes */
+     88          	 // 0x00,
+     89          	 // 0x02,   /* bNumInterfaces: 2 interface */
+     90          	 // 0x01,   /* bConfigurationValue: Configuration value */
+     91          	 // 0x00,   /* iConfiguration: Index of string descriptor describing the configuration */
+     92          	 // 0xC0,   /* bmAttributes: self powered */
+     93          	 // 0x32,   /* MaxPower 0 mA */
+     94          	 // /*Interface Descriptor*/
+     95          	 // 0x09,   /* bLength: Interface Descriptor size */
+     96          	 // USB_INTERFACE_DESCRIPTOR_TYPE,  /* bDescriptorType: Interface */
+     97          	 // /* Interface descriptor type */
+     98          	 // 0x00,   /* bInterfaceNumber: Number of Interface */
+     99          	 // 0x00,   /* bAlternateSetting: Alternate setting */
+    100          	 // 0x01,   /* bNumEndpoints: One endpoints used */
+    101          	 // 0x02,   /* bInterfaceClass: Communication Interface Class */
+    102          	 // 0x02,   /* bInterfaceSubClass: Abstract Control Model */
+    103          	 // 0x01,   /* bInterfaceProtocol: Common AT commands */
+    104          	 // 0x00,   /* iInterface: */
+    105          	 // /*Header Functional Descriptor*/
+    106          	 // 0x05,   /* bLength: Endpoint Descriptor size */
+    107          	 // 0x24,   /* bDescriptorType: CS_INTERFACE */
+    108          	 // 0x00,   /* bDescriptorSubtype: Header Func Desc */
+    109          	 // 0x10,   /* bcdCDC: spec release number */
+    110          	 // 0x01,
+    111          	 // /*Call Managment Functional Descriptor*/
+    112          	 // 0x05,   /* bFunctionLength */
+    113          	 // 0x24,   /* bDescriptorType: CS_INTERFACE */
+    114          	 // 0x01,   /* bDescriptorSubtype: Call Management Func Desc */
+    115          	 // 0x00,   /* bmCapabilities: D0+D1 */
+    116          	 // 0x01,   /* bDataInterface: 1 */
+    117          	 // /*ACM Functional Descriptor*/
+    118          	 // 0x04,   /* bFunctionLength */
+    119          	 // 0x24,   /* bDescriptorType: CS_INTERFACE */
+    120          	 // 0x02,   /* bDescriptorSubtype: Abstract Control Management desc */
+    121          	 // 0x02,   /* bmCapabilities */
+    122          	 // /*Union Functional Descriptor*/
+    123          	 // 0x05,   /* bFunctionLength */
+    124          	 // 0x24,   /* bDescriptorType: CS_INTERFACE */
+    125          	 // 0x06,   /* bDescriptorSubtype: Union func desc */
+    126          	 // 0x00,   /* bMasterInterface: Communication class interface */
+    127          	 // 0x01,   /* bSlaveInterface0: Data Class Interface */
+    128          	 // /*Endpoint 2 Descriptor*/
+    129          	 // 0x07,   /* bLength: Endpoint Descriptor size */
+    130          	 // USB_ENDPOINT_DESCRIPTOR_TYPE,   /* bDescriptorType: Endpoint */
+    131          	 // 0x82,   /* bEndpointAddress: (IN2) */
+    132          	 // 0x03,   /* bmAttributes: Interrupt */
+    133          	 // VIRTUAL_COM_PORT_INT_SIZE,      /* wMaxPacketSize: */
+    134          	 // 0x00,
+    135          	 // 0xFF,   /* bInterval: */
+    136          	 // /*Data class interface descriptor*/
+    137          	 // 0x09,   /* bLength: Endpoint Descriptor size */
+    138          	 // USB_INTERFACE_DESCRIPTOR_TYPE,  /* bDescriptorType: */
+    139          	 // 0x01,   /* bInterfaceNumber: Number of Interface */
+    140          	 // 0x00,   /* bAlternateSetting: Alternate setting */
+    141          	 // 0x02,   /* bNumEndpoints: Two endpoints used */
+    142          	 // 0x0A,   /* bInterfaceClass: CDC */
+    143          	 // 0x00,   /* bInterfaceSubClass: */
+    144          	 // 0x00,   /* bInterfaceProtocol: */
+    145          	 // 0x00,   /* iInterface: */
+    146          	 // /*Endpoint 3 Descriptor*/
+    147          	 // 0x07,   /* bLength: Endpoint Descriptor size */
+    148          	 // USB_ENDPOINT_DESCRIPTOR_TYPE,   /* bDescriptorType: Endpoint */
+    149          	 // 0x03,   /* bEndpointAddress: (OUT3) */
+    150          	 // 0x02,   /* bmAttributes: Bulk */
+    151          	 // VIRTUAL_COM_PORT_DATA_SIZE,             /* wMaxPacketSize: */
+    152          	 // 0x00,
+    153          	 // 0x00,   /* bInterval: ignore for Bulk transfer */
+    154          	 // /*Endpoint 1 Descriptor*/
+    155          	 // 0x07,   /* bLength: Endpoint Descriptor size */
+    156          	 // USB_ENDPOINT_DESCRIPTOR_TYPE,   /* bDescriptorType: Endpoint */
+    157          	 // 0x81,   /* bEndpointAddress: (IN1) */
+    158          	 // 0x02,   /* bmAttributes: Bulk */
+    159          	 // VIRTUAL_COM_PORT_DATA_SIZE,             /* wMaxPacketSize: */
+    160          	 // 0x00,
+    161          	 // 0x00    /* bInterval */
+    162            //};
+    163          
+    164          const u8 Keyboard_ConfigDescriptor[KEYBOARD_SIZ_CONFIG_DESC] =
+    165            {
+    166              0x09, /* bLength: Configuation Descriptor size */
+    167              USB_CONFIGURATION_DESCRIPTOR_TYPE, /* bDescriptorType: Configuration */
+    168              KEYBOARD_SIZ_CONFIG_DESC,
+    169              /* wTotalLength: Bytes returned */
+    170              0x00,
+    171              0x01,         /*bNumInterfaces: 1 interface*/
+    172              0x01,         /*bConfigurationValue: Configuration value*/
+    173              0x00,         /*iConfiguration: Index of string descriptor describing
+    174                                               the configuration*/
+    175              0xE0,         /*bmAttributes: bus powered */
+    176              0x32,         /*MaxPower 100 mA: this current is used for detecting Vbus*/
+    177          
+    178              /************** Descriptor of Joystick Mouse interface ****************/
+    179              /* 09 */
+    180              0x09,         /*bLength: Interface Descriptor size*/
+    181              USB_INTERFACE_DESCRIPTOR_TYPE,/*bDescriptorType: Interface descriptor type*/
+    182              0x00,         /*bInterfaceNumber: Number of Interface*/
+    183              0x00,         /*bAlternateSetting: Alternate setting*/
+    184              0x01,         /*bNumEndpoints*/
+    185              0x03,         /*bInterfaceClass: HID*/
+    186              0x01,         /*bInterfaceSubClass : 1=BOOT, 0=no boot*/
+    187              0x01,         /*nInterfaceProtocol : 0=none, 1=keyboard, 2=mouse*/
+    188              0,            /*iInterface: Index of string descriptor*/
+    189              /******************** Descriptor of Joystick Mouse HID ********************/
+    190              /* 18 */
+    191              0x09,         /*bLength: HID Descriptor size*/
+    192              HID_DESCRIPTOR_TYPE, /*bDescriptorType: HID*/
+    193              0x00,         /*bcdHID: HID Class Spec release number*/
+    194              0x01,
+    195              0x00,         /*bCountryCode: Hardware target country*/
+    196              0x01,         /*bNumDescriptors: Number of HID class descriptors to follow*/
+    197              0x22,         /*bDescriptorType*/
+    198              KEYBOARD_SIZ_REPORT_DESC,/*wItemLength: Total length of Report descriptor*/
+    199              0x00,
+    200              /******************** Descriptor of Joystick Mouse endpoint ********************/
+    201              /* 27 */
+    202              0x07,          /*bLength: Endpoint Descriptor size*/
+    203              USB_ENDPOINT_DESCRIPTOR_TYPE, /*bDescriptorType:*/
+    204          
+    205              0x81,          /*bEndpointAddress: Endpoint Address (IN)*/
+    206              0x03,          /*bmAttributes: Interrupt endpoint*/
+    207              0x03,          /*wMaxPacketSize: 8 Byte max */
+    208              0x00,
+    209              0x02,          /*bInterval: Polling Interval (32 ms)*/
+    210              /* 34 */
+    211            }
+    212            ; /* MOUSE_ConfigDescriptor */
+    213          const u8 Keyboard_ReportDescriptor[KEYBOARD_SIZ_REPORT_DESC] =
+    214            {
+    215          #if 0
+    216              0x05,  0x01,       /*Usage Page(Generic Desktop)*/
+    217              0x09,  0x06,       /*Usage(keyboard)*/
+    218              0xA1,  0x01,        /*Collection(Logical)*/
+    219            
+    220              0x05,  0x07,        /*Usage Page(Keyboard)*/
+    221              0x19,  0x00,       /*Usage Minimum(1)*/
+    222              0x29,  0xe7,         /*Usage Maximum(3)*/
+    223              /* 16 */
+    224              0x15,  0x00,        /*Logical Minimum(0)*/
+    225              0x25,  0xFF,        /*Logical Maximum(1)*/
+    226              0x95, 0x1,         /*Report Count(8)*/
+    227              0x75, 0x08,         /*Report Size(8)*/
+    228              /* 24 */
+    229              0x81, 0x00,         /*Input(Variable)*/
+    230          	//关集合，跟上面的对应
+    231          	0xc0                           // END_COLLECTION
+    232          #endif
+    233          
+    234          	//此报表描述符定义了一个输入报告和一个输出报告
+    235          	//其中书输入报告由3个字节组成第一个值表明是否有特殊键按下，第二个固定为0，第三个键表示按下的按键
+    236          	//输出报告由一个字节组成，其中前5个字节有效，分别控制键盘的LED的状态
+    237          
+    238          	0x05,0x01,		/*Usage Page(Generic Desktop)*/
+    239          	0x09,0x06,		/*Usage(keyboard)*/
+    240          
+    241          	0xa1,0x01,		/*Collection(Application)*/
+    242          	0x05,0x07,		 /*Usage Page(Keyboard)*/
+    243          	0x19,0xe0,		/*Usage Minimum(0)*/	//左CTRL
+    244          	0x29,0xe7,		/*Usage Maximum(1)*/	//右GUI键	
+    245          	0x15,0x00,		/*Logical Minimum(0)*/
+    246          	0x25,0x01,		/*Logical Maximum(1)*/
+    247          	0x95,0x08,		/*Report Count(8)*/
+    248          	0x75,0x01,		/*Report Size(1)*/
+    249          	0x81,0x02,		/*Input(DataVarAbs)*/
+    250          
+    251          	0x95,0x01,		/*Report Count(1)*/
+    252          	0x75,0x08,		/*Report Size(8)*/
+    253          	0x81,0x03,		/*Input(CnstVarAbs)*/	//设备必须返回0
+    254          
+    255          	0x95,0x05,		/*Report Count(5)*/
+    256          	0x75,0x01,		/*Report Size(1)*/
+    257          	0x05,0x08,		/*Usage Page(LEDs) */
+    258          	0x19,0x01,		/*Usage Minimum(0)*/	//NumberLock指示灯
+    259          	0x29,0x05,		/*Usage Maximum(5)*/	//kanna指示灯	
+    260          	0x91,0x02,		/*Onput(DataVarAbs)*/	//输出
+    261          
+    262          	0x95,0x01,		/*Report Count(1)*/
+    263          	0x75,0x03,		/*Report Size(3)*/
+    264          	0x91,0x03,		/*Onput(CnstVarAbs)*/	//输出
+    265          
+    266          	0x95,0x01,		/*Report Count(1)*/
+    267          	0x75,0x08,		/*Report Size(8)*/
+    268          
+    269          	0x15,0x00,		/*Logical Minimum(0)*/
+    270          	0x25,0xff,		/*Logical Maximum(1)*/
+    271          
+    272          	0x05,0x07,		 /*Usage Page(Keyboard)*/
+    273          	0x19,0x00,		/*Usage Minimum(0)*/
+    274          	0x29,0x65,		/*Usage Maximum(1)*/
+    275          
+    276          	0x81,0x00,		/*Input(DataVarAbs)*/
+    277          
+    278          	0xc0
+    279          }; /* Joystick_ReportDescriptor */
+    280          
+    281          
+    282          const u8 MASS_DeviceDescriptor[MASS_SIZ_DEVICE_DESC] =
+    283          {
+    284          	0x12,   /* bLength  */
+    285          	0x01,   /* bDescriptorType */
+    286          	0x00,   /* bcdUSB, version 2.00 */
+    287          	0x02,
+    288          	0x00,   /* bDeviceClass : each interface define the device class */
+    289          	0x00,   /* bDeviceSubClass */
+    290          	0x00,   /* bDeviceProtocol */
+    291          	0x40,   /* bMaxPacketSize0 0x40 = 64 */
+    292          	0x83,   /* idVendor     (0483) */
+    293          	0x04,
+    294          	0x20,   /* idProduct */
+    295          	0x57,
+    296          	0x00,   /* bcdDevice 2.00*/
+    297          	0x02,
+    298          	1,              /* index of string Manufacturer  */
+    299          	/**/
+    300          	2,              /* index of string descriptor of product*/
+    301          	/* */
+    302          	3,              /* */
+    303          	/* */
+    304          	/* */
+    305          	0x01    /*bNumConfigurations */
+    306          };
+    307          const u8 MASS_ConfigDescriptor[MASS_SIZ_CONFIG_DESC] =
+    308          {
+    309          
+    310          	0x09,   /* bLength: Configuation Descriptor size */
+    311          	0x02,   /* bDescriptorType: Configuration */
+    312          	MASS_SIZ_CONFIG_DESC,
+    313          
+    314          	0x00,
+    315          	0x01,   /* bNumInterfaces: 1 interface */
+    316          	0x01,   /* bConfigurationValue: */
+    317          	/*      Configuration value */
+    318          	0x00,   /* iConfiguration: */
+    319          	/*      Index of string descriptor */
+    320          	/*      describing the configuration */
+    321          	0xC0,   /* bmAttributes: */
+    322          	/*      bus powered */
+    323          	0x32,   /* MaxPower 100 mA */
+    324          
+    325          	/******************** Descriptor of Mass Storage interface ********************/
+    326          	/* 09 */
+    327          	0x09,   /* bLength: Interface Descriptor size */
+    328          	0x04,   /* bDescriptorType: */
+    329          	/*      Interface descriptor type */
+    330          	0x00,   /* bInterfaceNumber: Number of Interface */
+    331          	0x00,   /* bAlternateSetting: Alternate setting */
+    332          	0x02,   /* bNumEndpoints*/
+    333          	0x08,   /* bInterfaceClass: MASS STORAGE Class */
+    334          	0x06,   /* bInterfaceSubClass : SCSI transparent*/
+    335          	0x50,   /* nInterfaceProtocol */
+    336          	4,          /* iInterface: */
+    337          	/* 18 */
+    338          	0x07,   /*Endpoint descriptor length = 7*/
+    339          	0x05,   /*Endpoint descriptor type */
+    340          	0x81,   /*Endpoint address (IN, address 1) */
+    341          	0x02,   /*Bulk endpoint type */
+    342          	0x40,   /*Maximum packet size (64 bytes) */
+    343          	0x00,
+    344          	//0x40,
+    345          	//0x00,	//   joe 修改
+    346          	0x00,   /*Polling interval in milliseconds */
+    347          	/* 25 */
+    348          	0x07,   /*Endpoint descriptor length = 7 */
+    349          	0x05,   /*Endpoint descriptor type */
+    350          	0x02,   /*Endpoint address (OUT, address 2) */
+    351          	0x02,   /*Bulk endpoint type */
+    352          	0x40,   /*Maximum packet size (64 bytes) */
+    353          	0x00,
+    354          	//0x40,
+    355          	//0x00,	//   joe 修改
+    356          	0x00     /*Polling interval in milliseconds*/
+    357          	/*32*/
+    358          };
+    359          
+    360          /* USB String Descriptors (optional) */
+    361          const u8 USB_APP_StringLangID[USB_APP_SIZ_STRING_LANGID] =
+    362            {
+    363              USB_APP_SIZ_STRING_LANGID,
+    364              USB_STRING_DESCRIPTOR_TYPE,
+    365              0x09,
+    366              0x04
+    367            }
+    368            ; /* LangID = 0x0409: U.S. English */
+    369          
+    370          const u8 USB_APP_StringVendor[USB_APP_SIZ_STRING_VENDOR] =
+    371            {
+    372              USB_APP_SIZ_STRING_VENDOR, /* Size of Vendor string */
+    373              USB_STRING_DESCRIPTOR_TYPE,  /* bDescriptorType*/
+    374              /* Manufacturer: "STMicroelectronics" */
+    375              'H', 0, 'E', 0, 'R', 0, 'O', 0, 'J', 0, 'E', 0, ' ', 0, ' ', 0,
+    376              ' ', 0, ' ', 0, ' ', 0, ' ', 0, ' ', 0, ' ', 0, ' ', 0, ' ', 0,
+    377              ' ', 0, ' ', 0
+    378            };
+    379          
+    380          const u8 USB_APP_StringProduct[USB_APP_SIZ_STRING_PRODUCT] =
+    381            {
+    382              USB_APP_SIZ_STRING_PRODUCT,          /* bLength */
+    383              USB_STRING_DESCRIPTOR_TYPE,        /* bDescriptorType */
+    384              'T', 0, '5', 0, ' ', 0, 'H', 0, 'J', 0, ' ', 0, 'U', 0,
+    385              's', 0, 'b', 0, 'd', 0, 'i', 0, 's', 0, 'k', 0, ' ', 0
+    386            };
+    387          
+    388          u8 USB_APP_StringSerial[USB_APP_SIZ_STRING_SERIAL] =
+    389            {
+    390              USB_APP_SIZ_STRING_SERIAL,           /* bLength */
+    391              USB_STRING_DESCRIPTOR_TYPE,        /* bDescriptorType */
+    392              'T', 0, '5', 0, ' ', 0, 'H', 0, 'J', 0, '1', 0, '0', 0
+    393            };
+    394          
+    395          /******************* (C) COPYRIGHT 2008 STMicroelectronics *****END OF FILE****/
+    396          
+
+
+   Section sizes:
+
+     Function/Label            Bytes
+     --------------            -----
+     Keyboard_DeviceDescriptor   20
+     Keyboard_ConfigDescriptor   36
+     Keyboard_ReportDescriptor   64
+     MASS_DeviceDescriptor       20
+     MASS_ConfigDescriptor       32
+     USB_APP_StringLangID         4
+     USB_APP_StringVendor        40
+     USB_APP_StringProduct       32
+     USB_APP_StringSerial        28
+
+ 
+  28 bytes in section .data
+ 248 bytes in section .rodata
+ 
+ 248 bytes of CONST memory
+  28 bytes of DATA  memory
+
+Errors: none
+Warnings: none

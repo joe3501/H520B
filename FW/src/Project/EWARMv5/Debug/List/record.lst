@@ -1,0 +1,2481 @@
+###############################################################################
+#                                                                             #
+# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     12/Sep/2015  15:19:20 #
+# Copyright 1999-2009 IAR Systems AB.                                         #
+#                                                                             #
+#    Cpu mode     =  thumb                                                    #
+#    Endian       =  little                                                   #
+#    Source file  =  E:\H520B\FW\src\App\record.c                             #
+#    Command line =  E:\H520B\FW\src\App\record.c -D DEBUG_VER -lcN           #
+#                    E:\H520B\FW\src\Project\EWARMv5\Debug\List\ -o           #
+#                    E:\H520B\FW\src\Project\EWARMv5\Debug\Obj\ --no_cse      #
+#                    --no_unroll --no_inline --no_code_motion --no_tbaa       #
+#                    --no_clustering --no_scheduling --debug --endian=little  #
+#                    --cpu=Cortex-M3 -e --fpu=None --dlib_config "C:\Program  #
+#                    Files\IAR Systems\Embedded Workbench                     #
+#                    5.4\arm\INC\DLib_Config_Full.h" -I                       #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\ -I                   #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\App\ -I            #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\Drivers\ -I        #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\FatFs\ -I          #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\Lib\inc\ -I        #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\uCOS\uC-CPU\ -I    #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\uCOS\uC-LIB\ -I    #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\uCOS\uCOS-II\Ports #
+#                    \ -I E:\H520B\FW\src\Project\EWARMv5\..\..\uCOS\uCOS-II\ #
+#                    Source\ -I E:\H520B\FW\src\Project\EWARMv5\..\..\uCOS\uC #
+#                    -Probe\ -I E:\H520B\FW\src\Project\EWARMv5\..\..\usb_lib #
+#                    \ -I "C:\Program Files\IAR Systems\Embedded Workbench    #
+#                    5.4\arm\INC\" -Ol                                        #
+#    List file    =  E:\H520B\FW\src\Project\EWARMv5\Debug\List\record.lst    #
+#    Object file  =  E:\H520B\FW\src\Project\EWARMv5\Debug\Obj\record.o       #
+#                                                                             #
+#                                                                             #
+###############################################################################
+
+E:\H520B\FW\src\App\record.c
+      1          /**
+      2           * @file record.c
+      3           * @brief H520B项目记录管理模块
+      4           * @version 1.0
+      5           * @author joe
+      6           * @date 2015年09月10日
+      7           * @note 利用SPI Flash 实现的FAT文件系统保存记录
+      8           *
+      9           * 此代码为深圳合杰电子有限公司项目代码，任何人及公司未经许可不得复制传播，或用于
+     10           * 本公司以外的项目。本司保留一切追究权利。
+     11           *
+     12           * <h1><center>&copy; COPYRIGHT 2015 heroje</center></h1>
+     13           */
+     14          
+     15          #include "record.h"
+     16          #include "crc32.h"
+     17          #include <string.h>
+     18          #include "TimeBase.h"
+     19          #include "ff.h"
+     20          #include "hash.h"
+     21          #include "JMemory.h"
+     22          
+     23          unsigned char			rec_module_buffer[RECORD_MAX_SIZE];	//记录模块的公用buffer	
+     24          
+     25          
+     26          unsigned int current_node_offset;
+     27          unsigned int g_rec_offset;
+     28          
+     29          static unsigned int	prev_node_offset;
+     30          static unsigned int	next_node_offset;
+     31          
+     32          
+     33          static unsigned int log_len;
+     34          
+     35          FIL						file2,file3;
+     36          DIR						dir;							//文件夹
+     37          
+     38          
+     39          #ifdef T5_SD_DEBUG
+     40          FIL						debug_file;
+     41          unsigned int			debug_file_status;
+     42          #endif
+     43          
+     44          extern FIL				file1;
+     45          extern FATFS			fs;
+     46          
+     47          
+     48          typedef struct  
+     49          {
+     50          	unsigned char					magic[4];
+     51          	unsigned int					xor;
+     52          	unsigned int					xor_data;
+     53          	unsigned int					length;
+     54          	unsigned char					OEMName[16];
+     55          	unsigned char					Version[16];
+     56          	unsigned char					Date[16];
+     57          }TPackHeader;
+     58          
+     59          /**
+     60          * @brief 初始化哈希表文件
+     61          */
+     62          static int init_hash_table_file(FIL* file)
+     63          {
+     64          	unsigned char	buffer[512];
+     65          	unsigned int	r_w_byte_cnt,i;
+     66          
+     67          	f_lseek(file,0);
+     68          	memset(buffer,0,512);
+     69          	for (i = 0; i< ((HASH_TABLE_SIZE*4)/512);i++)
+     70          	{
+     71          		if (f_write(file,buffer,512,&r_w_byte_cnt) != FR_OK)
+     72          		{
+     73          			return -1;
+     74          		}
+     75          
+     76          		if (r_w_byte_cnt != 512)
+     77          		{
+     78          			return -1;
+     79          		}
+     80          	}
+     81          
+     82          	if (f_truncate(file) != FR_OK)
+     83          	{
+     84          		return -1;
+     85          	}
+     86          
+     87          	f_sync(file);
+     88          
+     89          	return FR_OK;
+     90          }
+     91          
+     92          /**
+     93          * @brief 初始化序列号信息文件
+     94          */
+     95          static int init_data_info_file(FIL* file)
+     96          {
+     97          	unsigned char	buffer[12];
+     98          	unsigned int	r_w_byte_cnt;
+     99          
+    100          	f_lseek(file,0);
+    101          	memcpy(buffer,"info",4);
+    102          	memset(buffer+4,0,8);
+    103          	
+    104          
+    105          	if (f_write(file,buffer,12,&r_w_byte_cnt) != FR_OK)
+    106          	{
+    107          		return -1;
+    108          	}
+    109          
+    110          	if (r_w_byte_cnt != 12)
+    111          	{
+    112          		return -1;
+    113          	}
+    114          
+    115          	if (f_truncate(file) != FR_OK)
+    116          	{
+    117          		return -1;
+    118          	}
+    119          
+    120          	f_sync(file);
+    121          
+    122          	return FR_OK;
+    123          }
+    124          
+    125          /**
+    126           * @brief 系统的所有记录模块的初始化
+    127           * @return 0: OK   else: 错误代码
+    128           * @note: 返回值不能很好的定位到具体的错误发生的位置，后续有需要再修改
+    129           */
+    130          int record_module_init(void)
+    131          {
+    132          	unsigned int		j;	
+    133          	unsigned char		dir_str[35];
+    134          	const unsigned char	*p_hash_table_file[3];
+    135          
+    136          	//f_mount(0, &fs);										// 装载文件系统
+    137          
+    138          	if( f_opendir(&dir,batch_dirctory) != FR_OK )
+    139          	{
+    140          		//打开记录文件失败或者无法访问SD卡,如果是该文件夹不存在，那么就创建一个新的文件夹
+    141          		if (f_mkdir(batch_dirctory) != FR_OK)
+    142          		{
+    143          			//无法访问SD卡
+    144          			return 1;	
+    145          		}
+    146          
+    147          		if( f_opendir(&dir,batch_dirctory) != FR_OK )
+    148          		{
+    149          			//刚创建成功了还打不开，那就诡异了（会出现这个错误吗？？？）
+    150          			return 1;
+    151          		}
+    152          	}
+    153          
+    154          	p_hash_table_file[0] = barcode_hash_table_file;
+    155          	p_hash_table_file[1] = batch_inf_file;
+    156          	p_hash_table_file[2] = 0;
+    157          
+    158          	j = 0;
+    159          	while (p_hash_table_file[j])
+    160          	{
+    161          		strcpy((char*)dir_str,batch_dirctory);
+    162          		strcat((char*)dir_str,(char const*)p_hash_table_file[j]);
+    163          
+    164          		if (f_open(&file1,(const char*)dir_str,FA_OPEN_ALWAYS | FA_WRITE) != FR_OK)
+    165          		{
+    166          			return 2;
+    167          		}
+    168          
+    169          		if (j == 0)
+    170          		{
+    171          			if (file1.fsize != HASH_TABLE_SIZE*4)
+    172          			{
+    173          				if (init_hash_table_file(&file1) != FR_OK)
+    174          				{
+    175          					return 3;
+    176          				}
+    177          			}
+    178          		}
+    179          		else if (j == 1)
+    180          		{
+    181          			if ((file1.fsize < 12)||(file1.fsize > 12 + 4*BATCH_LIST_MAX_CNT))
+    182          			{
+    183          				if (init_data_info_file(&file1) != FR_OK)
+    184          				{
+    185          					return 3;
+    186          				}
+    187          			}
+    188          		}
+    189          
+    190          		f_sync(&file1);
+    191          		j++;
+    192          	}
+    193          
+    194          	current_node_offset = 0;
+    195          	return 0;
+    196          }
+    197          
+    198          /**
+    199           * @brief 读脱机记录，该记录必须存在，此函数中不作判断
+    200           * @param[in] int index 记录的索引(最老的记录的索引号是1)
+    201           * @return 返回记录的地址
+    202           */
+    203          unsigned char *record_module_read(unsigned int index)
+    204          {
+    205          	unsigned char	dir_str[35];
+    206          	unsigned int	node_size;
+    207          	unsigned char	*pBuf;
+    208          	unsigned int	checkvalue;
+    209          
+    210          	if (index == 0)
+    211          	{
+    212          		return (unsigned char*)0;
+    213          	}
+    214          	
+    215          	pBuf = rec_module_buffer;
+    216          
+    217          	strcpy((char*)dir_str,batch_dirctory);
+    218          	strcat((char*)dir_str,(char const*)batch_list_file);
+    219          	node_size = sizeof(TBATCH_NODE);
+    220          
+    221          
+    222          	if (f_open(&file1,(char const*)dir_str,FA_OPEN_EXISTING | FA_READ) != FR_OK)
+    223          	{
+    224          		return (unsigned char*)0;
+    225          	}
+    226          
+    227          	if (file1.fsize < node_size*index)
+    228          	{
+    229          		f_close(&file1);
+    230          		return (unsigned char*)0;
+    231          	}
+    232          
+    233          	f_lseek(&file1,node_size*(index-1));
+    234          
+    235          	if (f_read(&file1,pBuf,node_size,&node_size) != FR_OK)
+    236          	{
+    237          		f_close(&file1);
+    238          		return (unsigned char*)0;
+    239          	}
+    240          
+    241          	checkvalue = crc32(0,pBuf+4,node_size-4);
+    242          	if (memcmp((unsigned char*)&checkvalue,pBuf,4))
+    243          	{
+    244          		//校验值不对
+    245          		f_close(&file1);
+    246          		return (unsigned char*)0;
+    247          	}
+    248          
+    249          	f_close(&file1);
+    250          	return pBuf;
+    251          }
+    252          
+    253          //计算校验值并填回去
+    254          static calc_check_value(unsigned char *precord)
+    255          {
+    256          	unsigned int		checkvalue;
+    257          
+    258          	//计算此份记录的校验值，放到记录的最前面4个字节
+    259          	checkvalue = crc32(0,precord + 4,sizeof(TBATCH_NODE) - 4);
+    260          
+    261          	memcpy(precord,(unsigned char*)&checkvalue,4);
+    262          }
+    263          /**
+    264          * @brief 增加一个脱机节点到记录文件之后更新记录文件的链表
+    265          * @param[in] FIL *file						记录文件指针,已经打开的文件
+    266          * @param[in] unsigned char key_type			关键字类型
+    267          * @param[in] unsigned char	*p_node			要新增的节点指针	
+    268          * @param[in] unsigned int	header			链表首地址
+    269          * @param[in] unsigned int	node_offset		要增加节点的偏移
+    270          * @return 0:成功
+    271          *        else:失败
+    272          * @note 只有商品信息节点是双向链表，所以增加节点时需要维护双向链表，其余节点都是单向链表
+    273          */
+    274          static int  update_link_info_after_addNode(FIL *file,unsigned char key_type,unsigned char*p_node,unsigned int header,unsigned int node_offset)
+    275          {
+    276          	unsigned int	rec_size,next_node_offset,current_offset,tmp;
+    277          	unsigned char	buffer[RECORD_MAX_SIZE];		//如果一个节点的大小超过了512，那么还需要增加此临时空间
+    278          
+    279          	rec_size = sizeof(TBATCH_NODE);
+    280          
+    281          	next_node_offset = header;
+    282          	while (next_node_offset)
+    283          	{
+    284          		current_offset = next_node_offset;
+    285          		f_lseek(file,(next_node_offset-1)*rec_size);		//文件指针定位到链表首记录的偏移处，注意链表中记录的偏移是该节点结束的偏移
+    286          		if (f_read(file,buffer,rec_size,&tmp) != FR_OK)
+    287          		{
+    288          			return -2;
+    289          		}
+    290          
+    291          		if (key_type == 1)
+    292          		{
+    293          			next_node_offset = ((TBATCH_NODE*)buffer)->by_barcode_next;
+    294          			if (next_node_offset == 0)
+    295          			{
+    296          				((TBATCH_NODE*)buffer)->by_barcode_next = node_offset;
+    297          				((TBATCH_NODE*)p_node)->by_barcode_prev = current_offset;
+    298          				((TBATCH_NODE*)p_node)->by_barcode_next = 0;
+    299          			}
+    300          		}
+    301          		else
+    302          		{
+    303          			next_node_offset = ((TBATCH_NODE*)buffer)->by_index_next;
+    304          			if (next_node_offset == 0)
+    305          			{
+    306          				((TBATCH_NODE*)buffer)->by_index_next = node_offset;
+    307          				((TBATCH_NODE*)p_node)->by_index_prev = current_offset;
+    308          				((TBATCH_NODE*)p_node)->by_index_next = 0;
+    309          			}
+    310          		}
+    311          	}
+    312          
+    313          	calc_check_value(buffer);
+    314          	f_lseek(file,(current_offset-1)*rec_size);		//文件指针重新定位到链表最后一个节点处
+    315          	if (f_write(file,buffer,rec_size,&tmp) != FR_OK)
+    316          	{
+    317          		return -3;
+    318          	}
+    319          
+    320          	if (tmp != rec_size)
+    321          	{
+    322          		return -3;
+    323          	}
+    324          
+    325          	f_sync(file);
+    326          	
+    327          	return 0;
+    328          }
+    329          
+    330          
+    331          //将准备进行的文件操作的相关信息保存到日志文件
+    332          //note : 对于每一种操作来说参数列表中的参数的含义都不相同
+    333          //       op_type == OP_TYPE_ADD_NODE 时,		param1 表示记录类型, param2 表示新增节点的偏移  param3 表示新增节点的长度  param4 指向新增节点数据
+    334          //		 op_type == OP_TYPE_CLEAR_NODE 时,		param1 表示记录类型, param2 无意义					param3 无意义 param4 无意义
+    335          //		 op_type == OP_TYPE_DEL_NODE 时,		param1 表示记录类型, param2 表示要删除节点的偏移	param3 无意义 param4 无意义
+    336          //		 op_type == OP_TYPE_REPLACE_NODE 时,	param1 表示记录类型, param2 表示要替换节点的偏移	param3 表示替换节点的长度  param4 指向新替换节点数据
+    337          //		 op_type == OP_TYPE_WRITE_BIN_FILE 时,	param1 表示记录类型, param2 表示文件类型	param3 无意义  param4 无意义
+    338          static int save_log_file(void *data,unsigned int len)
+    339          {
+    340          	unsigned int tmp;
+    341          	unsigned int llen;
+    342          	unsigned char tmp_buffer[530];
+    343          	//将该操作保存到日志文件中
+    344          	if (f_open(&file3,log_file,FA_OPEN_ALWAYS | FA_READ | FA_WRITE) != FR_OK)
+    345          	{
+    346          		return -1;
+    347          	}
+    348          
+    349          	if (log_len == 0)
+    350          	{
+    351          		llen = len+4;
+    352          	}
+    353          	else
+    354          	{
+    355          		llen = log_len+len;
+    356          	}
+    357          	
+    358          	f_lseek(&file3,file3.fsize-log_len);
+    359          
+    360          	if (log_len)
+    361          	{
+    362          		if (f_read(&file3,(void*)&tmp_buffer,log_len,&tmp) != FR_OK)
+    363          		{
+    364          			f_close(&file3);
+    365          			return -1;
+    366          		}
+    367          
+    368          		if (tmp != log_len)
+    369          		{		
+    370          			f_close(&file3);
+    371          			return -1;
+    372          		}
+    373          	}
+    374          	memcpy((void*)tmp_buffer,(void*)&llen,4);
+    375          	if (log_len)
+    376          	{
+    377          		memcpy((void*)(tmp_buffer+log_len),data,len);
+    378          	}
+    379          	else
+    380          	{
+    381          		memcpy((void*)(tmp_buffer+4),data,len);
+    382          	}
+    383          	
+    384          	f_lseek(&file3,file3.fsize-log_len);
+    385          	if(f_write(&file3,tmp_buffer,llen,&tmp) != FR_OK)
+    386          	{
+    387          		f_close(&file3);
+    388          		return -1;
+    389          	}
+    390          
+    391          	if (tmp != llen)
+    392          	{
+    393          		f_close(&file3);
+    394          		return -1;
+    395          	}
+    396          	f_close(&file3);		//关闭日志文件
+    397          	log_len = llen;
+    398                  return 0;
+    399          }
+    400          
+    401          
+    402          //清除日志文件最新添加的日志
+    403          int clear_log_file(int mode)
+    404          {
+    405          	if (f_open(&file3,log_file,FA_OPEN_ALWAYS | FA_READ | FA_WRITE) != FR_OK)
+    406          	{
+    407          		return -1;
+    408          	}
+    409          
+    410          	if (mode)
+    411          	{
+    412          		f_lseek(&file3,0);
+    413          	}
+    414          	else
+    415          	{
+    416          		if (file3.fsize >= log_len)
+    417          		{
+    418          			f_lseek(&file3,file3.fsize-log_len);
+    419          		}
+    420          	}
+    421          	f_truncate(&file3);
+    422          
+    423          	f_close(&file3);
+    424          	return 0;
+    425          }
+    426          
+    427          /**
+    428          * @brief 增加一条脱机记录
+    429          * @param[in] unsigned char *precord 记录指针
+    430          * @return 0:成功
+    431          *        else:失败
+    432          * @note 此函数已经增加断电保护
+    433          */
+    434          int record_add(unsigned char *precord)
+    435          {
+    436          	unsigned char	dir_str[35];
+    437          	unsigned char	inf_file_str[35];
+    438          	unsigned int	rec_offset,i;
+    439          	unsigned int	node_size,tmp;
+    440          	unsigned long	hash_value[2];
+    441          	const unsigned char	*p_hash_table_file[3];
+    442          	unsigned int		link_end;		//链表的尾地址
+    443          	//const unsigned char	*target_dir;
+    444          	//unsigned int		target_max_cnt;
+    445          	unsigned int		invalid_node_offset = 0;
+    446          	unsigned int		temp;
+    447          	int					err_code = 0;
+    448          	unsigned int		log_data[3];
+    449          
+    450          	log_len = 0;
+    451          
+    452          	//target_dir = batch_dirctory;
+    453          	strcpy((char*)dir_str,batch_dirctory);
+    454          	strcat((char*)dir_str,(char const*)batch_list_file);
+    455          	node_size = sizeof(TBATCH_NODE);
+    456          	hash_value[0] = HashString(((TBATCH_NODE*)precord)->barcode,0);	//计算该商品条码的hash值
+    457          	hash_value[1] = 2;
+    458          	p_hash_table_file[0] = barcode_hash_table_file;
+    459          	p_hash_table_file[1] = batch_inf_file;
+    460          	p_hash_table_file[2] = 0;
+    461          	//target_max_cnt = BATCH_LIST_MAX_CNT;		
+    462          
+    463          	strcpy((char*)inf_file_str,batch_dirctory);
+    464          	strcat((char*)inf_file_str,(char const*)batch_inf_file);
+    465          
+    466          	if (f_open(&file1,(char const*)inf_file_str,FA_OPEN_EXISTING | FA_READ) != FR_OK)
+    467          	{
+    468          		return -2;
+    469          	}
+    470          
+    471          	if (file1.fsize > 12)
+    472          	{
+    473          		f_lseek(&file1,file1.fsize-4);
+    474          		if ((f_read(&file1,(void*)&invalid_node_offset,4,&tmp) != FR_OK) ||(tmp != 4))		//获取保存在序列号信息文件中的某一个已经被删除节点的偏移
+    475          		{
+    476          			f_close(&file1);
+    477          			return -4;
+    478          		}
+    479          	}
+    480          
+    481          	f_close(&file1);
+    482          
+    483          
+    484          	//打开保存相应记录的节点文件
+    485          	if (f_open(&file1,(const char*)dir_str,FA_OPEN_ALWAYS | FA_READ | FA_WRITE) != FR_OK)
+    486          	{
+    487          		return -2;
+    488          	}
+    489          
+    490          	if (invalid_node_offset)
+    491          	{
+    492          		rec_offset = invalid_node_offset;		//如果是新增序列号节点，并且记录文件中存在已经被删除的节点，那么新增的节点
+    493          	}
+    494          	else
+    495          	{
+    496          		rec_offset = file1.fsize/node_size;		//获取记录文件当前已经保存的记录数
+    497          		if (rec_offset < BATCH_LIST_MAX_CNT)
+    498          		{
+    499          			rec_offset += 1;	
+    500          		}
+    501          		else
+    502          		{
+    503          			//rec_offset = 1;		//如果记录数达到了上限值，那么无法增加新记录
+    504          			f_close(&file1);
+    505          			return -20;
+    506          		}
+    507          	}
+    508          
+    509          	g_rec_offset = rec_offset;
+    510          #ifdef REC_DEBUG
+    511          	debug_out("\x0d\x0a",2,1);
+    512          	debug_out("Add Node:",strlen("Add Node:"),1);
+    513          	debug_out((unsigned char*)&rec_offset,4,0);
+    514          #endif
+    515          
+    516          	log_data[0] = OP_TYPE_ADD_NODE;
+    517          	log_data[1] = 0;
+    518          	log_data[2] = rec_offset;
+    519          
+    520          
+    521          	if (save_log_file((void*)log_data,12))		//状态0，LOG文件中只保存了操作类型、记录类型、目标记录偏移
+    522          	{
+    523          		err_code = -10;
+    524          		goto err_handle;
+    525          	}
+    526          
+    527          	//计算此记录需要计算的关键字的hash值
+    528          	i = 0;
+    529          	while (p_hash_table_file[i])
+    530          	{
+    531          		strcpy((char*)dir_str,batch_dirctory);
+    532          		strcat((char*)dir_str,(char const*)p_hash_table_file[i]);
+    533          
+    534          		//打开相应的hash_table文件
+    535          		if (f_open(&file2,(const char*)dir_str,FA_OPEN_EXISTING | FA_READ | FA_WRITE) != FR_OK)
+    536          		{
+    537          			err_code = -4;
+    538          			goto err_handle;
+    539          		}
+    540          
+    541          		f_lseek(&file2,4*(hash_value[i]%HASH_TABLE_SIZE));		//定位到该hash值在hash表中对应的偏移处
+    542          
+    543          		//读取此hash值对应的链表的尾地址
+    544          		if (f_read(&file2,(void*)&link_end,4,&tmp) != FR_OK)
+    545          		{
+    546          			err_code = -5;
+    547          			goto err_handle;
+    548          		}
+    549          #ifdef REC_DEBUG
+    550          		debug_out(" LinkEnd=",strlen(" LinkEnd="),1);
+    551          		debug_out((unsigned char*)&link_end,4,0);
+    552          #endif
+    553          		log_data[0] = hash_value[i];
+    554          		log_data[1] = link_end;
+    555          		if(save_log_file((void*)log_data,8))		//状态1或者状态2
+    556          		{
+    557          			err_code = -10;
+    558          			goto err_handle;
+    559          		}
+    560          		
+    561          		f_lseek(&file2,4*(hash_value[i]%HASH_TABLE_SIZE));		//定位到该hash值在hash表中对应的偏移处
+    562          
+    563          		//更新该链表的尾节点
+    564          		if (f_write(&file2,(void*)&rec_offset,4,&tmp) != FR_OK)
+    565          		{
+    566          			err_code = -6;
+    567          			goto err_handle;
+    568          		}
+    569          
+    570          		if (tmp != 4)
+    571          		{
+    572          			err_code = -6;
+    573          			goto err_handle;
+    574          		}
+    575          
+    576          		f_sync(&file2);
+    577          
+    578          		if (i == 1)
+    579          		{
+    580          			f_lseek(&file2,4);
+    581          			if (f_read(&file2,(void*)&temp,4,&tmp) != FR_OK)
+    582          			{
+    583          				err_code = -7;
+    584          				goto err_handle;
+    585          			}
+    586          
+    587          			if (temp == 0)
+    588          			{
+    589          				//如果链表的首节点还是0，那么需要更新链表的首节点
+    590          				f_lseek(&file2,4);
+    591          				if (f_write(&file2,(void*)&rec_offset,4,&tmp) != FR_OK)
+    592          				{
+    593          					err_code = -8;
+    594          					goto err_handle;
+    595          				}
+    596          
+    597          				if (tmp != 4)
+    598          				{
+    599          					err_code = -8;
+    600          					goto err_handle;
+    601          				}
+    602          			}
+    603          		}
+    604          
+    605          		f_close(&file2);	//hash表文件可以关闭了
+    606          
+    607          		if (link_end)
+    608          		{
+    609          			//如果链表不是空的，那么需要更新链表的信息(如果是商品信息节点，还需要更新当前节点的信息，因为商品信息链表是双向链表)
+    610          			if (update_link_info_after_addNode(&file1,(i+1),precord,link_end,rec_offset))
+    611          			{
+    612          				err_code = -9;
+    613          				goto err_handle;
+    614          			}
+    615          		}
+    616          
+    617          		i++;
+    618          	}
+    619          
+    620          	calc_check_value(precord);
+    621          
+    622          	if (save_log_file((void*)precord,node_size))
+    623          	{
+    624          		err_code = -8;
+    625          		goto err_handle;
+    626          	}
+    627          
+    628          	f_lseek(&file1,(rec_offset-1)*node_size);		//将文件指针移到文件末尾
+    629          	if (f_write(&file1,precord,node_size,&tmp) != FR_OK)
+    630          	{
+    631          		err_code = -3;	 
+    632          		goto err_handle;
+    633          	}
+    634          
+    635          	if (tmp != node_size)
+    636          	{
+    637          		err_code = -3;	 
+    638          		goto err_handle;
+    639          	}
+    640          
+    641          	//保存节点的文件可以关闭了
+    642          	f_close(&file1);	
+    643          
+    644          	if (invalid_node_offset)
+    645          	{
+    646          		if (f_open(&file1,(char const*)inf_file_str,FA_OPEN_EXISTING | FA_WRITE | FA_READ) != FR_OK)
+    647          		{
+    648          			return -2;
+    649          		}
+    650          
+    651          		f_lseek(&file1,file1.fsize-4);
+    652          		f_truncate(&file1);		//将记录在信息文件中的已经删除的节点偏移清掉。
+    653          		f_close(&file1);
+    654          	}
+    655          	
+    656          	clear_log_file(0);
+    657          	return 0;
+    658          
+    659          err_handle:
+    660          
+    661          	f_close(&file1);
+    662          	return err_code;
+    663          }
+    664          
+    665          
+    666          /**
+    667          * @brief 得到脱机记录总条数
+    668          * @return 0...LOGIC_RECORD_BLOCK_SIZE
+    669          */
+    670          int record_module_count(void)
+    671          {
+    672          	unsigned char dir_str[35];
+    673          	unsigned char inf_file_str[35];
+    674          	int		cnt;
+    675          
+    676          	strcpy((char*)dir_str,batch_dirctory);
+    677          	strcat((char*)dir_str,(char const*)batch_list_file);
+    678          
+    679          	if (f_open(&file1,(const char*)dir_str,FA_OPEN_ALWAYS | FA_READ) != FR_OK)
+    680          	{
+    681          		return -1;
+    682          	}
+    683          
+    684          	cnt = file1.fsize / sizeof(TBATCH_NODE);
+    685          	f_close(&file1);
+    686          
+    687          	strcpy((char*)inf_file_str,batch_dirctory);
+    688          	strcat((char*)inf_file_str,(char const*)batch_inf_file);
+    689          
+    690          	if (f_open(&file1,(char const*)inf_file_str,FA_OPEN_EXISTING | FA_READ) != FR_OK)
+    691          	{
+    692          		return -1;
+    693          	}
+    694          
+    695          	if (cnt >= (file1.fsize - 12)/4)
+    696          	{
+    697          		cnt -= (file1.fsize - 12)/4;		//减去无效的节点，理论上无效的节点的偏移都记录在信息文件中，所以直接减去在信息文件中记录的无效节点个数，即表示在节点文件中还存在的节点个数。
+    698          		f_close(&file1);
+    699          	}
+    700          	else
+    701          	{
+    702          		//理论上应该不会出现这种情况！万一真出现了呢？尼玛，那只能来杀手锏了，直接将记录文件全部初始化
+    703          		f_close(&file1);
+    704          		record_clear();
+    705          		cnt = 0;
+    706          	}
+    707          
+    708          	return cnt;
+    709          }
+    710          
+    711          /**
+    712          * @brief 清除脱机记录
+    713          * @return 0：成功  -1：失败
+    714          */
+    715          int record_clear(void)
+    716          {
+    717          	unsigned char	dir_str[35];
+    718          	const unsigned char	*p_hash_table_file[3];
+    719          	int i;
+    720          	unsigned int		log_data[2];
+    721          
+    722          	strcpy((char*)dir_str,batch_dirctory);
+    723          	strcat((char*)dir_str,(char const*)batch_list_file);
+    724          	p_hash_table_file[0] = barcode_hash_table_file;
+    725          	p_hash_table_file[1] = batch_inf_file;
+    726          	p_hash_table_file[2] = 0;
+    727          
+    728          
+    729          	if (f_open(&file1,(const char*)dir_str,FA_OPEN_ALWAYS | FA_READ | FA_WRITE) != FR_OK)
+    730          	{
+    731          		return -1;
+    732          	}
+    733          
+    734          	f_lseek(&file1,0);		//文件指针移动到文件开始
+    735          
+    736          	//将文件截断到文件开始
+    737          	if (f_truncate(&file1) != FR_OK)
+    738          	{
+    739          		f_close(&file1);
+    740          		return -2;
+    741          	}
+    742          
+    743          	f_close(&file1);
+    744          
+    745          
+    746          
+    747          	log_data[0] = OP_TYPE_CLEAR_NODE;
+    748          	log_data[1] = 0;
+    749          	log_len = 0;
+    750          	if (save_log_file((void*)log_data,8))		//状态0，LOG文件中只保存了操作类型、记录类型
+    751          	{
+    752          		return -4;
+    753          	}
+    754          
+    755          	i = 0;
+    756          	while (p_hash_table_file[i])
+    757          	{
+    758          		strcpy((char*)dir_str,batch_dirctory);
+    759          		strcat((char*)dir_str,(char const*)p_hash_table_file[i]);
+    760          
+    761          		//打开相应的hash_table文件
+    762          		if (f_open(&file2,(const char*)dir_str,FA_OPEN_EXISTING | FA_READ | FA_WRITE) != FR_OK)
+    763          		{
+    764          			return -3;
+    765          		}
+    766          
+    767          		if (i == 0)
+    768          		{
+    769          			init_hash_table_file(&file2);	
+    770          		}
+    771          		else if(i == 1)
+    772          		{
+    773          			init_data_info_file(&file2);	
+    774          		}
+    775          		f_close(&file2);
+    776                  i++;
+    777          	}
+    778          
+    779          	clear_log_file(0);		//清除日志
+    780          	return 0;
+    781          }
+    782          
+    783          /**
+    784          * @brief 根据条码关键字查询脱机记录，返回记录节点的偏移
+    785          * @param[in] unsigned char *barcode				要匹配的字符串
+    786          * @param[out] unsigned char *outbuf				搜索到的记录缓冲区
+    787          * @return 搜索结果	=0:没有搜索到该交易记录  > 0:搜索到的记录的偏移   < 0: 错误类型
+    788          * @note  
+    789          */
+    790          static int rec_search(unsigned char *barcode,unsigned char *outbuf)
+    791          {
+    792          	unsigned int hash_value,link_end,tmp;
+    793          	unsigned char dir_str[35];
+    794          	unsigned char	buffer[RECORD_MAX_SIZE];		//如果一个节点的大小超过了512，那么还需要增加此临时空间
+    795          	unsigned int	node_size;				//节点大小
+    796          
+    797          	node_size = sizeof(TBATCH_NODE);
+    798          	memset(outbuf,0,node_size);		//清掉返回数据的缓冲区
+    799          	strcpy((char*)dir_str,batch_dirctory);
+    800          
+    801          
+    802          	//如果要搜索的关键字类型是条码
+    803          
+    804          	//step1: 计算关键字的hash值
+    805          	hash_value = HashString(barcode,0);	
+    806          
+    807          	//step2: 根据hash值查找到与该关键字具有相同hash值模值的链表尾地址
+    808          	strcat((char*)dir_str,(char const*)barcode_hash_table_file);		
+    809          	if (f_open(&file1,(char const*)dir_str,FA_OPEN_ALWAYS | FA_READ) != FR_OK)
+    810          	{
+    811          		return -1;
+    812          	}
+    813          
+    814          	f_lseek(&file1,4*(hash_value%HASH_TABLE_SIZE));
+    815          
+    816          	if (f_read(&file1,(void*)&link_end,4,&tmp) != FR_OK)
+    817          	{
+    818          		return -2;
+    819          	}	
+    820          
+    821          	f_close(&file1);
+    822          
+    823          	//根据读取出来的链表首地址查找到第一个与关键字完全匹配的记录，如果需要将完全匹配关键字的所有记录全部都读取出来，需要另外的接口来实现。
+    824          
+    825          	if (link_end)
+    826          	{	
+    827          		strcpy((char*)dir_str,batch_dirctory);
+    828          		strcat((char*)dir_str,(char const*)batch_list_file);
+    829          
+    830          		if (f_open(&file1,(char const*)dir_str,FA_OPEN_ALWAYS | FA_READ) != FR_OK)
+    831          		{
+    832          			return -3;
+    833          		}
+    834          
+    835          		while (link_end)
+    836          		{
+    837          			f_lseek(&file1,(link_end-1)*node_size);		//文件指针指向该节点的起始位置
+    838          
+    839          			if ((f_read(&file1,buffer,node_size,&tmp) != FR_OK) || (node_size != tmp))
+    840          			{
+    841          				return -4;
+    842          			}
+    843          
+    844          			if (strcmp((char*)barcode,(char const*)((TBATCH_NODE*)buffer)->barcode) == 0)
+    845          			{
+    846          				memcpy(outbuf,buffer,node_size);
+    847          				return link_end;		//搜索到链表中第一个与关键字匹配的节点
+    848          			}
+    849          
+    850          			link_end = ((TBATCH_NODE*)buffer)->by_barcode_prev;
+    851          		}
+    852          	}
+    853          
+    854          	return 0;		//没有搜索到与关键字匹配的记录
+    855          }
+    856          
+    857          /**
+    858          * @brief 根据条码查询脱机记录，返回记录指针
+    859          * @param[in] unsigned char *barcode				要匹配的字符串
+    860          * @param[out] int	*index						返回该记录的索引值
+    861          * @return 搜索结果	0 没有搜索到记录		else 记录指针
+    862          * @note  实现的时候必须进行字符串比较
+    863          */
+    864          unsigned char *rec_searchby_tag(unsigned char *barcode, int *index)
+    865          {
+    866          	unsigned char *pBuf;
+    867          
+    868          	pBuf = rec_module_buffer;
+    869          	*index = rec_search(barcode,pBuf);
+    870          	if (*index > 0)
+    871          	{
+    872          		return pBuf;
+    873          	}
+    874          
+    875          	return (unsigned char *)0;
+    876          }
+    877          /**
+    878          * @brief 读取序列号节点
+    879          * @param[in] unsigned int mode  0:第一个有效节点   1;前一个有效节点   2:后一个有效节点  3:指定节点偏移
+    880          * @param[in] unsigned int offset  只有在mode = 3时才有用
+    881          */
+    882          unsigned char* get_node(unsigned int mode,unsigned int offset)
+    883          {
+    884          	unsigned int	node_offset,tmp;
+    885          	unsigned char	*pRec = 0;
+    886          	unsigned char   inf_file_str[35];
+    887          	if (mode == 0)
+    888          	{
+    889          		current_node_offset = 0;
+    890          		
+    891          		strcpy((char*)inf_file_str,batch_dirctory);
+    892          		strcat((char*)inf_file_str,(char const*)batch_inf_file);
+    893          
+    894          		if (f_open(&file1,(char const*)inf_file_str,FA_OPEN_EXISTING | FA_READ) != FR_OK)
+    895          		{
+    896          			return (unsigned char*)0;
+    897          		}
+    898          
+    899          		f_lseek(&file1,8);
+    900          		if ((f_read(&file1,(void*)&node_offset,4,&tmp) != FR_OK)||(tmp != 4))
+    901          		{
+    902          			f_close(&file1);
+    903          			return (unsigned char*)0;
+    904          		}
+    905          
+    906          		f_close(&file1);
+    907          	}
+    908          	else if (1 == mode)
+    909          	{
+    910          		node_offset = next_node_offset;
+    911          	}
+    912          	else if (2 == mode)
+    913          	{
+    914          		node_offset = prev_node_offset;
+    915          	}
+    916          	else if(3 == mode)
+    917          	{
+    918          		node_offset = offset;
+    919          	}
+    920          	else
+    921          	{
+    922          		return (unsigned char*)0;
+    923          	}
+    924          
+    925          	if (node_offset)
+    926          	{
+    927          		current_node_offset = node_offset;
+    928          
+    929          		pRec = record_module_read(current_node_offset);
+    930          		prev_node_offset = ((TBATCH_NODE*)pRec)->by_index_prev;
+    931          		next_node_offset = ((TBATCH_NODE*)pRec)->by_index_next;
+    932          	}
+    933          
+    934          	return pRec;
+    935          }
+    936          /**
+    937          * @brief 删除脱机记录文件中的某一个节点
+    938          * @param[in] unsigned int index	 物理偏移（索引）
+    939          */
+    940          int delete_one_node(unsigned int index)
+    941          {
+    942          	unsigned char	buffer[RECORD_MAX_SIZE];
+    943          	unsigned int	tmp,temp;
+    944          	unsigned short	prev,next;
+    945          	unsigned int	barcode_hash_prev,barcode_hash_next;
+    946          	unsigned int	hash_value;
+    947          	unsigned char	inf_file_str[35];
+    948          	unsigned int	node_size;
+    949          	unsigned int	log_data[8];
+    950          
+    951          	//step1:先将该节点标记为无效节点
+    952          	strcpy((char*)inf_file_str,batch_dirctory);
+    953          	strcat((char*)inf_file_str,(char const*)batch_list_file);
+    954          	node_size = sizeof(TBATCH_NODE);
+    955          
+    956          	if (f_open(&file1,(char const*)inf_file_str,FA_OPEN_EXISTING | FA_READ | FA_WRITE) != FR_OK)
+    957          	{
+    958          		return -2;
+    959          	}
+    960          
+    961          	f_lseek(&file1,(index-1)*node_size);
+    962          	if ((f_read(&file1,buffer,node_size,&tmp) != FR_OK)||(tmp != node_size))
+    963          	{
+    964          		f_close(&file1);
+    965          		return -3;
+    966          	}
+    967          
+    968          
+    969          	((TBATCH_NODE*)buffer)->flag = 0x55;
+    970          
+    971          	prev = ((TBATCH_NODE*)buffer)->by_index_prev;
+    972          	next = ((TBATCH_NODE*)buffer)->by_index_next;
+    973          
+    974          	barcode_hash_prev = ((TBATCH_NODE*)buffer)->by_barcode_prev;
+    975          	barcode_hash_next = ((TBATCH_NODE*)buffer)->by_barcode_next;
+    976          	hash_value = HashString(((TBATCH_NODE*)buffer)->barcode,0);
+    977          
+    978          	f_lseek(&file1,(index-1)*node_size);
+    979          	if (f_write(&file1,buffer,node_size,&tmp) != FR_OK)
+    980          	{
+    981          		f_close(&file1);
+    982          		return -4;
+    983          	}
+    984          
+    985          	if (tmp != node_size)
+    986          	{
+    987          		f_close(&file1);
+    988          		return -5;
+    989          	}
+    990          
+    991          	f_sync(&file1);
+    992          
+    993          	log_data[0] = OP_TYPE_DEL_NODE;
+    994          	log_data[1] = 0;
+    995          	log_data[2] = index;
+    996          	log_data[3] = prev;
+    997          	log_data[4] = next;
+    998          	log_data[5] = barcode_hash_prev;
+    999          	log_data[6] = barcode_hash_next;
+   1000          	log_data[7] = hash_value;
+   1001          	log_len = 0;
+   1002          	if (save_log_file((void*)log_data,32))
+   1003          	{
+   1004          		return -6;
+   1005          	}
+   1006          
+   1007          	//step2:更新该节点前一个节点和后一个节点的链表信息
+   1008          	if(prev)
+   1009          	{
+   1010          		f_lseek(&file1,(prev-1)*node_size);
+   1011          		if ((f_read(&file1,buffer,node_size,&tmp) != FR_OK)||(tmp != node_size))
+   1012          		{
+   1013          			f_close(&file1);
+   1014          			return -7;
+   1015          		}
+   1016          
+   1017          
+   1018          		((TBATCH_NODE*)buffer)->by_index_next = next;
+   1019          
+   1020          		calc_check_value(buffer);
+   1021          
+   1022          		f_lseek(&file1,(prev-1)*node_size);
+   1023          		if (f_write(&file1,buffer,node_size,&tmp) != FR_OK)
+   1024          		{
+   1025          			f_close(&file1);
+   1026          			return -8;
+   1027          		}
+   1028          
+   1029          		if (tmp != node_size)
+   1030          		{
+   1031          			f_close(&file1);
+   1032          			return -9;
+   1033          		}
+   1034          
+   1035          		f_sync(&file1);
+   1036          	}
+   1037          
+   1038          	if (next)
+   1039          	{
+   1040          		f_lseek(&file1,(next-1)*node_size);
+   1041          		if ((f_read(&file1,buffer,node_size,&tmp) != FR_OK)||(tmp != node_size))
+   1042          		{
+   1043          			f_close(&file1);
+   1044          			return -10;
+   1045          		}
+   1046          
+   1047          
+   1048          		((TBATCH_NODE*)buffer)->by_index_prev = prev;
+   1049          
+   1050          		calc_check_value(buffer);
+   1051          		f_lseek(&file1,(next-1)*node_size);
+   1052          		if (f_write(&file1,buffer,node_size,&tmp) != FR_OK)
+   1053          		{
+   1054          			f_close(&file1);
+   1055          			return -11;
+   1056          		}
+   1057          
+   1058          		if (tmp != node_size)
+   1059          		{
+   1060          			f_close(&file1);
+   1061          			return -12;
+   1062          		}
+   1063          
+   1064          		f_sync(&file1);
+   1065          	}
+   1066          
+   1067          	if(barcode_hash_prev)
+   1068          	{
+   1069          		f_lseek(&file1,(barcode_hash_prev-1)*node_size);
+   1070          		if ((f_read(&file1,buffer,node_size,&tmp) != FR_OK)||(tmp != node_size))
+   1071          		{
+   1072          			f_close(&file1);
+   1073          			return -7;
+   1074          		}
+   1075          
+   1076          
+   1077          		((TBATCH_NODE*)buffer)->by_barcode_next = barcode_hash_next;
+   1078          
+   1079          		calc_check_value(buffer);
+   1080          
+   1081          		f_lseek(&file1,(barcode_hash_prev-1)*node_size);
+   1082          		if (f_write(&file1,buffer,node_size,&tmp) != FR_OK)
+   1083          		{
+   1084          			f_close(&file1);
+   1085          			return -8;
+   1086          		}
+   1087          
+   1088          		if (tmp != node_size)
+   1089          		{
+   1090          			f_close(&file1);
+   1091          			return -9;
+   1092          		}
+   1093          
+   1094          		f_sync(&file1);
+   1095          	}
+   1096          
+   1097          	if (barcode_hash_next)
+   1098          	{
+   1099          		f_lseek(&file1,(barcode_hash_next-1)*node_size);
+   1100          		if ((f_read(&file1,buffer,node_size,&tmp) != FR_OK)||(tmp != node_size))
+   1101          		{
+   1102          			f_close(&file1);
+   1103          			return -10;
+   1104          		}
+   1105          
+   1106          
+   1107          		((TBATCH_NODE*)buffer)->by_barcode_prev = barcode_hash_prev;
+   1108          
+   1109          		calc_check_value(buffer);
+   1110          		f_lseek(&file1,(barcode_hash_next-1)*node_size);
+   1111          		if (f_write(&file1,buffer,node_size,&tmp) != FR_OK)
+   1112          		{
+   1113          			f_close(&file1);
+   1114          			return -11;
+   1115          		}
+   1116          
+   1117          		if (tmp != node_size)
+   1118          		{
+   1119          			f_close(&file1);
+   1120          			return -12;
+   1121          		}
+   1122          
+   1123          		f_sync(&file1);
+   1124          	}
+   1125          
+   1126          	//可以将节点文件关闭了
+   1127          	f_close(&file1);
+   1128          
+   1129          	//step3:将删除的节点的偏移记录在信息文件中
+   1130          
+   1131          	strcpy((char*)inf_file_str,batch_dirctory);
+   1132          	strcat((char*)inf_file_str,(char const*)batch_inf_file);
+   1133          
+   1134          	if (f_open(&file1,(char const*)inf_file_str,FA_OPEN_EXISTING | FA_READ | FA_WRITE) != FR_OK)
+   1135          	{
+   1136          		return -19;
+   1137          	}
+   1138          
+   1139          	f_lseek(&file1,file1.fsize);
+   1140          	if (f_write(&file1,(void*)&index,4,&tmp) != FR_OK)
+   1141          	{
+   1142          		f_close(&file1);
+   1143          		return -20;
+   1144          	}
+   1145          
+   1146          	if (tmp != 4)
+   1147          	{
+   1148          		f_close(&file1);
+   1149          		return -21;
+   1150          	}
+   1151          
+   1152          	f_sync(&file1);
+   1153          
+   1154          	//如果删除的节点是链表的首节点，那么还需要更新保存的链表首节点信息
+   1155          	f_lseek(&file1,4);
+   1156          	if ((f_read(&file1,(void*)&temp,4,&tmp) != FR_OK)||(tmp != 4))
+   1157          	{
+   1158          		f_close(&file1);
+   1159          		return -22;
+   1160          	}
+   1161          
+   1162          	if (temp == index)
+   1163          	{
+   1164          		f_lseek(&file1,4);
+   1165          		temp = next;
+   1166          		if (f_write(&file1,(void*)&temp,4,&tmp) != FR_OK)
+   1167          		{
+   1168          			f_close(&file1);
+   1169          			return -23;
+   1170          		}
+   1171          
+   1172          		if (tmp != 4)
+   1173          		{
+   1174          			f_close(&file1);
+   1175          			return -24;
+   1176          		}
+   1177          
+   1178          		f_sync(&file1);
+   1179          	}
+   1180          
+   1181          	//如果删除的节点是链表的尾节点，那么还需要更新保存的链表尾节点信息
+   1182          	f_lseek(&file1,8);
+   1183          	if ((f_read(&file1,(void*)&temp,4,&tmp) != FR_OK)||(tmp != 4))
+   1184          	{
+   1185          		f_close(&file1);
+   1186          		return -25;
+   1187          	}
+   1188          
+   1189          	if (temp == index)
+   1190          	{
+   1191          		f_lseek(&file1,8);
+   1192          		temp = prev;
+   1193          		if (f_write(&file1,(void*)&temp,4,&tmp) != FR_OK)
+   1194          		{
+   1195          			f_close(&file1);
+   1196          			return -26;
+   1197          		}
+   1198          
+   1199          		if (tmp != 4)
+   1200          		{
+   1201          			f_close(&file1);
+   1202          			return -27;
+   1203          		}
+   1204          	}
+   1205          
+   1206          	f_close(&file1);
+   1207          
+   1208          	strcpy((char*)inf_file_str,batch_dirctory);
+   1209          	strcat((char*)inf_file_str,(char const*)barcode_hash_table_file);
+   1210          
+   1211          	if (f_open(&file1,(char const*)inf_file_str,FA_OPEN_EXISTING | FA_READ | FA_WRITE) != FR_OK)
+   1212          	{
+   1213          		return -28;
+   1214          	}
+   1215          
+   1216          	f_lseek(&file1,4*(hash_value%HASH_TABLE_SIZE));
+   1217          
+   1218          	//获取链表的尾地址
+   1219          	if (f_read(&file1,(void*)&temp,4,&tmp) != FR_OK)
+   1220          	{
+   1221          		f_close(&file1);
+   1222          		return -29;
+   1223          	}
+   1224          
+   1225          	if (temp == index)
+   1226          	{
+   1227          		f_lseek(&file1,4*(hash_value%HASH_TABLE_SIZE));
+   1228          
+   1229          		if (f_write(&file1,(void*)barcode_hash_prev,4,&tmp) != FR_OK)
+   1230          		{
+   1231          			f_close(&file1);
+   1232          			return -30;
+   1233          		}
+   1234          	}
+   1235          
+   1236          	f_close(&file1);
+   1237          
+   1238          	clear_log_file(0);		//清除日志
+   1239          
+   1240          	return 0;
+   1241          }
+   1242          
+   1243          /**
+   1244          * @brief 获取某一个文件的大小
+   1245          * @param[in] const unsigned char *dir		文件的路径
+   1246          */
+   1247          int get_file_size(const unsigned char *dir)
+   1248          {
+   1249          	int size;
+   1250          	if (f_open(&file1,(char const*)dir,FA_OPEN_EXISTING | FA_READ) != FR_OK)
+   1251          	{
+   1252          		return 0;
+   1253          	}
+   1254          
+   1255          	size = file1.fsize;
+   1256          
+   1257          	f_close(&file1);
+   1258          
+   1259          	return size;
+   1260          }
+   1261          
+   1262          /**
+   1263          * @brief 读取记录文件夹中的某一个文件
+   1264          * @param[in] const unsigned char *dir		文件的路径
+   1265          * @param[in] unsigned int	 offset			文件偏移
+   1266          * @param[in] unsigned int	 len			数据长度
+   1267          * @param[in] unsigned char *pdata			数据指针
+   1268          * @return  < 0		读取文件失败
+   1269          *          >= 0		读取成功,返回读取数据的实际长度
+   1270          */
+   1271          int read_rec_file(const unsigned char *dir,unsigned int offset,unsigned int len,unsigned char *pdata)
+   1272          {
+   1273          	unsigned int	tmp;
+   1274          
+   1275          	if (f_open(&file1,(char const*)dir,FA_OPEN_EXISTING | FA_READ) != FR_OK)
+   1276          	{
+   1277          		return -1;
+   1278          	}
+   1279          
+   1280          	if(file1.fsize < offset)
+   1281          	{
+   1282          		f_close(&file1);
+   1283          		return -2;
+   1284          	}
+   1285          
+   1286          	f_lseek(&file1,offset);
+   1287          	if (f_read(&file1,pdata,len,&tmp) != FR_OK)
+   1288          	{
+   1289          		f_close(&file1);
+   1290          		return -3;
+   1291          	}
+   1292          
+   1293          	f_close(&file1);
+   1294          	return tmp;
+   1295          }
+   1296          
+   1297          /**
+   1298          * @brief 往记录文件夹中的某一个文件写入数据
+   1299          * @param[in] const unsigned char *dir		文件的路径
+   1300          * @param[in] unsigned int	 offset			文件偏移
+   1301          * @param[in] unsigned int	 len			数据长度
+   1302          * @param[in] unsigned char *pdata			数据指针
+   1303          * @return  < 0		写入文件失败
+   1304          *          >= 0		写入成功,返回写入数据的实际长度
+   1305          */
+   1306          int write_rec_file(const unsigned char *dir,unsigned int offset,unsigned int len,unsigned char *pdata)
+   1307          {
+   1308          	unsigned int	tmp;
+   1309          
+   1310          	if (f_open(&file1,(char const*)dir,FA_OPEN_ALWAYS | FA_READ | FA_WRITE) != FR_OK)
+   1311          	{
+   1312          		return -1;
+   1313          	}
+   1314          
+   1315          	if(file1.fsize < offset)
+   1316          	{
+   1317          		f_close(&file1);
+   1318          		return -2;
+   1319          	}
+   1320          
+   1321          	f_lseek(&file1,offset);
+   1322          	if (f_write(&file1,pdata,len,&tmp) != FR_OK)
+   1323          	{
+   1324          		f_close(&file1);
+   1325          		return -3;
+   1326          	}
+   1327          
+   1328          	if (tmp != len)
+   1329          	{
+   1330          		f_close(&file1);
+   1331          		return -3;
+   1332          	}
+   1333          
+   1334          	f_close(&file1);
+   1335          	return tmp;
+   1336          }
+   1337          
+   1338          /**
+   1339          * @brief 检查记录的文件夹中的记录文件是否完整或者合法
+   1340          */
+   1341          int check_record_dir(void)
+   1342          {
+   1343          	const unsigned char	*p_rec_file[4];
+   1344          	const unsigned char *p_rec_dir;
+   1345          	unsigned char dir_str[35];
+   1346          	unsigned int	i;
+   1347          	int				ret = 0;
+   1348          
+   1349          	p_rec_dir = batch_dirctory;
+   1350          
+   1351          	p_rec_file[0] = barcode_hash_table_file;
+   1352          	p_rec_file[1] = batch_inf_file;
+   1353          	p_rec_file[2] = batch_list_file;
+   1354          	p_rec_file[3] = 0;
+   1355          
+   1356          
+   1357          	i = 0;
+   1358          	while(p_rec_file[i])
+   1359          	{
+   1360          		strcpy((char*)dir_str,(char const*)p_rec_dir);
+   1361          		strcat((char*)dir_str,(char const*)p_rec_file[i]);
+   1362          
+   1363          		if (f_open(&file1,(char const*)dir_str,FA_OPEN_EXISTING | FA_READ) != FR_OK)
+   1364          		{
+   1365          			//记录文件不存在
+   1366          			return -2;
+   1367          		}
+   1368          
+   1369          
+   1370          		if (i==0)
+   1371          		{
+   1372          			if (file1.fsize != 4*HASH_TABLE_SIZE)
+   1373          			{
+   1374          				ret = -3;		//hash表文件大小错误
+   1375          			}
+   1376          		}
+   1377          		else if(i == 1)
+   1378          		{
+   1379          			if (file1.fsize < 12 || file1.fsize > 12 + 4*BATCH_LIST_MAX_CNT)
+   1380          			{
+   1381          				ret = -4;
+   1382          			}
+   1383          		}
+   1384          		else if(i == 2)
+   1385          		{
+   1386          			if ((file1.fsize % sizeof(TBATCH_NODE)) != 0)
+   1387          			{
+   1388          				ret = -5;		//商品信息记录文件不能被节点大小整除
+   1389          			}
+   1390          		}
+   1391          
+   1392          		f_close(&file1);
+   1393          
+   1394          		if (ret)
+   1395          		{
+   1396          			return ret;
+   1397          		}
+   1398          		i++;
+   1399          	}
+   1400          
+   1401          	//上面检查完了记录文件夹中记录文件的存在以及每个记录文件的大小是否正确
+   1402          	//还需要检查记录文件与各hash文件之间的关联性是否正确，以及记录文件内部链表的建立是否正确。
+   1403          	//@todo.....
+   1404          
+   1405          	return 0;
+   1406          }
+   1407          
+   1408          
+   1409          /**
+   1410          ***************************************************************************
+   1411          *@brief	校验下载的升级文件是否正确
+   1412          *@param[in] 
+   1413          *@return 
+   1414          *@warning
+   1415          *@see	
+   1416          *@note 
+   1417          ***************************************************************************
+   1418          */
+   1419          int check_updatefile(void)
+   1420          {
+   1421          	UINT							rd;
+   1422          	int								i;
+   1423          	int								j;
+   1424          	unsigned int					code_sector,code_xor,xor;
+   1425          
+   1426          	if( f_open(&file1, "/update.bin", FA_OPEN_EXISTING | FA_READ ) != FR_OK )
+   1427          	{
+   1428          		return -1;
+   1429          	}
+   1430          
+   1431          	if( f_read(&file1, rec_module_buffer, 512, &rd) != FR_OK )
+   1432          	{
+   1433          		f_close(&file1);
+   1434          		return -1;
+   1435          	}
+   1436          
+   1437          	if( rec_module_buffer[0] != 'J' || rec_module_buffer[1] != 'B' || rec_module_buffer[2] != 'L' )
+   1438          	{
+   1439          		f_close(&file1);
+   1440          		return -1;
+   1441          	}
+   1442          
+   1443          	code_sector						= ((TPackHeader*)rec_module_buffer)->length;
+   1444          	code_xor						= ((TPackHeader*)rec_module_buffer)->xor_data;
+   1445          
+   1446          	code_sector						/= 512;
+   1447          	xor								= 0;
+   1448          	for(i=0; i<code_sector; i++)
+   1449          	{
+   1450          		if( f_read(&file1, rec_module_buffer, 512, &rd) != FR_OK )
+   1451          		{
+   1452          			f_close(&file1);
+   1453          			return -1;
+   1454          		}
+   1455          
+   1456          		for(j=0; j<128; j++)
+   1457          		{
+   1458          			xor						^= *((unsigned int*)&rec_module_buffer[j*4]);
+   1459          		}
+   1460          	}
+   1461          
+   1462          	f_close(&file1);
+   1463          
+   1464          	if(xor != code_xor)
+   1465          	{
+   1466          		return -1;
+   1467          	}
+   1468          
+   1469          	return 0;
+   1470          }
+   1471          
+   1472          
+   1473          /**
+   1474          ***************************************************************************
+   1475          *@brief 判断是否有应用升级文件的存在，如果有升级文件存在就删除应用升级文件
+   1476          *@param[in] 
+   1477          *@return 0 删除成功  else; 删除失败
+   1478          *@warning
+   1479          *@see	
+   1480          *@note 
+   1481          ***************************************************************************
+   1482          */
+   1483          int del_update_bin(void)
+   1484          {
+   1485          	if( f_open(&file1, "/update.bin", FA_OPEN_EXISTING | FA_READ ) != FR_OK )
+   1486          	{
+   1487          		return 0;
+   1488          	}
+   1489          
+   1490          	f_close(&file1);
+   1491          
+   1492          	//应用升级文件存在，将升级文件删除
+   1493          	if (f_unlink("/update.bin") != FR_OK)
+   1494          	{
+   1495          		return -1;	//删除旧的资源文件失败
+   1496          	}
+   1497          
+   1498          	return 0;
+   1499          }
+   1500          
+   1501          /**
+   1502          * @brief ]恢复hash表的修改，包括恢复相应的节点文件的修改
+   1503          * @param[in]
+   1504          * @return 0:成功
+   1505          *        -1:失败
+   1506          */
+   1507          static int recover_hash_table_modify(unsigned char hash_type,unsigned int hash_value,unsigned int linkend)
+   1508          {
+   1509          		unsigned char	dir_str[35],node_size;
+   1510          		unsigned int	tmp;
+   1511          		unsigned char   buffer[RECORD_MAX_SIZE];
+   1512          
+   1513          		if (hash_type == 0)
+   1514          		{
+   1515          			strcpy((char*)dir_str,batch_dirctory);
+   1516          			strcat((char*)dir_str,(char const*)barcode_hash_table_file);
+   1517          		}
+   1518          		else if (hash_type == 1)
+   1519          		{
+   1520          			strcpy((char*)dir_str,batch_dirctory);
+   1521          			strcat((char*)dir_str,(char const*)batch_inf_file);
+   1522          		}
+   1523          
+   1524          		//打开HashTable文件
+   1525          		if (f_open(&file2,(char const*)dir_str,FA_OPEN_EXISTING | FA_WRITE | FA_READ) != FR_OK)
+   1526          		{
+   1527          			return -3;
+   1528          		}
+   1529          
+   1530          		f_lseek(&file2,4*(hash_value%HASH_TABLE_SIZE));
+   1531          
+   1532          		if (f_write(&file2,(void*)&linkend,4,&tmp) != FR_OK)
+   1533          		{
+   1534          			f_close(&file2);
+   1535          			return -4;
+   1536          		}
+   1537          
+   1538          		if (tmp != 4)
+   1539          		{
+   1540          			f_close(&file2);
+   1541          			return -4;
+   1542          		}
+   1543          
+   1544          		f_close(&file2);
+   1545          
+   1546          		if(linkend)
+   1547          		{
+   1548          			strcpy((char*)dir_str,batch_dirctory);
+   1549          			strcat((char*)dir_str,batch_list_file);
+   1550          			node_size = sizeof(TBATCH_NODE);
+   1551          			
+   1552          
+   1553          			if (f_open(&file1,(char const*)dir_str,FA_OPEN_EXISTING | FA_WRITE | FA_READ) != FR_OK)
+   1554          			{
+   1555          				return -3;
+   1556          			}
+   1557          
+   1558          			if(file1.fsize == 0)
+   1559          			{
+   1560          				f_close(&file1);
+   1561          				return 0;
+   1562          			}
+   1563          
+   1564          			f_lseek(&file1,(linkend-1)*node_size);
+   1565          
+   1566          			if ((f_read(&file1,buffer,node_size,&tmp) != FR_OK)||(tmp != node_size))
+   1567          			{
+   1568          				f_close(&file1);
+   1569          				return -4;
+   1570          			}
+   1571          
+   1572          
+   1573          			if (hash_type == 0)
+   1574          			{
+   1575          				if (((TBATCH_NODE*)buffer)->by_barcode_next)
+   1576          				{
+   1577          					((TBATCH_NODE*)buffer)->by_barcode_next = 0;
+   1578          				}
+   1579          			}
+   1580          			else if (hash_type == 1)
+   1581          			{
+   1582          				if (((TBATCH_NODE*)buffer)->by_index_next)
+   1583          				{
+   1584          					((TBATCH_NODE*)buffer)->by_index_next = 0;
+   1585          				}
+   1586          			}
+   1587          			
+   1588          
+   1589          			calc_check_value(buffer);
+   1590          
+   1591          			f_lseek(&file1,(linkend-1)*node_size);
+   1592          			if (f_write(&file1,buffer,node_size,&tmp) != FR_OK)
+   1593          			{
+   1594          				f_close(&file1);
+   1595          				return -5;
+   1596          			}
+   1597          
+   1598          			if (tmp != node_size)
+   1599          			{
+   1600          				f_close(&file1);
+   1601          				return -5;
+   1602          			}
+   1603          
+   1604          			f_close(&file1);
+   1605          		}
+   1606          
+   1607          		return 0;
+   1608          }
+   1609          
+   1610          
+   1611          
+   1612          /**
+   1613          * @brief 增加记录操作的恢复
+   1614          * @param[in] 
+   1615          * @return 0:成功
+   1616          *        -1:失败
+   1617          */
+   1618          static int record_add_recover(unsigned int rec_offset,unsigned char *log_data,unsigned int log_data_len)
+   1619          {
+   1620          	unsigned char	dir_str[35];
+   1621          	unsigned int	tmp;
+   1622          	unsigned int	hash_value,linkend;
+   1623          	if (log_data_len < 8)
+   1624          	{
+   1625          		return -1;
+   1626          	}
+   1627          
+   1628          	if (log_data_len == 8)
+   1629          	{
+   1630          		//只是记录了Barcode HashValue和相应链表的尾节点，那么Hashtable和节点文件都有可能已经改变了，将已经改变的恢复为原来的状况
+   1631          		hash_value = *((unsigned int*)(log_data)); 
+   1632          		linkend = *((unsigned int*)(log_data+4));
+   1633          		if (recover_hash_table_modify(0,hash_value,linkend))
+   1634          		{
+   1635          			return -2;
+   1636          		}
+   1637          		return 0;
+   1638          	}
+   1639          	else
+   1640          	{
+   1641          		if (log_data_len == 16)
+   1642          		{
+   1643          			//恢复为原来的状况
+   1644          			hash_value = *((unsigned int*)(log_data)); 
+   1645          			linkend = *((unsigned int*)(log_data+4));
+   1646          			if (recover_hash_table_modify(0,hash_value,linkend))
+   1647          			{
+   1648          				return -2;
+   1649          			}
+   1650          
+   1651          			hash_value = *((unsigned int*)(log_data+8)); 
+   1652          			linkend = *((unsigned int*)(log_data+12));
+   1653          			if (recover_hash_table_modify(1,hash_value,linkend))
+   1654          			{
+   1655          				return -3;
+   1656          			}
+   1657          
+   1658          			return 0;
+   1659          		}
+   1660          		else
+   1661          		{
+   1662          			if (log_data_len == 16+sizeof(TBATCH_NODE))
+   1663          			{
+   1664          				//可能已经写入了节点数据
+   1665          				strcpy((char*)dir_str,batch_dirctory);
+   1666          				strcat((char*)dir_str,batch_list_file);
+   1667          				if (f_open(&file1,(char const*)dir_str,FA_OPEN_EXISTING | FA_READ | FA_WRITE) != FR_OK)
+   1668          				{
+   1669          					return -4;
+   1670          				}
+   1671          
+   1672          				if (file1.fsize != rec_offset*sizeof(TBATCH_NODE))
+   1673          				{
+   1674          					//说明实际上没有写入节点
+   1675          					f_lseek(&file1,file1.fsize);
+   1676          					if (f_write(&file1,(void*)(log_data+16),sizeof(TBATCH_NODE),&tmp) != FR_OK)
+   1677          					{
+   1678          						f_close(&file1);
+   1679          						return -5;
+   1680          					}
+   1681          
+   1682          					if (tmp != sizeof(TBATCH_NODE))
+   1683          					{	
+   1684          						f_close(&file1);
+   1685          						return -5;
+   1686          					}
+   1687          				}
+   1688          				f_close(&file1);
+   1689          				return 0;
+   1690          			}
+   1691          			else
+   1692          			{	
+   1693          				return -2;			//日志数据长度错误
+   1694          			}
+   1695          		}
+   1696          	}
+   1697          }
+   1698          
+   1699          
+   1700          
+   1701          /**
+   1702          * @brief 恢复被中断的清除所有记录操作
+   1703          * @return 0：成功  -1：失败
+   1704          */
+   1705          int record_clear_recover(void)
+   1706          {
+   1707          	unsigned char dir_str[35];
+   1708          	const unsigned char	*p_hash_table_file[3];
+   1709          	int i;
+   1710          
+   1711          
+   1712          	p_hash_table_file[0] = barcode_hash_table_file;
+   1713          	p_hash_table_file[1] = batch_inf_file;
+   1714          	p_hash_table_file[2] = 0;
+   1715          
+   1716          
+   1717          	i = 0;
+   1718          	while (p_hash_table_file[i])
+   1719          	{
+   1720          		strcpy((char*)dir_str,batch_dirctory);
+   1721          		strcat((char*)dir_str,(char const*)p_hash_table_file[i]);
+   1722          
+   1723          		//打开相应的hash_table文件
+   1724          		if (f_open(&file2,(const char*)dir_str,FA_OPEN_EXISTING | FA_READ | FA_WRITE) != FR_OK)
+   1725          		{
+   1726          			return -3;
+   1727          		}
+   1728          		if (i == 1)
+   1729          		{
+   1730          			init_data_info_file(&file2);	
+   1731          		}
+   1732          		else
+   1733          		{
+   1734          			init_hash_table_file(&file2);	
+   1735          		}
+   1736          		
+   1737          
+   1738          		f_close(&file2);
+   1739          		i++;
+   1740          	}
+   1741          	return 0;
+   1742          }
+   1743          
+   1744          /**
+   1745          * @brief 恢复被中断的删除某一个节点的操作
+   1746          * @return 0：成功  -1：失败
+   1747          */
+   1748          static int del_one_node_recover(unsigned int index,unsigned int logical_prev,unsigned int logical_next,unsigned int barcode_hash_prev,unsigned int barcode_hash_next,unsigned int hash_value)
+   1749          {
+   1750          	unsigned char	buffer[RECORD_MAX_SIZE];
+   1751          	unsigned int	tmp,link_end;
+   1752          	unsigned char	inf_file_str[35];
+   1753          	unsigned int	node_size;
+   1754          
+   1755          	strcpy((char*)inf_file_str,batch_dirctory);
+   1756          	strcat((char*)inf_file_str,batch_list_file);
+   1757          	node_size = sizeof(TBATCH_NODE);
+   1758          
+   1759          	//step2:更新该节点前一个节点和后一个节点的链表信息
+   1760          	if (f_open(&file1,(char const*)inf_file_str,FA_OPEN_EXISTING | FA_READ | FA_WRITE) != FR_OK)
+   1761          	{
+   1762          		return -2;
+   1763          	}
+   1764          
+   1765          	if(logical_prev)
+   1766          	{
+   1767          		f_lseek(&file1,(logical_prev-1)*node_size);
+   1768          		if ((f_read(&file1,buffer,node_size,&tmp) != FR_OK)||(tmp != node_size))
+   1769          		{
+   1770          			f_close(&file1);
+   1771          			return -4;
+   1772          		}
+   1773          
+   1774          	
+   1775          		((TBATCH_NODE*)buffer)->by_index_next = logical_next;
+   1776          
+   1777          		calc_check_value(buffer);
+   1778          
+   1779          		f_lseek(&file1,(logical_prev-1)*node_size);
+   1780          		if (f_write(&file1,buffer,node_size,&tmp) != FR_OK)
+   1781          		{
+   1782          			f_close(&file1);
+   1783          			return -5;
+   1784          		}
+   1785          
+   1786          		if (tmp != node_size)
+   1787          		{
+   1788          			f_close(&file1);
+   1789          			return -5;
+   1790          		}
+   1791          	}
+   1792          
+   1793          	if (logical_next)
+   1794          	{
+   1795          		f_lseek(&file1,(logical_next-1)*node_size);
+   1796          		if ((f_read(&file1,buffer,node_size,&tmp) != FR_OK)||(tmp != node_size))
+   1797          		{
+   1798          			f_close(&file1);
+   1799          			return -6;
+   1800          		}
+   1801          
+   1802          	
+   1803          		((TBATCH_NODE*)buffer)->by_index_prev = logical_prev;
+   1804          		calc_check_value(buffer);
+   1805          		f_lseek(&file1,(logical_next-1)*node_size);
+   1806          		if (f_write(&file1,buffer,node_size,&tmp) != FR_OK)
+   1807          		{
+   1808          			f_close(&file1);
+   1809          			return -7;
+   1810          		}
+   1811          
+   1812          		if (tmp != node_size)
+   1813          		{
+   1814          			f_close(&file1);
+   1815          			return -7;
+   1816          		}
+   1817          	}
+   1818          
+   1819          		if(barcode_hash_prev)
+   1820          		{
+   1821          			f_lseek(&file1,(barcode_hash_prev-1)*node_size);
+   1822          			if ((f_read(&file1,buffer,node_size,&tmp) != FR_OK)||(tmp != node_size))
+   1823          			{
+   1824          				f_close(&file1);
+   1825          				return -13;
+   1826          			}
+   1827          
+   1828          
+   1829          
+   1830          			((TBATCH_NODE*)buffer)->by_barcode_next = barcode_hash_next;
+   1831          			calc_check_value(buffer);
+   1832          
+   1833          			f_lseek(&file1,(barcode_hash_prev-1)*node_size);
+   1834          			if (f_write(&file1,buffer,node_size,&tmp) != FR_OK)
+   1835          			{
+   1836          				f_close(&file1);
+   1837          				return -14;
+   1838          			}
+   1839          
+   1840          			if (tmp != node_size)
+   1841          			{
+   1842          				f_close(&file1);
+   1843          				return -15;
+   1844          			}
+   1845          
+   1846          			f_sync(&file1);
+   1847          		}
+   1848          
+   1849          
+   1850          		if (barcode_hash_next)
+   1851          		{
+   1852          			f_lseek(&file1,(barcode_hash_next-1)*node_size);
+   1853          			if ((f_read(&file1,buffer,node_size,&tmp) != FR_OK)||(tmp != node_size))
+   1854          			{
+   1855          				f_close(&file1);
+   1856          				return -16;
+   1857          			}
+   1858          
+   1859          
+   1860          			((TBATCH_NODE*)buffer)->by_barcode_prev = barcode_hash_prev;
+   1861          			calc_check_value(buffer);
+   1862          			f_lseek(&file1,(barcode_hash_next-1)*node_size);
+   1863          			if (f_write(&file1,buffer,node_size,&tmp) != FR_OK)
+   1864          			{
+   1865          				f_close(&file1);
+   1866          				return -17;
+   1867          			}
+   1868          
+   1869          			if (tmp != node_size)
+   1870          			{
+   1871          				f_close(&file1);
+   1872          				return -18;
+   1873          			}
+   1874          
+   1875          			f_sync(&file1);	
+   1876          		}
+   1877          
+   1878          
+   1879          
+   1880          
+   1881          	//可以将节点文件关闭了
+   1882          	f_close(&file1);
+   1883          
+   1884          	//step3:将删除的节点的偏移记录在信息文件中
+   1885          	strcpy((char*)inf_file_str,batch_dirctory);
+   1886          	strcat((char*)inf_file_str,batch_inf_file);
+   1887          
+   1888          	if (f_open(&file1,(char const*)inf_file_str,FA_OPEN_EXISTING | FA_READ | FA_WRITE) != FR_OK)
+   1889          	{
+   1890          		return -8;
+   1891          	}
+   1892          
+   1893          	if (file1.fsize > 12)
+   1894          	{
+   1895          		f_lseek(&file1,file1.fsize-4);
+   1896          		if (f_read(&file1,(void*)&link_end,4,&tmp) != FR_OK)
+   1897          		{
+   1898          			f_close(&file1);
+   1899          			return -9;
+   1900          		}
+   1901          
+   1902          		if (link_end == index)
+   1903          		{
+   1904          			goto check_next;		//说明该删除的节点偏移已经保存在INF文件中了，不需要再保存一次
+   1905          		}
+   1906          	}
+   1907          
+   1908          	f_lseek(&file1,file1.fsize);
+   1909          	if (f_write(&file1,(void*)&index,4,&tmp) != FR_OK)
+   1910          	{
+   1911          		f_close(&file1);
+   1912          		return -9;
+   1913          	}
+   1914          
+   1915          	if (tmp != 4)
+   1916          	{
+   1917          		f_close(&file1);
+   1918          		return -9;
+   1919          	}
+   1920          
+   1921          	f_sync(&file1);
+   1922          
+   1923          check_next:
+   1924          
+   1925          	//如果删除的节点是链表的首节点，那么还需要更新保存的链表首节点信息
+   1926          	f_lseek(&file1,4);
+   1927          	if ((f_read(&file1,(void*)&link_end,4,&tmp) != FR_OK)||(tmp != 4))
+   1928          	{
+   1929          		f_close(&file1);
+   1930          		return -10;
+   1931          	}
+   1932          
+   1933          	if (link_end == index)
+   1934          	{
+   1935          		f_lseek(&file1,4);
+   1936          		link_end = logical_next;
+   1937          		if (f_write(&file1,(void*)&link_end,4,&tmp) != FR_OK)
+   1938          		{
+   1939          			f_close(&file1);
+   1940          			return -11;
+   1941          		}
+   1942          
+   1943          		if (tmp != 4)
+   1944          		{
+   1945          			f_close(&file1);
+   1946          			return -11;
+   1947          		}
+   1948          
+   1949          		f_sync(&file1);
+   1950          	}
+   1951          
+   1952          	//如果删除的节点是链表的尾节点，那么还需要更新保存的链表尾节点信息
+   1953          	f_lseek(&file1,8);
+   1954          	if ((f_read(&file1,(void*)&link_end,4,&tmp) != FR_OK)||(tmp != 4))
+   1955          	{
+   1956          		f_close(&file1);
+   1957          		return -10;
+   1958          	}
+   1959          
+   1960          	if (link_end == index)
+   1961          	{
+   1962          		f_lseek(&file1,8);
+   1963          		link_end = logical_prev;
+   1964          		if (f_write(&file1,(void*)&link_end,4,&tmp) != FR_OK)
+   1965          		{
+   1966          			f_close(&file1);
+   1967          			return -11;
+   1968          		}
+   1969          
+   1970          		if (tmp != 4)
+   1971          		{
+   1972          			f_close(&file1);
+   1973          			return -11;
+   1974          		}
+   1975          	}
+   1976          
+   1977          	f_close(&file1);
+   1978          
+   1979          	strcpy((char*)inf_file_str,batch_dirctory);
+   1980          	strcat((char*)inf_file_str,barcode_hash_table_file);
+   1981          
+   1982          	if (hash_value)
+   1983          	{
+   1984          		if (f_open(&file1,(char const*)inf_file_str,FA_OPEN_EXISTING | FA_READ | FA_WRITE) != FR_OK)
+   1985          		{
+   1986          			return -28;
+   1987          		}
+   1988          
+   1989          		f_lseek(&file1,4*(hash_value%HASH_TABLE_SIZE));
+   1990          		//获取链表的尾地址
+   1991          		if (f_read(&file1,(void*)&link_end,4,&tmp) != FR_OK)
+   1992          		{
+   1993          			f_close(&file1);
+   1994          			return -29;
+   1995          		}
+   1996          
+   1997          		if (link_end == index)
+   1998          		{
+   1999          			//如果该节点刚好是对应链表的尾节点，那么需要更新该链表对应的尾节点
+   2000          			f_lseek(&file1,8*(hash_value%HASH_TABLE_SIZE));
+   2001          
+   2002          			if (f_write(&file1,(void*)&barcode_hash_prev,4,&tmp) != FR_OK)
+   2003          			{
+   2004          				f_close(&file1);
+   2005          				return -30;
+   2006          			}
+   2007          		}
+   2008          
+   2009          		f_close(&file1);
+   2010          
+   2011          	}
+   2012          
+   2013          	return 0;
+   2014          }
+   2015          
+   2016          /**
+   2017          * @brief 记录操作的恢复
+   2018          * @param[in] unsigned char *precord 记录指针
+   2019          * @return 0:成功
+   2020          *        -1:失败
+   2021          */
+   2022          static int record_recover(unsigned char *log_data,unsigned int log_data_len)
+   2023          {
+   2024          	unsigned int	op_type,rec_offset,prev,next,saved_linkend;
+   2025          	unsigned int	barcode_hash_prev,barcode_hash_next;
+   2026          
+   2027          	op_type = *((unsigned int*)log_data);
+   2028          
+   2029          	if (OP_TYPE_ADD_NODE == op_type)
+   2030          	{
+   2031          		if (log_data_len < 12)
+   2032          		{
+   2033          			return -2;		//日志数据长度错误
+   2034          		}
+   2035          
+   2036          		rec_offset = *((unsigned int*)(log_data+8));
+   2037          
+   2038          		if (log_data_len == 12)
+   2039          		{
+   2040          			//如果日志数据只有12字节，那么说明在增加记录时还没有对原来的记录文件做任何的变动，所以不需要任何的处理
+   2041          			return 0;
+   2042          		}
+   2043          
+   2044          		//说明在记录增加过程中可能已经改变了部分记录数据，需要采取恢复措施
+   2045          		if (record_add_recover(rec_offset,log_data+12,log_data_len-12))
+   2046          		{
+   2047          			return -3;
+   2048          		}
+   2049          	}
+   2050          	else if (OP_TYPE_CLEAR_NODE == op_type)
+   2051          	{
+   2052          		if ((log_data_len == 8)||(log_data_len == 12))
+   2053          		{
+   2054          			if (record_clear_recover())
+   2055          			{
+   2056          				return -3;
+   2057          			}
+   2058          		}
+   2059          		else
+   2060          		{
+   2061          			return -2;	//日志数据长度错误
+   2062          		}
+   2063          	}
+   2064          	else if (OP_TYPE_DEL_NODE == op_type)
+   2065          	{
+   2066          		if ((log_data_len == 32)||(log_data_len == 36))
+   2067          		{
+   2068          			//rec_type = *((unsigned int*)(log_data+4));
+   2069          			rec_offset = *((unsigned int*)(log_data+8));
+   2070          			prev = *((unsigned int*)(log_data+12));
+   2071          			next = *((unsigned int*)(log_data+16));
+   2072          			barcode_hash_prev = *((unsigned int*)(log_data+20));
+   2073          			barcode_hash_next = *((unsigned int*)(log_data+24));
+   2074          			saved_linkend = *((unsigned int*)(log_data+28));
+   2075          			if (del_one_node_recover(rec_offset,prev,next,barcode_hash_prev,barcode_hash_next,saved_linkend))
+   2076          			{
+   2077          				return -3;
+   2078          			}
+   2079          		}
+   2080          		else
+   2081          		{
+   2082          			return -2;	//日志数据长度错误
+   2083          		}
+   2084          
+   2085          	}
+   2086          
+   2087          	return 0;
+   2088          }
+   2089          
+   2090          
+   2091          /**
+   2092          ***************************************************************************
+   2093          *@brief 判断是否存在日志文件，如果有日志文件试图根据日志文件恢复被中断的操作或者回滚被中断的操作
+   2094          *@param[in] 
+   2095          *@return 0 成功  else; 失败
+   2096          ***************************************************************************
+   2097          */
+   2098          int recover_record_by_logfile(void)
+   2099          {
+   2100          	unsigned int	logfile_len,offset,logitem_len;
+   2101          	unsigned int				tmp;
+   2102          	int				err_code = 0;
+   2103          	unsigned char	log_bufffer[256];
+   2104          
+   2105          	if (f_open(&file3,log_file,FA_OPEN_ALWAYS | FA_READ | FA_WRITE) != FR_OK)
+   2106          	{
+   2107          		return -1;
+   2108          	}
+   2109          	
+   2110          	logfile_len = file3.fsize;	//日志文件的长度
+   2111          	offset = 0;
+   2112          	while(logfile_len)
+   2113          	{
+   2114          		f_lseek(&file3,offset);
+   2115          		if (f_read(&file3,(void*)&logitem_len,4,&tmp) != FR_OK)
+   2116          		{
+   2117          			err_code = -2;
+   2118          			break;
+   2119          		}
+   2120          
+   2121          		if (tmp != 4)
+   2122          		{
+   2123          			err_code = -2;
+   2124          			break;
+   2125          		}
+   2126          
+   2127          		//if ((logitem_len <= 4)||(logitem_len > 256))
+   2128          		//{
+   2129          		//	err_code = -3;
+   2130          		//	if (logitem_len == 0)	//碰到一种情况，log文件本身大小为24字节，但是内容全部为0，怀疑是写log文件自身时断电造成的
+   2131          		//	{
+   2132          		//		err_code = 0;		
+   2133          		//	}
+   2134          		//	break;
+   2135          		//}
+   2136          
+   2137          		if (logitem_len != logfile_len)
+   2138          		{
+   2139          			err_code = 0;		//出现这种情况认为是在写LOG文件本身断电造成的
+   2140          			break;
+   2141          		}
+   2142          
+   2143          		if (f_read(&file3,(void*)log_bufffer,logitem_len-4,&tmp) != FR_OK)
+   2144          		{
+   2145          			err_code = -4;
+   2146          			break;
+   2147          		}
+   2148          
+   2149          		if (tmp != logitem_len-4)
+   2150          		{
+   2151          			err_code = -4;
+   2152          			break;
+   2153          		}
+   2154          
+   2155          		if (record_recover(log_bufffer,logitem_len-4))
+   2156          		{
+   2157          			err_code = -5;
+   2158          			break;
+   2159          		}
+   2160          
+   2161          		offset += logitem_len;
+   2162          		logfile_len -= logitem_len;
+   2163          	}
+   2164          
+   2165          	if (err_code == 0)
+   2166          	{
+   2167          		f_lseek(&file3,0);
+   2168          		f_truncate(&file3);		//清除日志文件
+   2169          	}
+   2170          
+   2171          	f_close(&file3);
+   2172          	return err_code;
+   2173          }
+   2174          
+   2175          
+   2176          
+   2177          
+   2178          #ifdef T5_SD_DEBUG
+   2179          
+   2180          void debug_out(unsigned char* out,unsigned int len,unsigned char format)
+   2181          {
+   2182          	unsigned int write_num;
+   2183          	unsigned char *pBuf;
+   2184          	unsigned char data;
+   2185          
+   2186          	if (0 == debug_file_status)
+   2187          	{
+   2188          		//创建DEBUG结果的输出文件
+   2189          		if (f_open(&debug_file,"Debug.out",FA_OPEN_ALWAYS | FA_WRITE) != FR_OK)
+   2190          		{
+   2191          			return;
+   2192          		}
+   2193          
+   2194          		f_lseek(&debug_file,debug_file.fsize);
+   2195          		debug_file_status = 1;
+   2196          	}
+   2197          
+   2198          
+   2199          	if (1 == debug_file_status)
+   2200          	{
+   2201          		if (format == 0)
+   2202          		{
+   2203          			//表明打印的数据是16进制数，需要转换为ASCII格式
+   2204          			pBuf = (unsigned char*)Jmalloc(len*3);
+   2205          			if (pBuf == NULL)
+   2206          			{
+   2207          				return;
+   2208          			}
+   2209          
+   2210          			for (write_num = 0;write_num < len;write_num++)
+   2211          			{
+   2212          				data = out[write_num];
+   2213          				pBuf[write_num*3] = HexToAscii(data >> 4);
+   2214          				pBuf[write_num*3+1] = HexToAscii(out[write_num]&0x0f);
+   2215          				pBuf[write_num*3+2] = ' ';
+   2216          			}
+   2217          
+   2218          			if (f_write(&debug_file,pBuf,len*3,&write_num) != FR_OK)
+   2219          			{
+   2220          				Jfree(pBuf);
+   2221          				f_close(&debug_file);
+   2222          				debug_file_status = 0;
+   2223          			}
+   2224          
+   2225          			Jfree(pBuf);
+   2226          		}
+   2227          		else
+   2228          		{
+   2229          			//表明打印的数据是ASCII格式，不需要转换
+   2230          			if (f_write(&debug_file,out,len,&write_num) != FR_OK)
+   2231          			{
+   2232          				f_close(&debug_file);
+   2233          				debug_file_status = 0;
+   2234          			}
+   2235          		}
+   2236          
+   2237          		f_sync(&debug_file);
+   2238          	}
+   2239          }
+   2240          
+   2241          
+   2242          void delete_debug_file(void)
+   2243          {
+   2244          	debug_file_status = 0;
+   2245          	if (f_open(&debug_file,"Debug.out",FA_OPEN_EXISTING | FA_WRITE) != FR_OK)
+   2246          	{
+   2247          		return;
+   2248          	}
+   2249          	
+   2250          	f_lseek(&debug_file,0);
+   2251          	f_truncate(&debug_file);
+   2252          
+   2253          	f_close(&debug_file);
+   2254          }
+   2255          
+   2256          void close_debug_file(void)
+   2257          {
+   2258          	if (debug_file_status == 1)
+   2259          	{
+   2260          		f_close(&debug_file);
+   2261          	}
+   2262          }
+   2263          
+   2264          #endif
+   2265          
+   2266          #if 0
+   2267          int check_serial_list_file(void)
+   2268          {
+   2269          #if 0
+   2270          	unsigned char buf1[200],buf2[200];
+   2271          	unsigned int tmp;
+   2272          
+   2273          	if (f_open(&file3,"/T5_DB/serial/serial.lst",FA_OPEN_EXISTING | FA_READ) != FR_OK)
+   2274          	{
+   2275          		return -1;
+   2276          	}
+   2277          
+   2278          	if (file3.fsize >= 2*sizeof(SERIAL_DATA_NODE))
+   2279          	{
+   2280          		f_lseek(&file3,file3.fsize - 2*sizeof(SERIAL_DATA_NODE));
+   2281          		if (f_read(&file3,(void*)buf1,sizeof(SERIAL_DATA_NODE),&tmp) != FR_OK)
+   2282          		{
+   2283          			f_close(&file3);
+   2284          			return -1;
+   2285          		}
+   2286          
+   2287          		if (tmp != sizeof(SERIAL_DATA_NODE))
+   2288          		{
+   2289          			f_close(&file3);
+   2290          			return -1;
+   2291          		}
+   2292          
+   2293          		if (f_read(&file3,(void*)buf2,sizeof(SERIAL_DATA_NODE),&tmp) != FR_OK)
+   2294          		{
+   2295          			f_close(&file3);
+   2296          			return -1;
+   2297          		}
+   2298          
+   2299          		if (tmp != sizeof(SERIAL_DATA_NODE))
+   2300          		{
+   2301          			f_close(&file3);
+   2302          			return -1;
+   2303          		}
+   2304          
+   2305          		if (memcmp(buf1,buf2,sizeof(SERIAL_DATA_NODE)) == 0)
+   2306          		{
+   2307          			f_close(&file3);
+   2308          			return 1;
+   2309          		}
+   2310          	}
+   2311          
+   2312          		f_close(&file3);
+   2313          
+   2314          #endif
+   2315          
+   2316          	unsigned int index;
+   2317          	unsigned char *ptmp;
+   2318          
+   2319          	if (f_open(&file3,"/T5_DB/serial/serial.lst",FA_OPEN_EXISTING | FA_READ) != FR_OK)
+   2320          	{
+   2321          		return -1;
+   2322          	}
+   2323          
+   2324          	index = file3.fsize/sizeof(SERIAL_DATA_NODE);
+   2325          	f_close(&file3);
+   2326          
+   2327          	ptmp = record_module_read(REC_TYPE_SERIAL_LIST,index);
+   2328          	if (ptmp == 0)
+   2329          	{
+   2330          
+   2331          		return 1;
+   2332          	}
+   2333          
+   2334          	return 0;
+   2335          }
+   2336          #endif
+
+   Maximum stack usage in bytes:
+
+     Function                       .cstack
+     --------                       -------
+     calc_check_value                   16
+     check_record_dir                   72
+     check_updatefile                   24
+     clear_log_file                      8
+     del_one_node_recover              192
+     del_update_bin                      8
+     delete_one_node                   224
+     get_file_size                       8
+     get_node                           56
+     init_data_info_file                24
+     init_hash_table_file              528
+     memcpy                              8
+     memset                              8
+     read_rec_file                      24
+     rec_search                        176
+     rec_searchby_tag                   16
+     record_add                        152
+     record_add_recover                 56
+     record_clear                       64
+     record_clear_recover               56
+     record_module_count                80
+     record_module_init                 56
+     record_module_read                 56
+     record_recover                     24
+     recover_hash_table_modify         168
+     recover_record_by_logfile         280
+     save_log_file                     552
+     update_link_info_after_addNode    144
+     write_rec_file                     24
+
+
+   Section sizes:
+
+     Function/Label                 Bytes
+     --------------                 -----
+     memcpy                           14
+     memset                           20
+     rec_module_buffer               112
+     current_node_offset               4
+     g_rec_offset                      4
+     prev_node_offset                  4
+     next_node_offset                  4
+     log_len                           4
+     file2                           548
+     file3                           548
+     dir                              28
+     init_hash_table_file            106
+     init_data_info_file             100
+     record_module_init              228
+     record_module_read              188
+     calc_check_value                 30
+     update_link_info_after_addNode  166
+     save_log_file                   278
+     clear_log_file                   86
+     record_add                      804
+     record_module_count             144
+     record_clear                    216
+     rec_search                      242
+     rec_searchby_tag                 28
+     get_node                        180
+     delete_one_node                1340
+     get_file_size                    40
+     read_rec_file                   100
+     write_rec_file                  120
+     check_record_dir                200
+     check_updatefile                192
+     del_update_bin                   56
+     recover_hash_table_modify       404
+     record_add_recover              236
+     record_clear_recover            120
+     del_one_node_recover           1144
+     record_recover                  146
+     recover_record_by_logfile       196
+     ??DataTable12                     4
+     ??DataTable49                     4
+     ??DataTable58                     4
+     ??DataTable119                    4
+     ??DataTable124                    4
+     ??DataTable126                    4
+     ??DataTable132                    4
+     ??DataTable136                    4
+     ??DataTable138                    4
+     ??DataTable139                    4
+     ??DataTable144                    4
+     ??DataTable146                    4
+     ?<Constant "info">                8
+     ?<Constant "/batch">              8
+     ?<Constant "/barhash.tbl">       16
+     ?<Constant "/batch.inf">         12
+     ?<Constant "/batch.lst">         12
+     ?<Constant "/T6_DB/log.tmp">     16
+     ?<Constant "/update.bin">        12
+
+ 
+ 1 256 bytes in section .bss
+    84 bytes in section .rodata
+ 7 172 bytes in section .text
+ 
+ 7 138 bytes of CODE  memory (+ 34 bytes shared)
+    84 bytes of CONST memory
+ 1 256 bytes of DATA  memory
+
+Errors: none
+Warnings: none

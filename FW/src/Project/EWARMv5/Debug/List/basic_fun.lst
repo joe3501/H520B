@@ -1,0 +1,832 @@
+###############################################################################
+#                                                                             #
+# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     12/Sep/2015  15:19:11 #
+# Copyright 1999-2009 IAR Systems AB.                                         #
+#                                                                             #
+#    Cpu mode     =  thumb                                                    #
+#    Endian       =  little                                                   #
+#    Source file  =  E:\H520B\FW\src\App\basic_fun.c                          #
+#    Command line =  E:\H520B\FW\src\App\basic_fun.c -D DEBUG_VER -lcN        #
+#                    E:\H520B\FW\src\Project\EWARMv5\Debug\List\ -o           #
+#                    E:\H520B\FW\src\Project\EWARMv5\Debug\Obj\ --no_cse      #
+#                    --no_unroll --no_inline --no_code_motion --no_tbaa       #
+#                    --no_clustering --no_scheduling --debug --endian=little  #
+#                    --cpu=Cortex-M3 -e --fpu=None --dlib_config "C:\Program  #
+#                    Files\IAR Systems\Embedded Workbench                     #
+#                    5.4\arm\INC\DLib_Config_Full.h" -I                       #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\ -I                   #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\App\ -I            #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\Drivers\ -I        #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\FatFs\ -I          #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\Lib\inc\ -I        #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\uCOS\uC-CPU\ -I    #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\uCOS\uC-LIB\ -I    #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\uCOS\uCOS-II\Ports #
+#                    \ -I E:\H520B\FW\src\Project\EWARMv5\..\..\uCOS\uCOS-II\ #
+#                    Source\ -I E:\H520B\FW\src\Project\EWARMv5\..\..\uCOS\uC #
+#                    -Probe\ -I E:\H520B\FW\src\Project\EWARMv5\..\..\usb_lib #
+#                    \ -I "C:\Program Files\IAR Systems\Embedded Workbench    #
+#                    5.4\arm\INC\" -Ol                                        #
+#    List file    =  E:\H520B\FW\src\Project\EWARMv5\Debug\List\basic_fun.lst #
+#    Object file  =  E:\H520B\FW\src\Project\EWARMv5\Debug\Obj\basic_fun.o    #
+#                                                                             #
+#                                                                             #
+###############################################################################
+
+E:\H520B\FW\src\App\basic_fun.c
+      1          #include "basic_fun.h"
+      2          #include "string.h"
+      3          
+      4          
+      5          extern  unsigned int	keyboard_output_report_value;
+      6          typedef struct {
+      7          	unsigned char	speical_key;
+      8          	unsigned char	keyvalue;
+      9          	unsigned char	asciivalue;
+     10          	unsigned char   rfu;
+     11          } TUSBKeyValue_Ascii;
+     12          
+     13          /**
+     14          *	@brief USB键值与ascii码对应表
+     15          */
+     16          const TUSBKeyValue_Ascii UsbKeyValue_Ascii_Tbl[] = 
+     17          {
+     18          	{0,40,'\x0d',0},
+     19          	{0,4,'a',0},{2,4,'A',0},{0,5,'b',0},{2,5,'B',0},{0,6,'c',0},{2,6,'C',0},{0,7,'d',0},{2,7,'D',0},{0,8,'e',0},{2,8,'E',0},
+     20          	{0,9,'f',0},{2,9,'F',0},{0,10,'g',0},{2,10,'G',0},{0,11,'h',0},{2,11,'H',0},{0,12,'i',0},{2,12,'I',0},{0,13,'j',0},{2,13,'J',0},
+     21          	{0,14,'k',0},{2,14,'K',0},{0,15,'l',0},{2,15,'L',0},{0,16,'m',0},{2,16,'M',0},{0,17,'n',0},{2,17,'N',0},{0,18,'o',0},{2,18,'O',0},
+     22          	{0,19,'p',0},{2,19,'P',0},{0,20,'q',0},{2,20,'Q',0},{0,21,'r',0},{2,21,'R',0},{0,22,'s',0},{2,22,'S',0},{0,23,'t',0},{2,23,'T',0},
+     23          	{0,24,'u',0},{2,24,'U',0},{0,25,'v',0},{2,25,'V',0},{0,26,'w',0},{2,26,'W',0},{0,27,'x',0},{2,27,'X',0},{0,28,'y',0},{2,28,'Y',0},
+     24          	{0,29,'z',0},{2,29,'Z',0},{0,30,'1',0},{2,30,'!',0},{0,31,'2',0},{2,31,'@',0},{0,32,'3',0},{2,32,'#',0},{0,33,'4',0},{2,33,'$',0},
+     25          	{0,34,'5',0},{2,34,'%',0},{0,35,'6',0},{2,35,'^',0},{0,36,'7',0},{2,36,'&',0},{0,37,'8',0},{2,37,'*',0},{0,38,'9',0},{2,38,'(',0},
+     26          	{0,39,'0',0},{2,39,')',0},{0,44,' ',0},{0,45,'-',0},{2,45,'_',0},{0,46,'=',0},{2,46,'+',0},{0,47,'[',0},{2,47,'{',0},{0,48,']',0},
+     27          	{2,48,'}',0},{0,49,'\\',0},{2,49,'|',0},{0,51,';',0},{2,51,':',0},{0,52,'\'',0},{2,52,'"',0},{0,53,'`',0},{2,53,'~',0},{0,54,',',0},
+     28          	{2,54,'<',0},{0,55,'.',0},{2,55,'>',0},{0,56,'/',0},{2,56,'?',0}
+     29          };
+     30          
+     31          
+     32          /**
+     33          * @brief 将整型转成ascii
+     34          * @param[in] unsigned int int_value: 被转换的整数
+     35          * @param[out] unsigned char *pValue; 转换成的ascii字符串
+     36          * @param[out] unsigned int *plen: 整数对应的ascii字符串的有效长度
+     37          */
+     38          void itoascii(unsigned int int_value, unsigned char *pValue, unsigned int *plen)
+     39          {
+     40          	unsigned int			i;
+     41          	unsigned int			temp_value = int_value;
+     42          
+     43          	if (int_value == 0)
+     44          	{
+     45          		pValue[0] = '0';
+     46          		*plen = 1;
+     47          		return;
+     48          	}
+     49          	i = 0;
+     50          	while (int_value)
+     51          	{
+     52          		i++;
+     53          		int_value				/= 10;
+     54          	}
+     55          	*plen	= i;
+     56          
+     57          	while(i)
+     58          	{
+     59          		i--;
+     60          		pValue[i]			= temp_value % 10 + '0';
+     61          		temp_value			/= 10;
+     62          	}
+     63          }
+     64          
+     65          /**
+     66          * @brief 将整型转成 规定长度的 ascii, 如59转换成3字节的Ascii，就是"059"
+     67          * @param[in] unsigned int int_value: 被转换的整数
+     68          * @param[in] unsigned char type: 0 十进制; 1: 十六进制
+     69          * @param[out] unsigned char *pValue; 转换成的ascii字符串
+     70          * @param[out] unsigned int *plen: 整数对应的ascii字符串的有效长度
+     71          */
+     72          #if 0
+     73          void int_to_ascii(unsigned int int_value, unsigned char *pValue, unsigned int len, unsigned char type)
+     74          {
+     75          	unsigned int			i,j;
+     76          	unsigned int			temp_value = int_value;
+     77          
+     78          	i = 0;
+     79          	while (int_value)
+     80          	{
+     81          		i++;
+     82          		if (type == 0)
+     83          		{
+     84          			int_value				/= 10;
+     85          		}
+     86          		else
+     87          		{
+     88          			int_value				/= 16;
+     89          		}
+     90          		
+     91          	}
+     92          	
+     93          	j = 0;
+     94          	if (i < len)	//前面补0
+     95          	{
+     96          		for (j = 0; j < len-i; j++)
+     97          		{
+     98          			pValue[j] = '0';
+     99          		}
+    100          	}
+    101          
+    102          	while(len > j)
+    103          	{
+    104          		len--;
+    105          		if (type == 0)
+    106          		{
+    107          			pValue[len]			= temp_value % 10 + '0';
+    108          			temp_value			/= 10;
+    109          		}
+    110          		else
+    111          		{
+    112          			pValue[len]			= temp_value % 16;
+    113          			if (pValue[len] < 0x0A)
+    114          			{
+    115          				pValue[len]		+= '0';
+    116          			}
+    117          			else
+    118          			{
+    119          				pValue[len]		= pValue[len] - 0x0A + 'A';
+    120          			}
+    121          			temp_value			/= 16;
+    122          		}
+    123          	}
+    124          }
+    125          #endif
+    126          
+    127          
+    128          /**
+    129          * @brief 将16进制数值转换为字符串
+    130          * @param[in]	DWORD	hex_val			需要转换的DWROD值
+    131          * @param[in]	BYTE	type			进制		eg:  10:10进制   0x10:16进制
+    132          * @param[in]	BYTE	outlen			需要转换的字符串长度	如果指定的长度超过了转换出来之后的长度，那么前面补‘0’，如果指定的长度小于转换之后的长度，那么按实际长度输出	
+    133          * @param[out]	BYTE *outstr			转换结果存放的地址
+    134          * @return BYTE	转换之后的长度
+    135          * @note 
+    136          */
+    137          unsigned char hex_to_str(unsigned int hex_val, unsigned char type, unsigned char outlen, unsigned char *outstr)
+    138          {
+    139          	unsigned char	offset;
+    140          	unsigned char	i, j;
+    141          	unsigned int	q;			//因子
+    142          
+    143          	if (0 == hex_val)
+    144          	{
+    145          		outstr[0] = '0';
+    146          		outstr[1] = 0;
+    147          		return 1;
+    148          	}
+    149          
+    150          	offset = 0;
+    151          	while(hex_val > 0)
+    152          	{
+    153          		q = hex_val%type;
+    154          		hex_val /= type;
+    155          		outstr[offset++] = HexToAscii(q);
+    156          	}
+    157          
+    158          	while(offset < outlen)
+    159          	{
+    160          		outstr[offset++] = 0x30;
+    161          	}
+    162          	outstr[offset] = 0;
+    163          
+    164          
+    165          	i = 0;
+    166          	j = offset-1;
+    167          	while(i < j)
+    168          	{
+    169          		q = outstr[i];
+    170          		outstr[i] = outstr[j];
+    171          		outstr[j] = q;
+    172          		i++;
+    173          		j--;
+    174          	}
+    175          
+    176          	return offset;
+    177          }
+    178          /**
+    179          ***************************************************************************
+    180          *@brief	int型数据转换成BCD码
+    181          *@param[in] 
+    182          *@return 
+    183          *@warning
+    184          *@see	
+    185          *@note 
+    186          ***************************************************************************
+    187          */
+    188          int HexToBCD(unsigned int indata,unsigned char *outdata,unsigned char out_len)
+    189          {
+    190          	unsigned char i;
+    191          	unsigned char	tmp;
+    192          	if (out_len > 5)		//因为int值最多也只能转换为5个字节的BCD码
+    193          	{
+    194          		return -1;
+    195          	}
+    196          	for (i = 0;i < out_len;i++)
+    197          	{
+    198          		tmp = indata%100;
+    199          		outdata[out_len - 1 - i] = (tmp/10 << 4) + (tmp%10);
+    200          		indata /= 100;
+    201          	}
+    202          	return 0;
+    203          
+    204          }
+    205          
+    206          /**
+    207          ***********************************************************************
+    208          * @brief 将输入的BCD码转换为十进制
+    209          * @param[in] unsigned char *indata  要转换的输入值
+    210          * @param[in] unsigned char len      要转换的输入值的长度
+    211          * @param[in] unsigned char *outdata  转换的结果存放的地址
+    212          * @return 0: 转换OK  -1:转换失败，输入的数据不是BCD码
+    213          * @note 高位在前,输入的数据不能太长，否则会造成int溢出
+    214          ***********************************************************************
+    215          */
+    216          int BCDToHex(unsigned char* indata,unsigned char len,unsigned int *outdata)
+    217          {
+    218          	unsigned int hex;
+    219          	unsigned char i;
+    220          
+    221          	if (len > 5)
+    222          	{
+    223          		//溢出
+    224          		return -1;
+    225          	}
+    226          	hex = 0;
+    227          	for (i = 0;i < len;)
+    228          	{
+    229          		if (((indata[i]&0xf0) >> 4) > 0x09)
+    230          		{
+    231          			return -1;		//不是BCD码表示的数据
+    232          		}
+    233          
+    234          		if ((indata[i]&0x0f) > 0x09)
+    235          		{
+    236          			return -1;	//不是BCD码表示的数据
+    237          		}
+    238          
+    239          		hex += ((indata[i]&0xf0) >> 4)*10 + (indata[i]&0x0f);
+    240          
+    241          		if (++i != len)
+    242          		{
+    243          			hex *= 100;
+    244          		}
+    245          	}
+    246          	*outdata = hex;
+    247          	return 0;
+    248          }
+    249          
+    250          /**
+    251          * @brief BCD数据域转换为字符串
+    252          * @param[in]	unsigned char* bcd_field	需要处理的BCD数据域的指针
+    253          * @param[in]	unsigned int len			此数据域的规定长度		
+    254          * @param[out]	unsigned char *out			转换结果存放的地址
+    255          * @return		转换后的字符串长度
+    256          * @note 
+    257          */
+    258          unsigned int bcd_field_to_str(unsigned char *bcd_field,unsigned int len,unsigned char *out)
+    259          {
+    260          	unsigned int i,j = 0;
+    261          	/*
+    262          	for (i = 0; i < len; i++)
+    263          	{
+    264          	if (bcd_field[i] != 0)
+    265          	{
+    266          	break;
+    267          	}
+    268          	}
+    269          	*/
+    270          	i = 0;
+    271          	for (;i < len;i++)
+    272          	{
+    273          		out[j++] = HexToAscii((bcd_field[i] & 0xf0) >> 4);
+    274          		out[j++] = HexToAscii(bcd_field[i] & 0x0f);
+    275          	}
+    276          	out[j] = 0;		//字符串结束符
+    277          	return j;
+    278          }
+    279          
+    280          /**
+    281          * @brief 将字符串转换为前补0的BCD数据域
+    282          * @param[in]	unsigned char* str			需要处理的字符串的指针
+    283          * @param[in]	unsigned int len			此BCD field的规定长度		
+    284          * @param[out]	unsigned char *bcd_field	转换结果存放的BCD field
+    285          * @return		
+    286          * @note 
+    287          */
+    288          void str_to_bcd_field(unsigned char *str,unsigned char *bcd_field,unsigned int len)
+    289          {
+    290          	unsigned int	i,j = 0;
+    291          	unsigned int	str_len;
+    292          
+    293          	str_len = strlen((char const*)str);
+    294          	if (str_len < len*2)
+    295          	{
+    296          		i = len - ((str_len+1)/2);
+    297          		memset(bcd_field,0,i);
+    298          		if (str_len%2 != 0 )
+    299          		{
+    300          			//奇数长度
+    301          			bcd_field[i++] = Ascii_To_Hex(str[0]);
+    302          			j = 1;
+    303          		}
+    304          		for (;j < str_len;j += 2)
+    305          		{
+    306          			bcd_field[i++] = (Ascii_To_Hex(str[j]) << 4) + Ascii_To_Hex(str[j + 1]);
+    307          		}
+    308          	}
+    309          	else
+    310          	{
+    311          		for (i=0;i<len;i++)
+    312          		{
+    313          			bcd_field[i] = (Ascii_To_Hex(str[2*i]) << 4) + Ascii_To_Hex(str[2*i + 1]);
+    314          		}
+    315          	}
+    316          
+    317          	return ;
+    318          }
+    319          
+    320          /**
+    321          * @brief 将输入的Hex值转换为其ASCII值
+    322          * @param[in] BYTE hex  要转换的输入值
+    323          * @return ASCII
+    324          * @note 只对0，1，...，F 这16个Hex值进行转换,其中a,b,c,d,e,f这几个值转换为其大写字母的ASCII值
+    325          */
+    326          unsigned char HexToAscii(unsigned char hex)
+    327          {
+    328          	if(hex<0x0a)
+    329          		return (0x30+hex);
+    330          	else
+    331          		return (0x37+hex);
+    332          }
+    333          
+    334          /**
+    335          * @brief 将由ASCII码表示的数据转换为其对应的Hex值
+    336          * @author joe
+    337          * @param[in] BYTE  asciiValue
+    338          * @return 转换的Hex值
+    339          * @note 
+    340          */
+    341          unsigned char Ascii_To_Hex(unsigned char  asciiValue)
+    342          {
+    343          	if((asciiValue>=0x30)&&(asciiValue<=0x39))
+    344          	{
+    345          		return (asciiValue-0x30);
+    346          	}
+    347          	else if((asciiValue>=0x41)&&(asciiValue<=0x46))
+    348          	{
+    349          		return (asciiValue-0x37);
+    350          	}
+    351          	else if((asciiValue>=0x61)&&(asciiValue<=0x66))
+    352          	{
+    353          		return (asciiValue-0x57);
+    354          	}
+    355          	return asciiValue;
+    356          }
+    357          
+    358          /**
+    359          * @brief 将Ascii转换成int
+    360          * @note: 没有做溢出处理
+    361          */
+    362          int ascii_to_int(unsigned char *pValue)
+    363          {
+    364          	int						i;
+    365          	int						value = 0;
+    366          
+    367          	for(i=0; ;i++)
+    368          	{
+    369          		if( *pValue == 0x00 )
+    370          			return value;
+    371          		value				*= 10;
+    372          		value				+= (*pValue) - '0';
+    373          		pValue ++;
+    374          	}
+    375          	///return value;
+    376          }
+    377          
+    378          /**
+    379           * @brief 二分查找算法
+    380           * @return -1:没找到； 其他: 数组下标
+    381           */
+    382          #if 0
+    383          int binary_search(unsigned short *search_list, unsigned int len, unsigned short key)
+    384          {
+    385          	unsigned int low = 0, high = len-1, mid = 0;
+    386          
+    387          	if (search_list[low] == key)
+    388          	{
+    389          		return 0;
+    390          	}
+    391          
+    392          	while (low <= high)
+    393          	{
+    394          		mid = low + (high-low)/2; //使用(low+high)/2会有整数溢出的情况
+    395          		if (search_list[mid] == key)
+    396          		{
+    397          			return mid;
+    398          		}
+    399          		else if (search_list[mid] > key)
+    400          		{
+    401          			high = mid -1;
+    402          		}
+    403          		else
+    404          		{
+    405          			low = mid + 1;
+    406          		}
+    407          	}
+    408          
+    409          	return -1;
+    410          }
+    411          
+    412          /*
+    413           *@brief: 将ascii转化为HID 按键编码
+    414           *@note: ascii 0-9 -> 0x30-0x39; A-Z -> 0x41-0x5a; a-z -> 0x61->0x7a
+    415           *		 keyboard code 1-9 -> 0x1E-0x26 0->0x27; a(A)->z(Z) 0x04-0x1D 
+    416           */
+    417          
+    418          void ascii_to_keycode(unsigned char *pAscii, unsigned char *pKeycode, unsigned int len)
+    419          {
+    420          	int i = 0;
+    421          	unsigned char cur_value;
+    422          
+    423          	for (i = 0; i < len; i++)
+    424          	{
+    425          		cur_value	= pAscii[i];
+    426          		if (cur_value == '0')
+    427          		{
+    428          			pKeycode[i] = 0x27;
+    429          		}
+    430          		else if ('0' < cur_value && cur_value <= '9')
+    431          		{
+    432          			pKeycode[i] = cur_value - 19;
+    433          		}
+    434          		else if ('A' <= cur_value && cur_value <= 'Z')
+    435          		{
+    436          			pKeycode[i] = cur_value - 61;
+    437          		}
+    438          		else if ('a' <= cur_value && cur_value <= 'z')
+    439          		{
+    440          			pKeycode[i] = cur_value - 93;
+    441          		}
+    442          		else if (cur_value == ' ' || cur_value == ':')
+    443          		{
+    444          			pKeycode[i] = 0x2C;
+    445          		}
+    446          		else
+    447          		{
+    448          			pKeycode[i] = 0;
+    449          		}
+    450          	}
+    451          }
+    452          #endif
+    453          
+    454          
+    455          /*
+    456          *@brief: 将ascii字符转换为符合键盘输入报表描述符的数据格式的键值 
+    457          */
+    458          void ascii_to_keyreport(unsigned char ascii, unsigned char*report)
+    459          {
+    460          	int i;
+    461          
+    462          	report[0] = 0x00;
+    463          	report[1] = 0x00;
+    464          	report[2] = 0x00;
+    465          
+    466          	for(i = 0; i < sizeof(UsbKeyValue_Ascii_Tbl)/sizeof(TUSBKeyValue_Ascii); i++)
+    467          	{
+    468          		if (((ascii >= 'a')&&(ascii <= 'z'))||((ascii >= 'A')&&(ascii <= 'Z')))
+    469          		{
+    470          			if (ascii == UsbKeyValue_Ascii_Tbl[i].asciivalue)
+    471          			{
+    472          				if(keyboard_output_report_value & 0x02)
+    473          				{
+    474          					//表示系统当前已经按下了CapsLcok键，所以发送小写字母时反而需要按住shift
+    475          					report[0] = ((UsbKeyValue_Ascii_Tbl[i].speical_key == 0)?0x02:0x00);
+    476          				}
+    477          				else
+    478          				{
+    479          					report[0] = UsbKeyValue_Ascii_Tbl[i].speical_key;
+    480          				}
+    481          				report[2] = UsbKeyValue_Ascii_Tbl[i].keyvalue;
+    482          				return;
+    483          			}
+    484          		}
+    485          		else
+    486          		{
+    487          			if (ascii == UsbKeyValue_Ascii_Tbl[i].asciivalue)
+    488          			{
+    489          				report[0] = UsbKeyValue_Ascii_Tbl[i].speical_key;
+    490          				report[2] = UsbKeyValue_Ascii_Tbl[i].keyvalue;
+    491          				return;
+    492          			}
+    493          		}
+    494          
+    495          	}
+    496          	return;
+    497          }
+    498          
+    499          
+    500          /*
+    501          *@brief: 将ascii字符转换为符合键盘输入报表描述符的数据格式的键值
+    502          *@note: ascii 0-9 -> 0x30-0x39; A-Z -> 0x41-0x5a; a-z -> 0x61->0x7a
+    503          *		 keyboard code 1-9 -> 0x1E-0x26 0->0x27; a(A)->z(Z) 0x04-0x1D 
+    504          */
+    505          void ascii_to_keyreport2(unsigned char ascii,unsigned char*report)
+    506          {
+    507          	int i;
+    508          
+    509          	memset(report,0,9);
+    510          
+    511          	for(i = 0; i < sizeof(UsbKeyValue_Ascii_Tbl)/sizeof(TUSBKeyValue_Ascii); i++)
+    512          	{
+    513          		if (ascii == UsbKeyValue_Ascii_Tbl[i].asciivalue)
+    514          		{
+    515          			report[1] = UsbKeyValue_Ascii_Tbl[i].speical_key;
+    516          			report[3] = UsbKeyValue_Ascii_Tbl[i].keyvalue;
+    517          			return;
+    518          		}
+    519          	}
+    520          	return;
+    521          }
+    522          
+    523          /*
+    524          *@brief: 将ascii字符转换为符合键盘输入报表描述符的数据格式的键值,同时发送多个键值
+    525          *@note: ascii 0-9 -> 0x30-0x39; A-Z -> 0x41-0x5a; a-z -> 0x61->0x7a
+    526          *		 keyboard code 1-9 -> 0x1E-0x26 0->0x27; a(A)->z(Z) 0x04-0x1D 
+    527          *     同时发送多个键值时只能保证所有的键值要么都需要按抓shift键发送要么都不需要按住shift键发送
+    528          *     所以如果一次需要构造多个键值时,此函数碰到需要切换shift键时将会返回实际此报表中发送的键值数
+    529          *	  最多一次可以发送6个键值
+    530          */
+    531          unsigned char ascii_to_keyreport2_ext(unsigned char *ascii,unsigned char len,unsigned char*report)
+    532          {
+    533          	int i,j;
+    534          	unsigned char special_key;
+    535          	unsigned char last_ascii = 0;
+    536          
+    537          	memset(report,0,9);
+    538          
+    539          	//if(len > 6) len = 6;		//一次传6个键值，发现手机操作系统会丢键值
+    540          	if(len > 1) len = 1;
+    541          
+    542          
+    543          	for(j = 0;j < len;j++)
+    544          	{
+    545          		if (last_ascii == ascii[j])
+    546          		{
+    547          			return j;
+    548          		}
+    549          
+    550          		last_ascii = ascii[j];
+    551          		for(i = 0; i < sizeof(UsbKeyValue_Ascii_Tbl)/sizeof(TUSBKeyValue_Ascii); i++)
+    552          		{
+    553          			if (ascii[j] == UsbKeyValue_Ascii_Tbl[i].asciivalue)
+    554          			{
+    555          				if(j == 0)
+    556          				{
+    557          					special_key = UsbKeyValue_Ascii_Tbl[i].speical_key;
+    558          					report[0] = special_key;
+    559          				}
+    560          				else
+    561          				{
+    562          					if(UsbKeyValue_Ascii_Tbl[i].speical_key != special_key)
+    563          					{
+    564          						return j;
+    565          					}
+    566          				}
+    567          				report[2+j] = UsbKeyValue_Ascii_Tbl[i].keyvalue;
+    568          				break;
+    569          			}
+    570          		}
+    571          	}
+    572          
+    573          	return j;
+    574          }
+    575          
+    576          /*
+    577          *@brief: 构造时间显示字符串
+    578          *@note:  mode:1  构造成形如2010-03-05 11:12:30
+    579          *		 mode:0  构造成形如2010/03/05 11:12:30
+    580          */
+    581          void build_time_dis_str(unsigned char *date_time_bcd,unsigned char *dis_str,unsigned char mode)
+    582          {
+    583          	unsigned char tmp[15];
+    584          
+    585          	bcd_field_to_str(date_time_bcd,7,tmp);
+    586          	memcpy(dis_str,tmp,4);
+    587          	if (mode)
+    588          	{
+    589          		dis_str[4] ='-';
+    590          	}
+    591          	else
+    592          	{
+    593          		dis_str[4] ='/';
+    594          	}
+    595          	memcpy(dis_str+5,tmp+4,2);
+    596          	if (mode)
+    597          	{
+    598          		dis_str[7] ='-';
+    599          	}
+    600          	else
+    601          	{
+    602          		dis_str[7] ='/';
+    603          	}
+    604          	memcpy(dis_str+8,tmp+6,2);
+    605          	dis_str[10]= ' ';
+    606          	memcpy(dis_str+11,tmp+8,2);
+    607          	dis_str[13] = ':';
+    608          	memcpy(dis_str+14,tmp+10,2);
+    609          	dis_str[16] = ':';
+    610          	memcpy(dis_str+17,tmp+12,2);
+    611          	dis_str[19] = 0;
+    612          }
+    613          
+    614          
+    615          //判断最后一个字节是否是一个汉字的前半字节
+    616          int if_last_char_valid(unsigned char *buf,unsigned int len)
+    617          {
+    618          	unsigned char *p = buf;
+    619          	unsigned int	i = 0;
+    620          
+    621          	while (i < len)
+    622          	{
+    623          		if (*p < 0x80)
+    624          		{
+    625          			p++;
+    626          			i++;
+    627          		}
+    628          		else
+    629          		{
+    630          			p+=2;
+    631          			i +=2;
+    632          		}
+    633          	}
+    634          
+    635          	if (i == len)
+    636          	{
+    637          		return 0;	
+    638          	}
+    639          
+    640          	return 1;		//最后一个字节是一个汉字的前半个字节
+    641          }
+    642          int	if_include_unicode_character(unsigned char *buf,unsigned int len)
+    643          {
+    644          	unsigned char *p = buf;
+    645          	unsigned int	i = 0;
+    646          
+    647          	while (i < len)
+    648          	{
+    649          		if (*p > 0x80)
+    650          		{
+    651          			return 1;
+    652          		}
+    653                          i++;
+    654          	}
+    655          	return 0;
+    656          }
+    657          /*
+    658          * @brief: 浮点数转换为字符串
+    659          * @param[in] float d	
+    660          * @param[in] char* str
+    661          */
+    662          char *F2S(float d, char* str)  
+    663          {  
+    664          	char str1[40];  
+    665          	int i,j=0;  
+    666          	int index=0;  
+    667          	int dotPos = 0;  
+    668          	unsigned long num;  
+    669          	//  正负号   
+    670          	if ( d < 0 )  
+    671          	{  
+    672          		str[index++] = '-';  
+    673          		d = 0 - d;  
+    674          	}  
+    675          	//  判断小数点位置   
+    676          	//  156.89      --> 0.15689      dotPos = 3   
+    677          	//  1.5689      --> 0.15689      dotPos = 1   
+    678          	//  0.0015689   --> 0.15689      dotPos = -2   
+    679          	//  0.0000000015689 -->  0.15689 dotPos = -8   
+    680          	//  0.0000000000015689  --> 0.015689 dotPos = -10   
+    681          	for (i=0; i<10; i++)  
+    682          	{  
+    683          		if (d >= 1)  
+    684          		{  
+    685          			d = d / 10;  
+    686          			dotPos += 1; 
+    687          		}  
+    688          		else if (d < 0.1)  
+    689          		{  
+    690          			d = d * 10;  
+    691          			dotPos -= 1;  
+    692          		}  
+    693          		else  
+    694          			break;  
+    695          	}  
+    696          
+    697          	// 取七位有效数字，末位四舍五入   
+    698          	//  0.15689  --> 1568900   
+    699          	//  0.015689 --> 0156890   
+    700          	for (i=0; i<9; i++)  
+    701          		d *= 10;  
+    702          	num = (unsigned long)(d + 0.5);  
+    703          
+    704          	while ( num>0 )  
+    705          	{  
+    706          		str1[j++] = num%10+'0';     // 0098651      098651   
+    707          		num /= 10;  
+    708          	}  
+    709          
+    710          	if (dotPos < 1)  
+    711          	{  
+    712          		str[index++] = '0';  
+    713          		str[index++] = '.';  
+    714          		for (i=0; i<0-dotPos; i++)  
+    715          			str[index++] = '0';  
+    716          		for (i=0; i<j; i++)  
+    717          			str[index++] = str1[j-1-i];       
+    718          	}  
+    719          	else  
+    720          	{  
+    721          		for (i=0; i<dotPos; i++)  
+    722          			str[index++] = str1[j-1-i];  
+    723          		str[index++] = '.';  
+    724          		for (; i<j; i++)  
+    725          			str[index++] = str1[j-1-i];  
+    726          	}     
+    727          
+    728          	// 清零       123.0000 --> 123.   
+    729          	while ( str[--index]=='0' );  
+    730          	index++;  
+    731          	// 清除最后面的一个小数点 '.'      123. --> 123   
+    732          	while ( str[--index]=='.' );  
+    733          
+    734          
+    735          	str[++index] = '\0';  
+    736          	return(str);  
+    737          }  
+
+   Maximum stack usage in bytes:
+
+     Function                     .cstack
+     --------                     -------
+     Ascii_To_Hex                      0
+     BCDToHex                         16
+     F2S                              64
+     HexToAscii                        0
+     HexToBCD                         16
+     ascii_to_int                      0
+     ascii_to_keyreport                0
+     ascii_to_keyreport2              16
+     ascii_to_keyreport2_ext          24
+     bcd_field_to_str                 24
+     build_time_dis_str               32
+     hex_to_str                       24
+     if_include_unicode_character      0
+     if_last_char_valid                0
+     itoascii                          8
+     memcpy                            8
+     memset                            8
+     str_to_bcd_field                 32
+
+
+   Section sizes:
+
+     Function/Label               Bytes
+     --------------               -----
+     memcpy                         14
+     memset                         20
+     UsbKeyValue_Ascii_Tbl         384
+     itoascii                       68
+     hex_to_str                    152
+     HexToBCD                       88
+     BCDToHex                      118
+     bcd_field_to_str               70
+     str_to_bcd_field              144
+     HexToAscii                     18
+     Ascii_To_Hex                   58
+     ascii_to_int                   32
+     ascii_to_keyreport            152
+     ascii_to_keyreport2            62
+     ascii_to_keyreport2_ext       138
+     build_time_dis_str            140
+     if_last_char_valid             36
+     if_include_unicode_character   24
+     F2S                           324
+     ??DataTable13                   4
+
+ 
+   384 bytes in section .rodata
+ 1 662 bytes in section .text
+ 
+ 1 628 bytes of CODE  memory (+ 34 bytes shared)
+   384 bytes of CONST memory
+
+Errors: none
+Warnings: none

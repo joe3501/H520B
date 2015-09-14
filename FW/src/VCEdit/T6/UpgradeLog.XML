@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?><?xml-stylesheet type='text/xsl' href='_UpgradeReport_Files/UpgradeReport.xslt'?><UpgradeLog>
+<Properties><Property Name="Solution" Value="T6">
+</Property><Property Name="解决方案文件" Value="E:\T6\FW\src\VCEdit\T6\T6.sln">
+</Property><Property Name="Date" Value="2014年11月17日">
+</Property><Property Name="Time" Value="19:44">
+</Property></Properties><Event ErrorLevel="0" Project="T6" Source="T6\T6.vcproj" Description="Converting project file 'E:\T6\FW\src\VCEdit\T6\T6\T6.vcproj'.">
+</Event><Event ErrorLevel="1" Project="T6" Source="T6\T6.vcproj" Description="VCWebServiceProxyGeneratorTool is no longer supported. The tool has been removed from your project settings.">
+</Event><Event ErrorLevel="0" Project="T6" Source="T6\T6.vcproj" Description="Done converting to new project file 'E:\T6\FW\src\VCEdit\T6\T6\T6.vcxproj'.">
+</Event><Event ErrorLevel="3" Project="T6" Source="T6\T6.vcproj" Description="Converted">
+</Event><Event ErrorLevel="0" Project="" Source="T6.sln" Description="成功转换解决方案">
+</Event><Event ErrorLevel="3" Project="" Source="T6.sln" Description="Converted">
+</Event></UpgradeLog>

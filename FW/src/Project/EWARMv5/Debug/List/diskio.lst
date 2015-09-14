@@ -1,0 +1,479 @@
+###############################################################################
+#                                                                             #
+# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     12/Sep/2015  15:19:12 #
+# Copyright 1999-2009 IAR Systems AB.                                         #
+#                                                                             #
+#    Cpu mode     =  thumb                                                    #
+#    Endian       =  little                                                   #
+#    Source file  =  E:\H520B\FW\src\FatFs\diskio.c                           #
+#    Command line =  E:\H520B\FW\src\FatFs\diskio.c -D DEBUG_VER -lcN         #
+#                    E:\H520B\FW\src\Project\EWARMv5\Debug\List\ -o           #
+#                    E:\H520B\FW\src\Project\EWARMv5\Debug\Obj\ --no_cse      #
+#                    --no_unroll --no_inline --no_code_motion --no_tbaa       #
+#                    --no_clustering --no_scheduling --debug --endian=little  #
+#                    --cpu=Cortex-M3 -e --fpu=None --dlib_config "C:\Program  #
+#                    Files\IAR Systems\Embedded Workbench                     #
+#                    5.4\arm\INC\DLib_Config_Full.h" -I                       #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\ -I                   #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\App\ -I            #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\Drivers\ -I        #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\FatFs\ -I          #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\Lib\inc\ -I        #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\uCOS\uC-CPU\ -I    #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\uCOS\uC-LIB\ -I    #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\uCOS\uCOS-II\Ports #
+#                    \ -I E:\H520B\FW\src\Project\EWARMv5\..\..\uCOS\uCOS-II\ #
+#                    Source\ -I E:\H520B\FW\src\Project\EWARMv5\..\..\uCOS\uC #
+#                    -Probe\ -I E:\H520B\FW\src\Project\EWARMv5\..\..\usb_lib #
+#                    \ -I "C:\Program Files\IAR Systems\Embedded Workbench    #
+#                    5.4\arm\INC\" -Ol                                        #
+#    List file    =  E:\H520B\FW\src\Project\EWARMv5\Debug\List\diskio.lst    #
+#    Object file  =  E:\H520B\FW\src\Project\EWARMv5\Debug\Obj\diskio.o       #
+#                                                                             #
+#                                                                             #
+###############################################################################
+
+E:\H520B\FW\src\FatFs\diskio.c
+      1          /*-----------------------------------------------------------------------*/
+      2          /* Low level disk I/O module skeleton for FatFs     (C)ChaN, 2007        */
+      3          /*-----------------------------------------------------------------------*/
+      4          /* This is a stub disk I/O module that acts as front end of the existing */
+      5          /* disk I/O modules and attach it to FatFs module with common interface. */
+      6          /*-----------------------------------------------------------------------*/
+      7          
+      8          #include "diskio.h"
+      9          #include "stm32f10x_lib.h"
+     10          //#include "sdcard.h"
+     11          #include "spi_flash.h"
+     12          /*-----------------------------------------------------------------------*/
+     13          /* Correspondence between physical drive number and physical drive.      */
+     14          
+     15          //#define ATA		0
+     16          //#define MMC		1
+     17          //#define USB		2
+     18          
+     19          #define MMC			1	//利用MMC/SD卡实现的文件系统
+     20          #define SPI_FLASH	0	//利用SPI_FLASH实现的文件系统
+     21          
+     22          //static int							bus_in_sdio = 0;				// 1:用SDIO连接SD卡 0:用SPI连接SD卡
+     23          //SD_CardInfo							SDIO_Info;
+     24          //unsigned int						SDIO_Block_Count;
+     25          //int									SDIO_Block_Size;
+     26          //int									SDIO_Memory_Size;
+     27          //unsigned char						sdbuffer[512];
+     28          
+     29          //static int check_sdcard(void);
+     30          DSTATUS disk_initialize ( BYTE drv );
+     31          DSTATUS disk_unmount(BYTE drv);
+     32          DWORD get_fattime (void);
+     33          DSTATUS disk_status ( BYTE drv );
+     34          DRESULT disk_read ( BYTE drv, BYTE *buff, DWORD sector, BYTE count );
+     35          DRESULT disk_write ( BYTE drv, const BYTE *buff, DWORD sector, BYTE count );
+     36          DRESULT disk_ioctl ( BYTE drv, BYTE ctrl, void *buff);
+     37          
+     38          /**
+     39          * @brief 检查sd卡是否就绪
+     40          * @return 0:检测成功
+     41          *        -1:检测失败
+     42          */
+     43          #if 0
+     44          static int check_sdcard(void)
+     45          {
+     46          	unsigned int				DeviceSizeMul = 0, NumberOfBlocks = 0;
+     47          	SD_Error					Status;
+     48          
+     49          	if (SD_Init() == SD_OK)
+     50          	{
+     51          		SD_GetCardInfo(&SDIO_Info);
+     52          		SD_SelectDeselect((unsigned int) (SDIO_Info.RCA << 16));
+     53          		DeviceSizeMul			= (SDIO_Info.SD_csd.DeviceSizeMul + 2);
+     54          
+     55          		if(SDIO_Info.CardType == SDIO_HIGH_CAPACITY_SD_CARD)
+     56          		{
+     57          			SDIO_Block_Count = (SDIO_Info.SD_csd.DeviceSize + 1) * 1024;
+     58          			SDIO_Block_Size			= 1;
+     59          		}
+     60          		else
+     61          		{
+     62          			NumberOfBlocks		= ((1 << (SDIO_Info.SD_csd.RdBlockLen)) / 512);
+     63          			SDIO_Block_Count	= ((SDIO_Info.SD_csd.DeviceSize + 1) * (1 << DeviceSizeMul) << (NumberOfBlocks/2));
+     64          			SDIO_Block_Size			= 512;
+     65          		}
+     66          
+     67          
+     68          		Status					= SD_SelectDeselect((unsigned int) (SDIO_Info.RCA << 16)); 
+     69          		Status					= SD_EnableWideBusOperation(SDIO_BusWide_4b); 
+     70          		if ( Status != SD_OK )
+     71          		{
+     72          			return -1;
+     73          		}
+     74          
+     75          		Status					= SD_SetDeviceMode(SD_DMA_MODE);         
+     76          		if ( Status != SD_OK )
+     77          		{
+     78          			return -1;
+     79          		}
+     80          		SDIO_Memory_Size		= SDIO_Block_Count * SDIO_Block_Size;
+     81          		if( SDIO_Memory_Size >= (2*1024 * 1024 * 1024)) // * 512))
+     82          		{
+     83          			return 0;			// 卡大于2G
+     84          		}
+     85          		else
+     86          			return -1;
+     87          	}
+     88          	return -1;
+     89          }
+     90          #endif
+     91          /*-----------------------------------------------------------------------*/
+     92          /* Inidialize a Drive                                                    */
+     93          
+     94          DSTATUS disk_initialize (
+     95          	BYTE drv				/* Physical drive nmuber (0..) */
+     96          )
+     97          {
+     98          	int ret;
+     99          	//switch(drv)
+    100          	//{
+    101          	//case MMC:
+    102          	//	bus_in_sdio	= 1;
+    103          	//	ret = check_sdcard();
+    104          	//	break;
+    105          	//case SPI_FLASH:
+    106          		ret = spi_flash_init();
+    107          	//}
+    108          	
+    109          	if( ret == 0 )
+    110          		return RES_OK;
+    111          	return RES_ERROR;
+    112          }
+    113          
+    114          DSTATUS disk_unmount(BYTE drv)
+    115          {
+    116          	//switch(drv)
+    117          	//{
+    118          	//case MMC:
+    119          	//	bus_in_sdio						= 0;
+    120          	//	break;
+    121          	//case SPI_FLASH:
+    122          		if (spi_flash_post_write())
+    123          		{
+    124          			return  RES_ERROR;
+    125          		}
+    126          		return RES_OK;
+    127          	//}
+    128          
+    129          	//return RES_OK;
+    130          }
+    131          
+    132          
+    133          DWORD get_fattime (void)
+    134          {
+    135          	return 0;
+    136          }
+    137          /*-----------------------------------------------------------------------*/
+    138          /* Return Disk Status                                                    */
+    139          
+    140          DSTATUS disk_status (
+    141          	BYTE drv		/* Physical drive nmuber (0..) */
+    142          )
+    143          {
+    144          //	DSTATUS stat;
+    145          	//int sta;
+    146          	//switch(drv)
+    147          	//{
+    148          	//case MMC:
+    149          	//	if(bus_in_sdio == 0)
+    150          	//	{
+    151          	//		return disk_initialize(drv);
+    152          	//	}
+    153          
+    154          	//	if( SD_SendStatus(&sta) == SD_OK )
+    155          	//	{
+    156          	//		return RES_OK;
+    157          	//	}
+    158          	//	break;
+    159          
+    160          	//case SPI_FLASH:
+    161          		if (spi_flash_post_write())
+    162          		{
+    163          			return  RES_ERROR;
+    164          		}
+    165          		return RES_OK;
+    166          	//}
+    167          	
+    168          
+    169          	//return RES_ERROR;
+    170          }
+    171          
+    172          
+    173          
+    174          /*-----------------------------------------------------------------------*/
+    175          /* Read Sector(s)                                                        */
+    176          
+    177          DRESULT disk_read (
+    178          	BYTE drv,		/* Physical drive nmuber (0..) */
+    179          	BYTE *buff,		/* Data buffer to store read data */
+    180          	DWORD sector,	/* Sector address (LBA) */
+    181          	BYTE count		/* Number of sectors to read (1..255) */
+    182          )
+    183          {
+    184          	DRESULT							res = 0;
+    185          //	int		i;
+    186          //	int result;
+    187          
+    188          //	switch (drv) {
+    189          //	case ATA :
+    190          //		result = ATA_disk_read(buff, sector, count);
+    191          		// translate the reslut code here
+    192          
+    193          //		return res;
+    194          
+    195          //	case MMC :
+    196          //		return MMC_disk_read(buff, sector, count);
+    197          		// translate the reslut code here
+    198          
+    199          	//switch (drv)
+    200          	//{
+    201          	//case MMC:
+    202          	//	if(count == 1)
+    203          	//	{
+    204          	//		res = SD_ReadBlock(sector * 512, (unsigned int*)buff, 512);
+    205          	//	}
+    206          	//	else if(count > 1)
+    207          	//	{
+    208          	//		res = SD_ReadMultiBlocks(sector * 512, (unsigned int*)buff, 512, count);
+    209          	//	}
+    210          	//	if( res != SD_OK ) return RES_ERROR;
+    211                  //        return RES_OK;
+    212          
+    213          	//case SPI_FLASH:
+    214          		if (spi_flash_post_write())
+    215          		{
+    216          			//res = RES_ERROR;
+    217          			//break;
+    218                            return RES_ERROR;
+    219          		}
+    220          		res = spi_flash_rpage(sector, count, (unsigned char*)buff);
+    221          		//break;
+    222          	//}
+    223          
+    224          	if (res)
+    225          	{
+    226          		return RES_ERROR;
+    227          	}
+    228          	return RES_OK;
+    229          }
+    230          
+    231          
+    232          
+    233          /*-----------------------------------------------------------------------*/
+    234          /* Write Sector(s)                                                       */
+    235          
+    236          #if _READONLY == 0
+    237          DRESULT disk_write (
+    238          	BYTE drv,			/* Physical drive nmuber (0..) */
+    239          	const BYTE *buff,	/* Data to be written */
+    240          	DWORD sector,		/* Sector address (LBA) */
+    241          	BYTE count			/* Number of sectors to write (1..255) */
+    242          )
+    243          {
+    244          	DRESULT							res;
+    245          //	int result;
+    246          //	int i;
+    247          
+    248          //	switch (drv) {
+    249          //	case ATA :
+    250          //		result = ATA_disk_write(buff, sector, count);
+    251          		// translate the reslut code here
+    252          
+    253          //		return res;
+    254          
+    255          //	case MMC :
+    256          //		return MMC_disk_write(buff, sector, count);
+    257          //	return SD_WriteBlock(sector * 512, buff, )
+    258          
+    259          	//if (MMC == drv)
+    260          	//{
+    261          	//	if ( 1==count)
+    262          	//	{
+    263          	//		res = SD_WriteBlock(	sector* 512, (unsigned int*)buff, 512	);
+    264          	//	} 
+    265          	//	else if( count>1)
+    266          	//	{
+    267          	//		res = SD_WriteMultiBlocks(	sector * 512,(unsigned int*)buff,512,count	);
+    268          	//	}
+    269          
+    270          	//	if( res == SD_OK)
+    271          	//		return RES_OK;
+    272          	//	else
+    273          	//		return RES_ERROR;
+    274          	//}
+    275          	//else if(SPI_FLASH == drv)
+    276          	{
+    277          		res  = spi_flash_write(sector,(unsigned char*)buff,count);
+    278          
+    279          		if (res)
+    280          		{
+    281          			return RES_ERROR;
+    282          		}
+    283          		return RES_OK;
+    284          	}
+    285          
+    286          }
+    287          #endif /* _READONLY */
+    288          
+    289          
+    290          
+    291          /*-----------------------------------------------------------------------*/
+    292          /* Miscellaneous Functions                                               */
+    293          // 返回磁盘状态
+    294          // 
+    295          DRESULT disk_ioctl (
+    296          	BYTE drv,		/* Physical drive nmuber (0..) */
+    297          	BYTE ctrl,		/* Control code */
+    298          	void *buff		/* Buffer to send/receive control data */
+    299          )
+    300          {
+    301          #if 0
+    302          //	DRESULT res;
+    303          //	int result;
+    304          
+    305          //	switch (drv) {
+    306          //	case ATA :
+    307          		// pre-process here
+    308          
+    309          //		result = ATA_disk_ioctl(ctrl, buff);
+    310          		// post-process here
+    311          
+    312          //		return res;
+    313          
+    314          //	case MMC :
+    315          		// pre-process here
+    316          
+    317          //		return MMC_disk_ioctl(ctrl, buff);
+    318          		// post-process here
+    319          
+    320          //		return res;
+    321          
+    322          //	case USB :
+    323          		// pre-process here
+    324          
+    325          //		result = USB_disk_ioctl(ctrl, buff);
+    326          		// post-process here
+    327          
+    328          //		return res;
+    329          //	}
+    330          //	return RES_PARERR;
+    331          	return RES_OK;
+    332          #endif
+    333          	DRESULT							res = RES_ERROR;
+    334          	//SD_CardInfo						SDCardInfo;
+    335          
+    336          	//if (drv>=_DRIVES)
+    337          	//{
+    338          	//	return RES_PARERR; 
+    339          	//}
+    340          	//FATFS目前版本仅需处理CTRL_SYNC，GET_SECTOR_COUNT，GET_BLOCK_SIZ三个命令
+    341          	switch(ctrl)
+    342          	{
+    343          	case CTRL_SYNC:
+    344          		//if (MMC == drv)
+    345          		//{
+    346          		//	if(SD_GetTransferState()==SD_NO_TRANSFER)
+    347          		//	{
+    348          		//		res = RES_OK;
+    349          		//	}
+    350          		//	else
+    351          		//	{
+    352          		//		res = RES_ERROR;
+    353          		//	}
+    354          		//}
+    355          		//else if (SPI_FLASH == drv)
+    356          		{
+    357          			/*if (spi_flash_wait_for_write_end())
+    358          			{
+    359          				res = RES_ERROR;
+    360          			}
+    361          			res = RES_OK;*/
+    362          
+    363          			if (spi_flash_post_write())
+    364          			{
+    365          				res = RES_ERROR;
+    366          			}
+    367          			res = RES_OK;
+    368          		}
+    369          		break;
+    370          
+    371          	case GET_BLOCK_SIZE:
+    372          		//if (MMC == drv)
+    373          		//{
+    374          		//	*(WORD*)buff = 1;
+    375          		//	res = RES_OK;
+    376          		//}
+    377          		//else if (SPI_FLASH == drv)
+    378          		{
+    379          			*(WORD*)buff = 1;		
+    380          			res = RES_OK;
+    381          		}
+    382          		break;
+    383          
+    384          	case GET_SECTOR_COUNT: //读卡容量
+    385          		//if(MMC == drv)
+    386          		//{
+    387          		//	if (SD_GetCardInfo(&SDCardInfo)==SD_OK)//读sd卡信息
+    388          		//	{
+    389          		//		*(DWORD*)buff =SDCardInfo.CardCapacity /SDCardInfo.CardBlockSize;
+    390          		//		res = RES_OK;
+    391          		//	}
+    392          		//	else
+    393          		//	{
+    394          		//		res = RES_ERROR ;
+    395          		//	}
+    396          		//}
+    397          		//else if (SPI_FLASH == drv)
+    398          		{
+    399          			*(DWORD*)buff = get_spi_flash_capacity();
+    400          			res = RES_OK;
+    401          		}
+    402          		break;
+    403          
+    404          	default:
+    405          		res = RES_PARERR;
+    406          		break;
+    407          	}
+    408          	return res;
+    409          }
+    410          
+
+   Maximum stack usage in bytes:
+
+     Function        .cstack
+     --------        -------
+     disk_initialize      8
+     disk_ioctl           8
+     disk_read           24
+     disk_status          8
+     disk_unmount         8
+     disk_write           8
+     get_fattime          0
+
+
+   Section sizes:
+
+     Function/Label  Bytes
+     --------------  -----
+     disk_initialize   18
+     disk_unmount      18
+     get_fattime        4
+     disk_status       18
+     disk_read         52
+     disk_write        30
+     disk_ioctl        60
+
+ 
+ 200 bytes in section .text
+ 
+ 200 bytes of CODE memory
+
+Errors: none
+Warnings: 3

@@ -1,0 +1,161 @@
+###############################################################################
+#                                                                             #
+# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     12/Sep/2015  15:19:25 #
+# Copyright 1999-2009 IAR Systems AB.                                         #
+#                                                                             #
+#    Cpu mode     =  thumb                                                    #
+#    Endian       =  little                                                   #
+#    Source file  =  E:\H520B\FW\src\usb_lib\usb_endp.c                       #
+#    Command line =  E:\H520B\FW\src\usb_lib\usb_endp.c -D DEBUG_VER -lcN     #
+#                    E:\H520B\FW\src\Project\EWARMv5\Debug\List\ -o           #
+#                    E:\H520B\FW\src\Project\EWARMv5\Debug\Obj\ --no_cse      #
+#                    --no_unroll --no_inline --no_code_motion --no_tbaa       #
+#                    --no_clustering --no_scheduling --debug --endian=little  #
+#                    --cpu=Cortex-M3 -e --fpu=None --dlib_config "C:\Program  #
+#                    Files\IAR Systems\Embedded Workbench                     #
+#                    5.4\arm\INC\DLib_Config_Full.h" -I                       #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\ -I                   #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\App\ -I            #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\Drivers\ -I        #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\FatFs\ -I          #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\Lib\inc\ -I        #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\uCOS\uC-CPU\ -I    #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\uCOS\uC-LIB\ -I    #
+#                    E:\H520B\FW\src\Project\EWARMv5\..\..\uCOS\uCOS-II\Ports #
+#                    \ -I E:\H520B\FW\src\Project\EWARMv5\..\..\uCOS\uCOS-II\ #
+#                    Source\ -I E:\H520B\FW\src\Project\EWARMv5\..\..\uCOS\uC #
+#                    -Probe\ -I E:\H520B\FW\src\Project\EWARMv5\..\..\usb_lib #
+#                    \ -I "C:\Program Files\IAR Systems\Embedded Workbench    #
+#                    5.4\arm\INC\" -Ol                                        #
+#    List file    =  E:\H520B\FW\src\Project\EWARMv5\Debug\List\usb_endp.lst  #
+#    Object file  =  E:\H520B\FW\src\Project\EWARMv5\Debug\Obj\usb_endp.o     #
+#                                                                             #
+#                                                                             #
+###############################################################################
+
+E:\H520B\FW\src\usb_lib\usb_endp.c
+      1          /******************** (C) COPYRIGHT 2008 STMicroelectronics ********************
+      2          * File Name          : usb_endp.c
+      3          * Author             : MCD Application Team
+      4          * Version            : V2.2.1
+      5          * Date               : 09/22/2008
+      6          * Description        : Endpoint routines
+      7          ********************************************************************************
+      8          * THE PRESENT FIRMWARE WHICH IS FOR GUIDANCE ONLY AIMS AT PROVIDING CUSTOMERS
+      9          * WITH CODING INFORMATION REGARDING THEIR PRODUCTS IN ORDER FOR THEM TO SAVE TIME.
+     10          * AS A RESULT, STMICROELECTRONICS SHALL NOT BE HELD LIABLE FOR ANY DIRECT,
+     11          * INDIRECT OR CONSEQUENTIAL DAMAGES WITH RESPECT TO ANY CLAIMS ARISING FROM THE
+     12          * CONTENT OF SUCH FIRMWARE AND/OR THE USE MADE BY CUSTOMERS OF THE CODING
+     13          * INFORMATION CONTAINED HEREIN IN CONNECTION WITH THEIR PRODUCTS.
+     14          *******************************************************************************/
+     15          
+     16          /* Includes ------------------------------------------------------------------*/
+     17          #include "usb_lib.h"
+     18          #include "usb_desc.h"
+     19          #include "usb_mem.h"
+     20          #include "hw_config.h"
+     21          #include "usb_istr.h"
+     22          #include "PCUsart.h"
+     23          #include "usb_bot.h"
+     24          
+     25          /* Private typedef -----------------------------------------------------------*/
+     26          /* Private define ------------------------------------------------------------*/
+     27          /* Private macro -------------------------------------------------------------*/
+     28          /* Private variables ---------------------------------------------------------*/
+     29          //u8 buffer_out[VIRTUAL_COM_PORT_DATA_SIZE];
+     30          //u32 count_out = 0;
+     31          u32 count_in = 0;
+     32          
+     33          extern unsigned char g_usb_type; 
+     34          
+     35          /* Private function prototypes -----------------------------------------------*/
+     36          /* Private functions ---------------------------------------------------------*/
+     37          /*******************************************************************************
+     38          * Function Name  : EP3_IN_Callback
+     39          * Description    :
+     40          * Input          : None.
+     41          * Output         : None.
+     42          * Return         : None.
+     43          *******************************************************************************/
+     44          void EP3_OUT_Callback(void)
+     45          {
+     46           // int i;
+     47          
+     48            //if (g_usb_type == USB_VIRTUAL_PORT)
+     49            //{
+     50          	 // count_out = GetEPRxCount(ENDP3);
+     51          	 // PMAToUserBufferCopy(buffer_out, ENDP3_RXADDR, count_out);
+     52          	 // SetEPRxValid(ENDP3);
+     53          
+     54          	 // for (i = 0; i < count_out; i++)
+     55          	 // {
+     56          		//  PCUsart_InByte(buffer_out[i]);
+     57          	 // }
+     58            //}
+     59          }
+     60          
+     61          /*******************************************************************************
+     62          * Function Name  : EP2_OUT_Callback.
+     63          * Description    : EP2 OUT Callback Routine.
+     64          * Input          : None.
+     65          * Output         : None.
+     66          * Return         : None.
+     67          *******************************************************************************/
+     68          void EP2_OUT_Callback(void)
+     69          {
+     70          	if (g_usb_type == USB_MASSSTORAGE)
+     71          	{
+     72          		Mass_Storage_Out();
+     73          	}
+     74          }
+     75          
+     76          /*******************************************************************************
+     77          * Function Name  : EP1_IN_Callback
+     78          * Description    :
+     79          * Input          : None.
+     80          * Output         : None.
+     81          * Return         : None.
+     82          *******************************************************************************/
+     83          void EP1_IN_Callback(void)
+     84          {
+     85          	if (g_usb_type == USB_MASSSTORAGE)
+     86          	{
+     87          		Mass_Storage_In();
+     88          	}
+     89          	else
+     90          	{
+     91          		count_in = 0;
+     92          	}
+     93          }
+     94          
+     95          /******************* (C) COPYRIGHT 2008 STMicroelectronics *****END OF FILE****/
+     96          
+
+   Maximum stack usage in bytes:
+
+     Function         .cstack
+     --------         -------
+     EP1_IN_Callback       8
+     EP2_OUT_Callback      8
+     EP3_OUT_Callback      0
+
+
+   Section sizes:
+
+     Function/Label   Bytes
+     --------------   -----
+     count_in            4
+     EP3_OUT_Callback    2
+     EP2_OUT_Callback   16
+     EP1_IN_Callback    28
+     ??DataTable1        4
+
+ 
+  4 bytes in section .bss
+ 50 bytes in section .text
+ 
+ 50 bytes of CODE memory
+  4 bytes of DATA memory
+
+Errors: none
+Warnings: none
