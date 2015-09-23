@@ -53,6 +53,9 @@ static void Keypad_Initport(void)
 	gpio_init.GPIO_Mode  = GPIO_Mode_IPU;
 	GPIO_Init(GPIOA, &gpio_init);		
 
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
+	GPIO_PinRemapConfig(GPIO_Remap_SWJ_JTAGDisable, ENABLE);
+
 	//EraseKey PB3		ResetKey  PB4
 	gpio_init.GPIO_Pin   = GPIO_Pin_3 | GPIO_Pin_4;
 	GPIO_Init(GPIOB, &gpio_init);
@@ -147,8 +150,8 @@ void Keypad_Timer_Init(void)
 	TIM_TimeBaseStructure.TIM_Prescaler			= 39;      
 	TIM_TimeBaseStructure.TIM_CounterMode		= TIM_CounterMode_Up; //向上计数
 	TIM_TimeBaseStructure.TIM_Period			= (72000/2-1);      
-	TIM_TimeBaseStructure.TIM_ClockDivision		= 0x0;
-
+	TIM_TimeBaseStructure.TIM_ClockDivision		= TIM_CKD_DIV1;
+	//TIM_TimeBaseStructure.TIM_RepetitionCounter = 0;
 
 	TIM_TimeBaseInit(TIM3, &TIM_TimeBaseStructure);
 
@@ -255,19 +258,21 @@ reread:
 		h1 = GPIO_ReadInputDataBit(GPIOB,GPIO_Pin_4);
 	}
 
-	for(i=0;i < 6000;i++);	//约2ms
+	//hw_platform_trip_io();
+	for(i=0;i < 10000;i++);	//约1ms(在72M频率下，实测972us)
+	//hw_platform_trip_io();
 
 	if (key == SCAN_KEY)
 	{
-		h1 = GPIO_ReadInputDataBit(GPIOA,GPIO_Pin_0);
+		h2 = GPIO_ReadInputDataBit(GPIOA,GPIO_Pin_0);
 	}
 	else if (key == ERASE_KEY)
 	{
-		h1 = GPIO_ReadInputDataBit(GPIOA,GPIO_Pin_3);
+		h2 = GPIO_ReadInputDataBit(GPIOB,GPIO_Pin_3);
 	}
 	else
 	{
-		h1 = GPIO_ReadInputDataBit(GPIOA,GPIO_Pin_4);
+		h2 = GPIO_ReadInputDataBit(GPIOB,GPIO_Pin_4);
 	}
 
 	if(h1 == h2)
@@ -283,7 +288,7 @@ reread:
 //按住超过2个按键低电平判断周期即认为至少是一次按键单击事件的发生，以20ms周期为例，就是只要按住超过40ms即认为至少发生了有效的按键单击事件
 #define SINGLE_CLICK_TH			2		
 #define LONG_PRESS_TH			250		//按住超过250个按键低电平判断周期即认为是一次按键长按事件的发生，按住超过5S即认为按键长按
-#define DOUBLE_CLICK_INTERVAL	3		//双击，连续两次按键之间的时间不超过60ms即认为是双击
+#define DOUBLE_CLICK_INTERVAL	4		//双击，连续两次按键之间的时间不超过80ms即认为是双击
 //定义一个回调函数指针，以供中断处理函数在获取到按键键值时post给其余模块使用时，可以提供不同的方法
 //typedef void (* post_key_method)(unsigned char key_value);
 

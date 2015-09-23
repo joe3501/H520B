@@ -1,6 +1,9 @@
 #ifndef _WBTDS01_H_
 #define _WBTDS01_H_
 
+#define		WBTD_RES_BUFFER_LEN			128		//从WBTDS01的数据手册上看，没有超过128字节的响应数据
+
+extern unsigned char	wbtd_recbuffer[WBTD_RES_BUFFER_LEN];
 //定义蓝牙模块支持的波特率
 //@note  未经验证，模块资料也没有给出其支持的波特率列表
 typedef enum
@@ -32,5 +35,6 @@ int WBTD_set_profile(BT_PROFILE mode);
 int WBTD_set_ioskeypad(unsigned char enable);
 int WBTD_hid_send(unsigned char *str,unsigned int len,unsigned int *send_len);
 int WBTD_got_notify_type(void);
+int WBTD_RxISRHandler(unsigned char *res, unsigned int res_len);
 
 #endif

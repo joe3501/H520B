@@ -17,7 +17,6 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f10x_it.h"
-#include "uart_drv.h"
 #include "PCUsart.h"
 #include "usb_lib.h"
 #include "usb_istr.h"
@@ -343,6 +342,16 @@ void EXTI0_IRQHandler(void)
 *******************************************************************************/
 void EXTI1_IRQHandler(void)
 {
+	OSIntEnter();
+	if(EXTI_GetITStatus(EXTI_Line1) != RESET)
+	{   
+		if(hw_platform_USBcable_Insert_Detect() == 0)
+		{
+			bDeviceState = UNCONNECTED;
+		}
+		EXTI_ClearITPendingBit(EXTI_Line1);
+	}
+	OSIntExit();
 }
 
 /*******************************************************************************
@@ -467,6 +476,14 @@ void DMA1_Channel6_IRQHandler(void)
 *******************************************************************************/
 void DMA1_Channel7_IRQHandler(void)
 {
+	OSIntEnter();
+	if (DMA_GetITStatus(DMA1_IT_TC7))
+	{
+		DMA_Cmd(DMA1_Channel7, DISABLE);
+	}
+	/* clear DMA flag */
+	DMA_ClearFlag(DMA1_FLAG_TC7 | DMA1_FLAG_TE7);
+	OSIntExit();
 }
 
 /*******************************************************************************
@@ -717,14 +734,38 @@ void USART1_IRQHandler(void)
 *******************************************************************************/
 void USART2_IRQHandler(void)
 {
-	if(USART_GetITStatus(USART2, USART_IT_RXNE) != RESET)
-	{   
-		recv_data	=	USART_ReceiveData(USART2) & 0xff;
-		WBTD_RxISRHandler(recv_data);
-		USART_ClearITPendingBit(USART2, USART_IT_RXNE);
-	}
+	//if(USART_GetITStatus(USART2, USART_IT_RXNE) != RESET)
+	//{   
+	//	recv_data	=	USART_ReceiveData(USART2) & 0xff;
+	//	WBTD_RxISRHandler(recv_data);
+	//	USART_ClearITPendingBit(USART2, USART_IT_RXNE);
+	//}
+	//else if (USART_GetFlagStatus(USART2, USART_FLAG_ORE) != RESET)
+ //   {
+	//	USART_ReceiveData(USART2);
+	//}
+
+	unsigned int temp = 0;    
+	if(USART_GetITStatus(USART2, USART_IT_IDLE) != RESET)  
+	{  
+		//USART_ClearFlag(USART1,USART_IT_IDLE);  
+		temp = USART2->SR;  
+		temp = USART2->DR; //清USART_IT_IDLE标志  
+		DMA_Cmd(DMA1_Channel6,DISABLE);  
+
+		temp = WBTD_RES_BUFFER_LEN - DMA_GetCurrDataCounter(DMA1_Channel6);  
+		//for (i = 0;i < temp;i++)  
+		{  
+			WBTD_RxISRHandler(wbtd_recbuffer,temp); 
+		}  
+
+		//设置传输数据长度  
+		DMA1_Channel6->CNDTR = WBTD_RES_BUFFER_LEN;
+		//打开DMA  
+		DMA_Cmd(DMA1_Channel6,ENABLE);  
+	}  
 	else if (USART_GetFlagStatus(USART2, USART_FLAG_ORE) != RESET)
-    {
+	{
 		USART_ReceiveData(USART2);
 	}
 }

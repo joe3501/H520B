@@ -103,7 +103,7 @@
         </option>
         <option>
           <name>OGChipSelectEditMenu</name>
-          <state>STM32F10xxE	ST STM32F10xxE</state>
+          <state>STM32F10xx8	ST STM32F10xx8</state>
         </option>
         <option>
           <name>GenLowLevelInterface</name>
@@ -1674,6 +1674,9 @@
     </file>
     <file>
       <name>$PROJ_DIR$\..\..\Lib\src\stm32f10x_dbgmcu.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\..\..\Lib\src\stm32f10x_dma.c</name>
     </file>
     <file>
       <name>$PROJ_DIR$\..\..\Lib\src\stm32f10x_exti.c</name>

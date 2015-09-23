@@ -105,6 +105,24 @@ static void platform_misc_port_init(void)
 	GPIO_InitStructure.GPIO_Speed			= GPIO_Speed_10MHz;
 	GPIO_Init(GPIOA, &GPIO_InitStructure);
 
+	/* Connect EXTI Line6 to PB.6 */
+	GPIO_EXTILineConfig(GPIO_PortSourceGPIOA, GPIO_PinSource1);
+
+	EXTI_ClearITPendingBit(EXTI_Line1);
+	EXTI_InitStructure.EXTI_Line = EXTI_Line1;
+	EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
+	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Falling;
+	EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+	EXTI_Init(&EXTI_InitStructure); 
+	EXTI_GenerateSWInterrupt(EXTI_Line1);
+
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);      
+	NVIC_InitStructure.NVIC_IRQChannel = EXTI1_IRQChannel;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 6;
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_Init(&NVIC_InitStructure);
+
 	//ChargeState detect -- PB.6
 	GPIO_InitStructure.GPIO_Pin  = GPIO_Pin_6;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_10MHz;
@@ -140,18 +158,18 @@ static void platform_misc_port_init(void)
 	GPIO_SetBits(GPIOA, GPIO_Pin_4 | GPIO_Pin_5 | GPIO_Pin_6);
 	GPIO_ResetBits(GPIOA, GPIO_Pin_7);
 
-	//Beep -- PB.5	Trig -- PB.12
-	GPIO_InitStructure.GPIO_Pin	= GPIO_Pin_5 | GPIO_Pin_12;
+	//Beep -- PB.5	LED-Blue -- PB.7  Trig -- PB.12
+	GPIO_InitStructure.GPIO_Pin	= GPIO_Pin_5 | GPIO_Pin_7 | GPIO_Pin_8 | GPIO_Pin_12;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_10MHz;
 	GPIO_Init(GPIOB, &GPIO_InitStructure);
-	GPIO_SetBits(GPIOB,  GPIO_Pin_12);
-	GPIO_ResetBits(GPIOA, GPIO_Pin_5);
+	GPIO_SetBits(GPIOB,  GPIO_Pin_7 | GPIO_Pin_8 | GPIO_Pin_12);
+	GPIO_ResetBits(GPIOB, GPIO_Pin_5);
 
-	//RFU-IO1 -- PB.7	  RFU-IO2 -- PB.8		
-	GPIO_InitStructure.GPIO_Pin	= GPIO_Pin_7 | GPIO_Pin_8;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-	GPIO_Init(GPIOB, &GPIO_InitStructure);
+	//RFU-IO2 -- PB.8		
+	//GPIO_InitStructure.GPIO_Pin	= GPIO_Pin_8;
+	//GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+	//GPIO_Init(GPIOB, &GPIO_InitStructure);
 }
 
 /**
@@ -177,6 +195,7 @@ void hw_platform_init(void)
 #define  LOW_POWER_TH	1960		//	
 unsigned int hw_platform_get_PowerClass(void)
 { 
+#if 0
 	unsigned int  i,result = 0;
 	unsigned short  temp[20];
 	unsigned short	min,max;
@@ -213,6 +232,9 @@ unsigned int hw_platform_get_PowerClass(void)
 	}
 	else
 		return 0;
+#endif
+
+	return 1;
 }
 
 /**
@@ -310,6 +332,17 @@ void hw_platform_led_ctrl(unsigned int led,unsigned int ctrl)
 			GPIO_SetBits(GPIOA, GPIO_Pin_6);
 		}
 	}
+	else if (led == LED_BLUE)
+	{
+		if (ctrl)
+		{
+			GPIO_ResetBits(GPIOB, GPIO_Pin_7);
+		}
+		else
+		{
+			GPIO_SetBits(GPIOB, GPIO_Pin_7);
+		}
+	}
 }
 
 
@@ -353,19 +386,19 @@ void hw_platform_trig_ctrl(unsigned short delay)
 
 /**
 * @brief	蜂鸣器简单的控制接口
-* @param[in]  unsigned int delay	延时一段时间,单位50ms
-* @param[in]  BEEP_FREQ	beep_freq	蜂鸣器的发声频率
+* @param[in]  unsigned int delay	延时一段时间,单位ms,节拍时长
+* @param[in]  unsigned int	beep_freq	蜂鸣器的发声频率，音调
 * @return   none 
 */
-void hw_platform_beep_ctrl(unsigned short delay,BEEP_FREQ	beep_freq)
+void hw_platform_beep_ctrl(unsigned short delay,unsigned int beep_freq)
 {
 	int i;
-	for (i = 0; i < delay*50*(unsigned int)beep_freq;i++)
+	for (i = 0; i < (delay*beep_freq)/1000;i++)
 	{
 		GPIO_SetBits(GPIOB, GPIO_Pin_5);
-		Delay(1000/(unsigned int)beep_freq);
-		GPIO_SetBits(GPIOB, GPIO_Pin_5);
-		Delay(1000/(unsigned int)beep_freq);
+		Delay(1000000/beep_freq);
+		GPIO_ResetBits(GPIOB, GPIO_Pin_5);
+		Delay(1000000/beep_freq);
 	}
 }
 
@@ -412,3 +445,11 @@ void hw_platform_stop_led_blink(void)
 	hw_platform_led_ctrl(current_blink_led,0);
 }
 
+/**
+ * @brief 调试IO
+*/
+void hw_platform_trip_io(void)
+{
+	GPIO_ResetBits(GPIOB, GPIO_Pin_8);
+	GPIO_SetBits(GPIOB, GPIO_Pin_8);
+}

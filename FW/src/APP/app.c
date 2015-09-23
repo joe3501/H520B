@@ -25,6 +25,10 @@
 #include "basic_fun.h"
 #include <stdio.h>
 #include "record.h"
+#include "Terminal_Para.h"
+#include "usb_lib.h"
+#include "PCUsart.h"
+
 //定义主状态机线程与蓝牙模块线程之间通讯的IPC对象
 #define BARCODE_CASH_NUM	15			//定义等待蓝牙模块线程发送的条码缓冲区为15个条码
 #define MAX_BARCODE_LEN		80			//定义条码最大长度为80个字节
@@ -74,6 +78,7 @@ unsigned int	keypress_timeout;
 
 void u_disk_proc(void);
 int lowpower_tip(void);
+void system_err_tip(void);
 
 extern void EnterLowPowerMode(void);
 extern void ExitLowPowerMode(void);
@@ -137,6 +142,9 @@ void pull_barcode_from_cash(unsigned char* barcode_addr)
 */
 static inline void enter_into_Memory_Mode(void)
 {
+#ifdef DEBUG_VER
+	printf("enter into Memory Mode\r\n");
+#endif
 	//@todo...
 }
 
@@ -145,6 +153,9 @@ static inline void enter_into_Memory_Mode(void)
 */
 static inline void exit_from_Memory_Mode(void)
 {
+#ifdef DEBUG_VER
+	printf("exit from Memory Mode\r\n");
+#endif
 	//@todo...
 }
 
@@ -153,6 +164,9 @@ static inline void exit_from_Memory_Mode(void)
 */
 static inline void enter_into_USB_HID_Mode(void)
 {
+#ifdef DEBUG_VER
+	printf("enter into USB HID Mode\r\n");
+#endif
 	hw_platform_led_ctrl(LED_RED,1);
 }
 
@@ -161,6 +175,9 @@ static inline void enter_into_USB_HID_Mode(void)
 */
 static inline void exit_from_USB_HID_Mode(void)
 {
+#ifdef DEBUG_VER
+	printf("exit from USB HID Mode\r\n");
+#endif
 	hw_platform_led_ctrl(LED_RED,0);
 }
 
@@ -170,7 +187,14 @@ static inline void exit_from_USB_HID_Mode(void)
 */
 static inline void enter_into_BT_Mode(unsigned char child_state)
 {
-	//@todo...
+#ifdef DEBUG_VER
+	printf("enter into BT Mode:%d\r\n",child_state);
+#endif
+	if (child_state == 2)
+	{
+		WBTD_Reset();
+		WBTD_set_autocon(0);
+	}
 }
 
 /**
@@ -179,7 +203,15 @@ static inline void enter_into_BT_Mode(unsigned char child_state)
 */
 static inline void exit_from_BT_Mode(unsigned char child_state)
 {
-	//@todo...
+#ifdef DEBUG_VER
+	printf("exit from BT Mode:%d\r\n",child_state);
+#endif
+	if (child_state == 1)
+	{
+		WBTD_set_autocon(1);
+		Delay(2000);
+		WBTD_Reset();//主动断开与蓝牙主机的连接
+	}
 }
 
 
@@ -242,6 +274,8 @@ void State_Machine_thread(void *p)
 	unsigned int	last_state;
 	unsigned char	*rec;
 
+	Jfree(p_init_thread_stk);	//退出初始化线程时，释放自己的任务栈
+
 	while(1)
 	{
 		event = (unsigned int)OSQPend(pEvent_Queue,25,&err);
@@ -252,12 +286,12 @@ void State_Machine_thread(void *p)
 				keypress_timeout++;
 				if (keypress_timeout == g_param.lower_power_timeout*40)
 				{
-					hw_platform_beep_ctrl(10,BEEP_FREQ_3KHZ);
+					hw_platform_beep_ctrl(500,3000);
 					EnterLowPowerMode();
 					ExitLowPowerMode();
 				}
 			}
-			break;
+			continue;
 		}
 #ifdef DEBUG_VER
 		printf("current state:%d\r\n",device_current_state);
@@ -270,13 +304,14 @@ void State_Machine_thread(void *p)
 			case EVENT_SCAN_KEY_SINGLE_CLICK:
 			case EVENT_SCAN_KEY_DOUBLE_CLICK:
 				ret = scanner_get_barcode(barcode,MAX_BARCODE_LEN,codetype,&codelen);	//扫描条码
+				hw_platform_stop_led_blink();
 				if (ret == 0)
 				{
 					hw_platform_led_ctrl(LED_YELLOW,1);
 					OSTimeDlyHMSM(0,0,0,50);
 					hw_platform_led_ctrl(LED_YELLOW,0);
 				}
-				hw_platform_stop_led_blink();
+
 				//只是扫描到条码而已，什么都不做
 				break;
 			case EVENT_SCAN_KEY_LONG_PRESS:
@@ -631,7 +666,7 @@ void Event_capture_thread(void *p)
 		if (device_current_state == STATE_HID_Mode)
 		{
 			//判断USB线的拔出
-			if (hw_platform_USBcable_Insert_Detect() == 0)
+			if (bDeviceState == UNCONNECTED)
 			{
 #ifdef DEBUG_VER
 				printf("usb cable remove detected!\r\n");
@@ -656,6 +691,14 @@ void Event_capture_thread(void *p)
 				printf("low power detected!\r\n");
 #endif
 				OSQPost(pEvent_Queue,(void*)EVENT_LOW_POWER);
+			}
+
+			if (bDeviceState == CONFIGURED)
+			{
+#ifdef DEBUG_VER
+				printf("USB HID Enum OK detected!\r\n");
+#endif
+				OSQPost(pEvent_Queue,(void*)EVENT_USB_CABLE_INSERT);
 			}
 			OSTimeDlyHMSM(0,0,0,50);	//50ms的频率运行此线程
 		}
@@ -756,7 +799,7 @@ int lowpower_tip(void)
 	hw_platform_start_led_blink(LED_RED,3);
 	for (i = 0; i<100;i++)
 	{
-		hw_platform_beep_ctrl(1,BEEP_FREQ_2KHZ);
+		hw_platform_beep_ctrl(50,2000);
 		if (hw_platform_USBcable_Insert_Detect())
 		{
 			hw_platform_stop_led_blink();
@@ -769,6 +812,16 @@ int lowpower_tip(void)
 	return 0;
 }
 
+/*
+ * @brief 系统错误的提示
+*/
+void system_err_tip(void)
+{
+	while(1)
+	{
+		//@todo...
+	}
+}
 
 
 // Cortex System Control register address
@@ -781,6 +834,7 @@ int lowpower_tip(void)
  */
 void app_init_thread(void *p)
 {
+	int ret;
 #ifdef DEBUG_VER
 	printf("app init thread startup...\r\n");
 #endif
@@ -788,6 +842,18 @@ void app_init_thread(void *p)
 	OS_CPU_SysTickInit();
 
 	app_init();
+
+	Keypad_Init();
+
+	ret = record_module_init();
+	if (ret != 0)
+	{
+		system_err_tip();
+	}
+
+	scanner_mod_init();
+
+	usb_device_init(USB_KEYBOARD);
 
 	OSTaskCreateExt(State_Machine_thread,
 		(void *)0,
@@ -819,7 +885,8 @@ void app_init_thread(void *p)
 		(void *)0,
 		(INT16U)(OS_TASK_OPT_STK_CHK | OS_TASK_OPT_STK_CLR));
 
-	Jfree(p_init_thread_stk);	//退出初始化线程时，释放自己的任务栈
+	OSTimeDlyHMSM(0,0,0,10);
+	OSTaskDel(OS_PRIO_SELF);
 }
 
 /*

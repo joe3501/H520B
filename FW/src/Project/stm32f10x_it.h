@@ -22,7 +22,6 @@
 #include "TimeBase.h"
 #include "cpu.h"
 #include "ucos_ii.h"
-#include "calendar.h"
 
 /* Exported types ------------------------------------------------------------*/
 /* Exported constants --------------------------------------------------------*/

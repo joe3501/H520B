@@ -1,6 +1,6 @@
 ###############################################################################
 #                                                                             #
-# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     12/Sep/2015  15:19:12 #
+# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     22/Sep/2015  11:58:35 #
 # Copyright 1999-2009 IAR Systems AB.                                         #
 #                                                                             #
 #    Cpu mode     =  thumb                                                    #
@@ -432,18 +432,19 @@ E:\H520B\FW\src\FatFs\diskio.c
     396          		//}
     397          		//else if (SPI_FLASH == drv)
     398          		{
-    399          			*(DWORD*)buff = get_spi_flash_capacity();
-    400          			res = RES_OK;
-    401          		}
-    402          		break;
-    403          
-    404          	default:
-    405          		res = RES_PARERR;
-    406          		break;
-    407          	}
-    408          	return res;
-    409          }
-    410          
+    399          			//*(DWORD*)buff = get_spi_flash_capacity();
+    400          			*(DWORD*)buff = 1024*1024;
+    401          			res = RES_OK;
+    402          		}
+    403          		break;
+    404          
+    405          	default:
+    406          		res = RES_PARERR;
+    407          		break;
+    408          	}
+    409          	return res;
+    410          }
+    411          
 
    Maximum stack usage in bytes:
 
@@ -468,12 +469,12 @@ E:\H520B\FW\src\FatFs\diskio.c
      disk_status       18
      disk_read         52
      disk_write        30
-     disk_ioctl        60
+     disk_ioctl        58
 
  
- 200 bytes in section .text
+ 198 bytes in section .text
  
- 200 bytes of CODE memory
+ 198 bytes of CODE memory
 
 Errors: none
 Warnings: 3

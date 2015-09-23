@@ -56,9 +56,9 @@ void TimeBase_Init(void)
 
 
 	/* Time Base configuration */
-	TIM_TimeBaseStructure.TIM_Prescaler			= 0;      //72M的计数频率
+	TIM_TimeBaseStructure.TIM_Prescaler			= 1;      //72M的计数频率
 	TIM_TimeBaseStructure.TIM_CounterMode		= TIM_CounterMode_Up; //向上计数
-	TIM_TimeBaseStructure.TIM_Period			= (72000/2-1);      //500us的定时
+	TIM_TimeBaseStructure.TIM_Period			= (72000/2-1);      
 	TIM_TimeBaseStructure.TIM_ClockDivision		= 0x0;
 
 	TIM_TimeBaseInit(TIM2, &TIM_TimeBaseStructure);

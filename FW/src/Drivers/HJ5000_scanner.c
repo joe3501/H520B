@@ -14,7 +14,6 @@
 #include "TimeBase.h"
 #include "keypad.h"
 #include "PCUsart.h"
-#include "uart_drv.h"
 
 #define HJ5000_FRAME_MAX_LEN		257
 
@@ -285,9 +284,6 @@ static	unsigned int	wait_time_out;			//get_barcode命令的等待超时设置
 unsigned char		g_send_buff[G_SEND_BUF_LENGTH];
 unsigned char		g_receive_buff[G_RECEIV_BUF_LENGTH];
 
-
-
-extern unsigned int	scan_start;
 static int write_cmd_to_scanner(const unsigned char *pData, unsigned short length);
 static int pack_set_command(unsigned char param_offset, unsigned char param_value);
 static int pack_ctrl_command(unsigned char cmd_type);
@@ -410,7 +406,7 @@ static void HJ5000_GPIO_config(void)
 	USART_ITConfig(USART3,USART_IT_IDLE,ENABLE);    
 
 	//配置UART3中断  
-	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);
 	NVIC_InitStructure.NVIC_IRQChannel = USART3_IRQChannel;               //通道设置为串口1中断    
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;       //中断占先等级0    
 	//NVIC_InitStructure.NVIC_IRQChannelSubPriority = 6;              //中断响应优先级0    
@@ -442,7 +438,7 @@ static void HJ5000_NVIC_config(void)
 {
 #if(USART_RX_MODE == USART_RX_ISR_MODE)
 	NVIC_InitTypeDef NVIC_InitStructure;
-	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);
 
 	/* Enable the USART1 Interrupt */
 	NVIC_InitStructure.NVIC_IRQChannel				=USART3_IRQChannel;
@@ -604,7 +600,7 @@ void scanner_mod_init(void)
 
 	reset_resVar();
 	//初始化串口配置
-	Comm_SetReceiveProc(COMM3, (CommIsrInByte)HJ5000_RxISRHandler);						//设置串口回调函数
+	//Comm_SetReceiveProc(COMM3, (CommIsrInByte)HJ5000_RxISRHandler);						//设置串口回调函数
 
 	ret = pack_set_command(ScanMode,0x0a);
 	write_cmd_to_scanner(g_pReqCmd, ret);
@@ -613,7 +609,7 @@ void scanner_mod_init(void)
 	write_cmd_to_scanner(g_pReqCmd, ret);
 	OSTimeDlyHMSM(0, 0, 0, 100);
 	wait_time_out = 28;
-	scan_start = 0;
+	//scan_start = 0;
 }
 
 

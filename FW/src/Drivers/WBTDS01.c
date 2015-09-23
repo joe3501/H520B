@@ -4,7 +4,7 @@
 * @version V0.0.1
 * @author joe.zhou
 * @date 2015年08月31日
-* @note
+* @note   根据模块的响应特点，串口驱动采用 DMA发送和接受 + 串口空闲中断判断响应数据接收完的机制。
 * @copy
 *
 * 此代码为深圳合杰电子有限公司项目代码，任何人及公司未经许可不得复制传播，或用于
@@ -18,20 +18,25 @@
 #include "stm32f10x_lib.h"
 #include "string.h"
 #include <assert.h>
+#include "basic_fun.h"
 
 //#define	WBTD_DEBUG
 
 #define WBTD_RESPONSE_INIT				0
 
 //通知类型的响应数据状态
-#define WBTD_RESPONSE_NOTIFY_BEGIN		1
-#define WBTD_RESPONSE_NOTIFY_COMPLETE	2
+#define WBTD_RESPONSE_GOT_NOTIFY_CON		0x80
+#define WBTD_RESPONSE_GOT_NOTIFY_DISCON		0x40
 
 //应答类型的响应数据状态
-#define WBTD_RESPONSE_ANS_BEGIN			3
-#define WBTD_RESPONSE_ANS_COMPLETE		4
+#define WBTD_RESPONSE_OK				0x01
+#define WBTD_RESPONSE_ERR				0x02
 
-#define WBTD_RESPONSE_FULL				5
+#define WBTD_RESPONSE_UNKOWN			0x04
+
+//响应1: <CR><LF>+ERROR:<Space>3<CR><LF>
+//响应2: <CR><LF>+VER:Ver40(jul 14 2015)<CR><LF><CR><LF>OK<CR><LF>
+//响应3: 
 
 /**
 * @brief WBTDS01响应定义  WBTDS01->host
@@ -45,13 +50,17 @@ typedef struct {
 
 TWBTDRes		wbtd_res;
 
-#define		WBTD_RES_BUFFER_LEN			64		//从WBTDS01的数据手册上看，没有超过64字节的响应数据		
+		
 #define     WBTD_NOTIFY_BUFFER_LEN		32		//
 
-static unsigned char	wbtd_recbuffer[WBTD_RES_BUFFER_LEN];
-static unsigned char	wbtd_notify_buffer[WBTD_NOTIFY_BUFFER_LEN];	
-static unsigned int		got_notify_flag;
-//static unsigned int		cmd_send_flag;
+static unsigned char	wbtd_send_buff[32];
+
+unsigned char	wbtd_recbuffer[WBTD_RES_BUFFER_LEN];
+
+/*
+ * @brief: 初始化模块端口
+ * @note 使用串口2
+*/
 /*
  * @brief: 初始化模块端口
  * @note 使用串口2
@@ -60,6 +69,7 @@ static void WBTD_GPIO_config(unsigned int baudrate)
 {
 	GPIO_InitTypeDef				GPIO_InitStructure;
 	USART_InitTypeDef				USART_InitStructure;
+	DMA_InitTypeDef					DMA_InitStructure;
 
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB | RCC_APB2Periph_AFIO, ENABLE);
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
@@ -91,6 +101,68 @@ static void WBTD_GPIO_config(unsigned int baudrate)
 	USART_InitStructure.USART_Mode			= USART_Mode_Rx | USART_Mode_Tx;
 
 	USART_Init(USART2, &USART_InitStructure);
+
+
+	/* DMA clock enable */
+	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
+
+	/* fill init structure */
+	DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
+	DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
+	DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
+	DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;
+	DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;
+	DMA_InitStructure.DMA_Priority = DMA_Priority_VeryHigh;
+	DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;
+
+	/* DMA1 Channel7 (triggered by USART2 Tx event) Config */
+	DMA_DeInit(DMA1_Channel7);
+	DMA_InitStructure.DMA_PeripheralBaseAddr =(u32)(&USART2->DR);
+	DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralDST;
+	/* As we will set them before DMA actually enabled, the DMA_MemoryBaseAddr
+	 * and DMA_BufferSize are meaningless. So just set them to proper values
+	 * which could make DMA_Init happy.
+	 */
+	DMA_InitStructure.DMA_MemoryBaseAddr = (u32)0;
+	DMA_InitStructure.DMA_BufferSize = 1;
+	DMA_Init(DMA1_Channel7, &DMA_InitStructure);
+
+
+	//DMA1通道6配置  
+	DMA_DeInit(DMA1_Channel6);  
+	//外设地址  
+	DMA_InitStructure.DMA_PeripheralBaseAddr = (u32)(&USART2->DR);  
+	//内存地址  
+	DMA_InitStructure.DMA_MemoryBaseAddr = (u32)wbtd_recbuffer;  
+	//dma传输方向单向  
+	DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralSRC;  
+	//设置DMA在传输时缓冲区的长度  
+	DMA_InitStructure.DMA_BufferSize = WBTD_RES_BUFFER_LEN;  
+	//设置DMA的外设递增模式，一个外设  
+	DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;  
+	//设置DMA的内存递增模式  
+	DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;  
+	//外设数据字长  
+	DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;  
+	//内存数据字长  
+	DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;  
+	//设置DMA的传输模式  
+	DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;  
+	//设置DMA的优先级别  
+	DMA_InitStructure.DMA_Priority = DMA_Priority_VeryHigh;  
+	//设置DMA的2个memory中的变量互相访问  
+	DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;  
+	DMA_Init(DMA1_Channel6,&DMA_InitStructure);  
+
+	//使能通道6 
+	DMA_Cmd(DMA1_Channel6,ENABLE);  
+
+	//采用DMA方式接收  
+	USART_DMACmd(USART2,USART_DMAReq_Rx,ENABLE); 
+
+	/* Enable USART2 DMA Tx request */
+	USART_DMACmd(USART2, USART_DMAReq_Tx , ENABLE);
+
 	USART_Cmd(USART2, ENABLE);
 }
 
@@ -99,18 +171,29 @@ static void WBTD_GPIO_config(unsigned int baudrate)
 */
 static void WBTD_NVIC_config(void)
 {
-	NVIC_InitTypeDef NVIC_InitStructure;
-	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
+	NVIC_InitTypeDef				NVIC_InitStructure;
+	//中断配置  
+	USART_ITConfig(USART2,USART_IT_TC,DISABLE);  
+	USART_ITConfig(USART2,USART_IT_RXNE,DISABLE);  
+	USART_ITConfig(USART2,USART_IT_IDLE,ENABLE);    
 
-	/* Enable the USART2 Interrupt */
-	NVIC_InitStructure.NVIC_IRQChannel				=USART2_IRQChannel;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority	= 0;
-	//NVIC_InitStructure.NVIC_IRQChannelSubPriority	= 1;
-	NVIC_InitStructure.NVIC_IRQChannelCmd			= ENABLE;
+	//配置UART2中断  
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);
+	NVIC_InitStructure.NVIC_IRQChannel = USART2_IRQChannel;               //通道设置为串口2中断    
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;       //中断占先等级0    
+	//NVIC_InitStructure.NVIC_IRQChannelSubPriority = 6;              //中断响应优先级0    
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;                 //打开中断    
+	NVIC_Init(&NVIC_InitStructure);  
+
+	/* Enable the DMA1 Channel7 Interrupt */
+	NVIC_InitStructure.NVIC_IRQChannel = DMA1_Channel7_IRQChannel;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+	//NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
 
-	USART_ClearITPendingBit(USART2, USART_IT_RXNE); 
-	USART_ITConfig(USART2, USART_IT_RXNE, ENABLE);
+	DMA_ITConfig(DMA1_Channel7, DMA_IT_TC | DMA_IT_TE, ENABLE);
+	DMA_ClearFlag(DMA1_FLAG_TC7);
 }
 
 
@@ -121,13 +204,30 @@ static void WBTD_NVIC_config(void)
 */
 static void send_data_to_WBTDS01(const unsigned char *pData, unsigned short length)
 {
-	while(length--)
-	{
-		USART_SendData(USART2, *pData++);
-		while(USART_GetFlagStatus(USART2, USART_FLAG_TXE) == RESET)
-		{
-		}
-	}
+	//while(length--)
+	//{
+	//	USART_SendData(USART2, *pData++);
+	//	while(USART_GetFlagStatus(USART2, USART_FLAG_TXE) == RESET)
+	//	{
+	//	}
+	//}
+	//while(USART_GetFlagStatus(USART2, USART_FLAG_TC) == RESET){};
+
+	/* disable DMA */
+	DMA_Cmd(DMA1_Channel7, DISABLE);
+
+	/* set buffer address */
+	memcpy(wbtd_send_buff,pData,length);
+
+	DMA1_Channel7->CMAR = (u32)&wbtd_send_buff[0];
+	/* set size */
+	DMA1_Channel7->CNDTR = length;
+
+	USART_DMACmd(USART2, USART_DMAReq_Tx , ENABLE);
+	/* enable DMA */
+	DMA_Cmd(DMA1_Channel7, ENABLE);
+
+	while(DMA1_Channel7->CNDTR);
 	while(USART_GetFlagStatus(USART2, USART_FLAG_TC) == RESET){};
 }
 
@@ -149,66 +249,42 @@ static void WBTD_reset_resVar(void)
 * @return 0:success put in buffer
 *        -1:fail
 */
-int WBTD_RxISRHandler(unsigned char c)
+int WBTD_RxISRHandler(unsigned char *res, unsigned int res_len)
 {
-#ifdef WBTD_DEBUG
-	wbtd_res.DataBuffer[wbtd_res.DataPos++] = c;
-
-	if (wbtd_res.DataPos == 20)
+	if (res_len > 4)
 	{
-		wbtd_res.DataPos = 0;
-		wbtd_res.status	= WBTD_RESPONSE_ANS_COMPLETE;
-	}
-#else
-	if (wbtd_res.DataPos == WBTD_RES_BUFFER_LEN)
-	{
-		wbtd_res.status = WBTD_RESPONSE_FULL;
-	}
-
-	if(wbtd_res.status == WBTD_RESPONSE_FULL)
-	{
-		return -1;
-	}
-
-	if (wbtd_res.status == WBTD_RESPONSE_INIT || wbtd_res.status == WBTD_RESPONSE_NOTIFY_COMPLETE \
-		|| wbtd_res.status == WBTD_RESPONSE_ANS_COMPLETE)
-	{
-		wbtd_res.DataPos = 0;
-		wbtd_res.DataBuffer[wbtd_res.DataPos++] = c;
-		if(c == '+')
+		if (memcmp(res,"\x0d\x0a+CON",6) == 0)
 		{
-			got_notify_flag = 0;
-			wbtd_res.status = WBTD_RESPONSE_NOTIFY_BEGIN;
+			wbtd_res.status &= ~WBTD_RESPONSE_GOT_NOTIFY_DISCON;
+			wbtd_res.status |= WBTD_RESPONSE_GOT_NOTIFY_CON;
 		}
-		else if ((c == 0x0d)&&(c==0x0a))
+		else if (memcmp(res,"\x0d\x0a+DISCON",9) == 0)
 		{
-			wbtd_res.DataPos--;		//第一个字节就是0x0d或者0x0a，丢弃
+			wbtd_res.status &= ~WBTD_RESPONSE_GOT_NOTIFY_CON;
+			wbtd_res.status |= WBTD_RESPONSE_GOT_NOTIFY_DISCON;
+		}
+		else if (memcmp(res,"\x0d\x0a+ERROR",8) == 0)
+		{
+			wbtd_res.DataLength = res_len;
+			wbtd_res.status |= WBTD_RESPONSE_ERR; 
 		}
 		else
 		{
-			wbtd_res.status = WBTD_RESPONSE_ANS_BEGIN;
-		}
-	}
-	else
-	{
-		wbtd_res.DataBuffer[wbtd_res.DataPos++] = c;
-		if (c == 0x0d || c == 0x0a)
-		{
-			if (wbtd_res.status == WBTD_RESPONSE_NOTIFY_BEGIN)
+			wbtd_res.DataLength = res_len;
+			if ((res[res_len-1] == 0x0a)&&(res[res_len-2] == 0x0d)			\
+				&&(res[res_len-3] == 'K')&&(res[res_len-4] == 'O'))
 			{
-				wbtd_res.status = WBTD_RESPONSE_NOTIFY_COMPLETE;
-				got_notify_flag = 1;
-				memcpy(wbtd_notify_buffer,wbtd_res.DataBuffer,wbtd_res.DataPos-1);
-				wbtd_notify_buffer[wbtd_res.DataPos-1] = 0;
+				if (wbtd_res.status == WBTD_RESPONSE_INIT)
+				{
+					wbtd_res.status |= WBTD_RESPONSE_OK;
+				}
 			}
 			else
 			{
-				wbtd_res.status = WBTD_RESPONSE_ANS_COMPLETE;
+				wbtd_res.status |= WBTD_RESPONSE_UNKOWN;
 			}
 		}
 	}
-#endif
-	return 0;
 }
 
 
@@ -218,32 +294,35 @@ int WBTD_RxISRHandler(unsigned char c)
 * @param[in] unsigned int	length 要发送数据的长度
 * @return		0: 成功
 *				-1: 失败
+*				-2: 未知响应，可能是响应解析函数有BUG，需要调试
+*				-3：响应超时
 */
 static int WBTD_write_cmd(const unsigned char *pData, unsigned int length)
 {
 	unsigned int	wait_cnt;
 	send_data_to_WBTDS01(pData, length);
 	WBTD_reset_resVar();
-	//cmd_send_flag = 1;
-	wait_cnt = 50;
+	wait_cnt = 200;
 	while (wait_cnt)
 	{
-		if (wbtd_res.status == WBTD_RESPONSE_ANS_COMPLETE)
+		if ((wbtd_res.status & WBTD_RESPONSE_OK) == WBTD_RESPONSE_OK)
 		{
-			//cmd_send_flag = 0;
 			return 0;
 		}
-		else if (wbtd_res.status == WBTD_RESPONSE_FULL)
+		else if ((wbtd_res.status & WBTD_RESPONSE_ERR) == WBTD_RESPONSE_ERR)
 		{
-			//cmd_send_flag = 0;
 			return -1;
+		}
+		else if ((wbtd_res.status & WBTD_RESPONSE_UNKOWN) == WBTD_RESPONSE_UNKOWN)
+		{
+			return -2;
 		}
 
 		OSTimeDlyHMSM(0,0,0,20);
 		wait_cnt--;
 	}
 
-	return -1;
+	return -3;
 }
 
 
@@ -262,8 +341,8 @@ void WBTD_Reset(void)
 
 	WBTD_reset_resVar();
 
-	got_notify_flag = 0;
-	memset(wbtd_notify_buffer,0,WBTD_NOTIFY_BUFFER_LEN);
+	//got_notify_flag = 0;
+	//memset(wbtd_notify_buffer,0,WBTD_NOTIFY_BUFFER_LEN);
 	OSTimeDlyHMSM(0,0,0,100);
 }
 
@@ -274,30 +353,29 @@ void WBTD_Reset(void)
 int WBTD_query_version(unsigned char *ver_buffer)
 {
 	unsigned char	buffer[21];
-	int		ret;
+	int		i,ret;
 
 	assert(ver_buffer != 0);
 	ver_buffer[0] = 0;
-	memcpy(buffer,"AT+VER=?\x0d\x0a",10);
-	ret = WBTD_write_cmd((const unsigned char*)buffer,10);
+	memcpy(buffer,"AT+VER?\x0d\x0a",9);
+	ret = WBTD_write_cmd((const unsigned char*)buffer,9);
 	if (ret)
 	{
-		return -1;
+		return ret;
 	}
 
-	if ((wbtd_res.DataLength > 1)&&((wbtd_res.DataBuffer[0] == 'V')||(wbtd_res.DataBuffer[0] == 'v')))
+	if (memcmp(&wbtd_res.DataBuffer[3],"VER:",4) == 0)
 	{
-		if (wbtd_res.DataLength < 22)
+		for (i = 0; i < ((wbtd_res.DataLength-15) > 20)?20:(wbtd_res.DataLength-15);i++)
 		{
-			memcpy(ver_buffer,wbtd_res.DataBuffer,wbtd_res.DataLength-1);
-			ver_buffer[wbtd_res.DataLength-1] = 0;
-		}
-		else
-		{
-			memcpy(ver_buffer,wbtd_res.DataBuffer,20);
-			ver_buffer[20] = 0;
-		}
+			if (wbtd_res.DataBuffer[7+i] == 0x0d)
+			{
+				break;
+			}
 
+			ver_buffer[i] = wbtd_res.DataBuffer[7+i];
+		}
+		ver_buffer[i] = 0;
 		return 0;
 	}
 
@@ -315,7 +393,7 @@ int WBTD_query_version(unsigned char *ver_buffer)
 int WBTD_set_name(unsigned char *name)
 {
 	unsigned char	buffer[31];
-	int		ret,len;
+	int		len;
 
 	assert(name != 0);
 	memcpy(buffer,"AT+DNAME=",9);
@@ -334,18 +412,8 @@ int WBTD_set_name(unsigned char *name)
 		buffer[10+len] = 0x0a;
 		len = 11+len;
 	}
-	ret = WBTD_write_cmd((const unsigned char*)buffer,len);
-	if (ret)
-	{
-		return -1;
-	}
 
-	if ((wbtd_res.DataLength == 3)&&(memcmp(wbtd_res.DataBuffer,"OK\x0d",3) == 0))
-	{
-		return 0;
-	}
-
-	return -1;
+	return WBTD_write_cmd((const unsigned char*)buffer,len); 
 }
 
 /*
@@ -358,7 +426,7 @@ int WBTD_set_name(unsigned char *name)
 int WBTD_set_baudrate(WBTD_BAUDRATE baudrate)
 {
 	unsigned char	buffer[20];
-	int		ret,len;
+	int		len;
 
 	memcpy(buffer,"AT+URATE=",9);
 	len = 16;
@@ -397,18 +465,7 @@ int WBTD_set_baudrate(WBTD_BAUDRATE baudrate)
 		len = 17;
 		break;
 	}
-	ret = WBTD_write_cmd((const unsigned char*)buffer,len);
-	if (ret)
-	{
-		return -1;
-	}
-
-	if ((wbtd_res.DataLength == 3)&&(memcmp(wbtd_res.DataBuffer,"OK\x0d",3) == 0))
-	{
-		return 0;
-	}
-
-	return -1;
+	return WBTD_write_cmd((const unsigned char*)buffer,len);
 }
 
 /*
@@ -421,7 +478,6 @@ int WBTD_set_baudrate(WBTD_BAUDRATE baudrate)
 int WBTD_set_autocon(unsigned char mode)
 {
 	unsigned char	buffer[15];
-	int		ret;
 
 	memcpy(buffer,"AT+AUTOCON=",11);
 	if (mode)
@@ -434,18 +490,7 @@ int WBTD_set_autocon(unsigned char mode)
 	}
 	buffer[12] = 0x0d;
 	buffer[13] = 0x0a;
-	ret = WBTD_write_cmd((const unsigned char*)buffer,14);
-	if (ret)
-	{
-		return -1;
-	}
-
-	if ((wbtd_res.DataLength == 3)&&(memcmp(wbtd_res.DataBuffer,"OK\x0d",3) == 0))
-	{
-		return 0;
-	}
-
-	return -1;
+	return WBTD_write_cmd((const unsigned char*)buffer,14);
 }
 
 /*
@@ -456,7 +501,6 @@ int WBTD_set_autocon(unsigned char mode)
 int WBTD_set_profile(BT_PROFILE mode)
 {
 	unsigned char	buffer[20];
-	int		ret;
 
 	memcpy(buffer,"AT+PROFILE=",11);
 	if (mode == BT_PROFILE_HID)
@@ -473,18 +517,7 @@ int WBTD_set_profile(BT_PROFILE mode)
 	}
 	buffer[12] = 0x0d;
 	buffer[13] = 0x0a;
-	ret = WBTD_write_cmd((const unsigned char*)buffer,14);
-	if (ret)
-	{
-		return -1;
-	}
-
-	if ((wbtd_res.DataLength == 3)&&(memcmp(wbtd_res.DataBuffer,"OK\x0d",3) == 0))
-	{
-		return 0;
-	}
-
-	return -1;
+	return  WBTD_write_cmd((const unsigned char*)buffer,14);
 }
 
 /*
@@ -495,7 +528,6 @@ int WBTD_set_profile(BT_PROFILE mode)
 int WBTD_set_ioskeypad(unsigned char enable)
 {
 	unsigned char	buffer[15];
-	int		ret;
 
 	memcpy(buffer,"AT+IOSKB=",9);
 	if (enable)
@@ -508,18 +540,7 @@ int WBTD_set_ioskeypad(unsigned char enable)
 	}
 	buffer[10] = 0x0d;
 	buffer[11] = 0x0a;
-	ret = WBTD_write_cmd((const unsigned char*)buffer,12);
-	if (ret)
-	{
-		return -1;
-	}
-
-	if ((wbtd_res.DataLength == 3)&&(memcmp(wbtd_res.DataBuffer,"OK\x0d",3) == 0))
-	{
-		return 0;
-	}
-
-	return -1;
+	return WBTD_write_cmd((const unsigned char*)buffer,12);
 }
 
 /*
@@ -531,10 +552,28 @@ int WBTD_set_ioskeypad(unsigned char enable)
 */
 int WBTD_hid_send(unsigned char *str,unsigned int len,unsigned int *send_len)
 {
-	//@todo...
-	OSTimeDlyHMSM(0,0,0,20);
-        return 0;
+	int	ret,i;
+	unsigned char	buffer[16];
+	unsigned char	tmp[3];
+
+	memcpy(buffer,"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",16);
+	*send_len = 0;
+	for (i = 0; i < len;i++)
+	{
+		ascii_to_keyreport(str[i],tmp);
+		buffer[0] = tmp[0];
+		buffer[2] = tmp[2];
+		send_data_to_WBTDS01(buffer, 16);
+		*send_len++;
+
+		Delay(2000);
+	}
+
+	send_data_to_WBTDS01("\x00\x00\x28\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", 16);
+	
+	return 0;
 }
+
 
 /*
  * @brief 蓝牙模块WBTDS01的初始化
@@ -542,26 +581,26 @@ int WBTD_hid_send(unsigned char *str,unsigned int len,unsigned int *send_len)
 int WBTD_init(void)
 {
 	unsigned char	str[21];
-	WBTD_GPIO_config(115200);		//default波特率
-	WBTD_NVIC_config();
 
 	wbtd_res.DataBuffer = wbtd_recbuffer;
 	WBTD_reset_resVar();
-	
-	got_notify_flag = 0;
-	memset(wbtd_notify_buffer,0,WBTD_NOTIFY_BUFFER_LEN);
+	//got_notify_flag = 0;
+	//memset(wbtd_notify_buffer,0,WBTD_NOTIFY_BUFFER_LEN);
+
+	WBTD_GPIO_config(115200);		//default波特率
+	WBTD_NVIC_config();
 
 	if(WBTD_query_version(str))
 	{
 		return -1;
 	}
 
-	if (strcmp((char const*)str,"VER02A")!=0)
-	{
-		return -2;
-	}
+#ifdef DEBUG_VER
+	printf("BlueTooth Module Ver:%s\r\n",str);
+#endif
 
-	if (WBTD_set_name("H520B Device"))
+	//if (WBTD_set_name("H520B Device"))
+	if (WBTD_set_name("WBTDS01"))
 	{
 		return -3;
 	}
@@ -583,20 +622,17 @@ int WBTD_init(void)
 */
 int WBTD_got_notify_type(void)
 {
-	if (got_notify_flag)
+	if (wbtd_res.status & (WBTD_RESPONSE_GOT_NOTIFY_CON | WBTD_RESPONSE_GOT_NOTIFY_DISCON))
 	{
-		got_notify_flag = 0;
-		if (strcmp((char const*)wbtd_notify_buffer,"+CON") == 0)
+		if (wbtd_res.status & WBTD_RESPONSE_GOT_NOTIFY_CON)
 		{
+			wbtd_res.status &= 	~WBTD_RESPONSE_GOT_NOTIFY_CON;
 			return 1;
-		}
-		else if (strcmp((char const*)wbtd_notify_buffer,"+DISCON") == 0)
-		{
-			return 2;
 		}
 		else
 		{
-			return 3;
+			wbtd_res.status &= 	~WBTD_RESPONSE_GOT_NOTIFY_DISCON;
+			return 2;
 		}
 	}
 

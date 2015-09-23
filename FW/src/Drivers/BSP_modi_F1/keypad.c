@@ -313,7 +313,7 @@ void Keypad_Timer_ISRHandler(void)
 				}
 				else if (current_press_key == SCAN_KEY)
 				{
-					hw_platform_start_led_blink(LED_GREEN,3);
+					hw_platform_start_led_blink(LED_GREEN,2);
 					if (device_current_state == STATE_HID_Mode)
 					{
 						OSQPost(pEvent_Queue,(void*)EVENT_SCAN_KEY_SINGLE_CLICK);

@@ -88,7 +88,7 @@ int main(void)
 	data_uart_init();
 
 #ifdef DEBUG_VER
-	printf("H520B startup...\n");
+	printf("H520B startup...\r\n");
 #endif
 
 	//初始化时基函数
@@ -109,6 +109,7 @@ int main(void)
 void RCC_Configuration(void)
 {   
 	vu32 i=0;
+
 	/* RCC system reset(for debug purpose) */
 	RCC_DeInit();
 
@@ -140,8 +141,8 @@ void RCC_Configuration(void)
 		/* PLLCLK = 12MHz * 6 = 72 MHz	*/
 		RCC_PLLConfig(RCC_PLLSource_HSE_Div1, RCC_PLLMul_6);
 
-		/* PLLCLK = 8MHz * 8 = 64 MHz	*/
-		//RCC_PLLConfig(RCC_PLLSource_HSE_Div2, RCC_PLLMul9);
+		/* PLLCLK = 8MHz * 9 = 72 MHz	*/
+		//RCC_PLLConfig(RCC_PLLSource_HSE_Div1, RCC_PLLMul_9);
 
 		/* Enable PLL						*/
 		RCC_PLLCmd(ENABLE);

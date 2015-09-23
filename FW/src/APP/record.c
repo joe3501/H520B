@@ -42,7 +42,7 @@ unsigned int			debug_file_status;
 #endif
 
 extern FIL				file1;
-extern FATFS			fs;
+FATFS			fs;
 
 
 typedef struct  
@@ -132,11 +132,27 @@ int record_module_init(void)
 	unsigned int		j;	
 	unsigned char		dir_str[35];
 	const unsigned char	*p_hash_table_file[3];
+	int ret;
 
-	//f_mount(0, &fs);										// 装载文件系统
+	f_mount(0, &fs);										// 装载文件系统
 
-	if( f_opendir(&dir,batch_dirctory) != FR_OK )
+reopen:
+	ret = f_opendir(&dir,batch_dirctory);
+	if( ret != FR_OK )
 	{
+		if (ret == FR_NO_FILESYSTEM)
+		{
+			//如果是还没有创建文件系统，那么就格式化文件系统
+			ret = f_mkfs(0,1,512);
+
+			if (ret != FR_OK)
+			{
+				return -1;
+			}
+
+			goto reopen;
+		} 
+
 		//打开记录文件失败或者无法访问SD卡,如果是该文件夹不存在，那么就创建一个新的文件夹
 		if (f_mkdir(batch_dirctory) != FR_OK)
 		{

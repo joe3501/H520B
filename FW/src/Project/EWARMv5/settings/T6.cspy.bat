@@ -22,7 +22,7 @@
 @REM but they are listed at the end of this file for reference.
 
 
-"C:\Program Files\IAR Systems\Embedded Workbench 5.4\common\bin\cspybat" "C:\Program Files\IAR Systems\Embedded Workbench 5.4\arm\bin\armproc.dll" "C:\Program Files\IAR Systems\Embedded Workbench 5.4\arm\bin\armjlink.dll"  %1 --plugin "C:\Program Files\IAR Systems\Embedded Workbench 5.4\arm\bin\<libsupport_plugin>" --backend -B "--endian=little" "--cpu=Cortex-M3" "--fpu=None" "-p" "C:\Program Files\IAR Systems\Embedded Workbench 5.4\arm\CONFIG\debugger\ST\iostm32f10xxe.ddf" "--drv_verify_download" "--semihosting" "--device=STM32F10xxE" "-d" "jlink" "--drv_communication=USB0" "--jlink_speed=auto" "--jlink_initial_speed=32" "--jlink_reset_strategy=0,0" "--jlink_interface=SWD" 
+"C:\Program Files\IAR Systems\Embedded Workbench 5.4\common\bin\cspybat" "C:\Program Files\IAR Systems\Embedded Workbench 5.4\arm\bin\armproc.dll" "C:\Program Files\IAR Systems\Embedded Workbench 5.4\arm\bin\armjlink.dll"  %1 --plugin "C:\Program Files\IAR Systems\Embedded Workbench 5.4\arm\bin\<libsupport_plugin>" --backend -B "--endian=little" "--cpu=Cortex-M3" "--fpu=None" "-p" "C:\Program Files\IAR Systems\Embedded Workbench 5.4\arm\CONFIG\debugger\ST\iostm32f10xxB.ddf" "--drv_verify_download" "--semihosting" "--device=STM32F10xx8" "-d" "jlink" "--drv_communication=USB0" "--jlink_speed=auto" "--jlink_initial_speed=32" "--jlink_reset_strategy=0,0" "--jlink_interface=SWD" 
 
 
 @REM Loaded plugins:

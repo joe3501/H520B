@@ -396,7 +396,8 @@ DRESULT disk_ioctl (
 		//}
 		//else if (SPI_FLASH == drv)
 		{
-			*(DWORD*)buff = get_spi_flash_capacity();
+			//*(DWORD*)buff = get_spi_flash_capacity();
+			*(DWORD*)buff = 1024*1024;
 			res = RES_OK;
 		}
 		break;

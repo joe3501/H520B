@@ -22,7 +22,8 @@ typedef struct  {
 	unsigned char			beep_volume;				//1字节		7	B	蜂鸣器音量
 	unsigned char			power_save_mode;			//1字节		8	B	是否需要进入低功耗模式
 	unsigned char			lower_power_timeout;		//1字节		9	B	进入低功耗模式的超时时间
-	unsigned char			rfu[20];					//20字节	10	B	RFU
+	unsigned char			auto_con_last_host;			//1字节		10	B	开机是否需要重连上次的主机
+	unsigned char			rfu[19];					//19字节	11	B	RFU
 	unsigned char			endtag[2];					//0x55,0xAA  30      一共32字节
 } TTerminalPara;
 #pragma pack()
