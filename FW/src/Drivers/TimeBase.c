@@ -9,30 +9,39 @@
 #include "stm32f10x_lib.h" 
 
 #include "TimeBase.h"
+#include "JMemory.h"
+#include <assert.h>
 
 
 static TimerIsrHook	timer_isr_hook;
 
-static int TimingDelay;
-
 /**
- * @brief     软延时
- * @param[in] u16 delay 延时参数 实际延时时间等于delay/2 us.
- * @param[out] none
- * @return none
- * @note 开始想利用Timer来做延时，但由于需要的时基比较小，只有0.5us，所以timer的周期设定值就很小，
- *       而ucosII在进出中断的开销太大，导致程序根本就无法退出timer的中断程序；
- *       后来又想通过查询Timer的Flag来实现时基，但是发现Timer的UpdateFlag竟然一直有效，没得时间慢慢去找
- *       原因了，干脆就用指令来实现延时得了！
+ * @brief     us 软延时
+ * @param[in] unsigned int time 延时参数
 */
-void Delay(unsigned int delay)
-{
-	do{
-		;
-	}while(delay--);
+void delay_us(unsigned int time)
+{    
+	unsigned int i=0;  
+	while(time--)
+	{
+		i=8;  
+		while(i--) ;    
+	}
 }
 
-
+/**
+ * @brief     ms软延时
+ * @param[in] unsigned int time 延时参数
+*/
+void delay_ms(unsigned int time)
+{    
+	unsigned int i=0;  
+	while(time--)
+	{
+		i=10255; 
+		while(i--) ;    
+	}
+}
 /**
  * @brief     初始化产生延时时基的计数器TIM2,设定计数器产生1ms的时基
  * @param[in] none
@@ -78,10 +87,10 @@ void TimeBase_Init(void)
 	NVIC_InitStructure.NVIC_IRQChannelCmd		= ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
 
-	timer_isr_hook = (TimerIsrHook)0;
+	//timer_isr_hook = (TimerIsrHook)0;
 }
 
-
+#if 0
 
 /**
  * @brief 开启定时器
@@ -105,6 +114,8 @@ void start_timer(TimerIsrHook hook_func)
 	/* TIM counter enable */
 	TIM_Cmd(TIM2, ENABLE);
 }
+
+
 /**
  * @brief 关闭定时器
 */
@@ -115,6 +126,7 @@ void stop_timer(void)
 	TIM_Cmd(TIM2, DISABLE);
 	timer_isr_hook = (TimerIsrHook)0;
 }
+
 
 /**
  * @brief TIM2的溢出中断ISR
@@ -133,20 +145,217 @@ void TIM2_UpdateISRHandler(void)
 		TIM_ClearITPendingBit(TIM2, TIM_IT_Update);
 	}
 }
+#endif
 
 
-//===============================================利用timer提供的接口实现延时功能================================
-//利用timer实现延时功能时的中断钩子函数
-void delay_func_hook(void)
+
+typedef struct v_timer_t
 {
-	if(TimingDelay != 0)
+	unsigned char	mode;
+	unsigned int	count;
+	unsigned int	dly;
+	TimerIsrHook	timer_hook;
+	struct v_timer_t	*prev;
+	struct v_timer_t	*next;
+}V_TIMER;
+
+struct 
+{
+	V_TIMER		*v_timer_tail;
+	unsigned int	v_timer_cnt;
+}v_timer_list;
+
+/**
+ * @brief 开启定时器
+ * @param[in] unsigned char mode		V_TIMER_MODE_ONE_SHOT		or      V_TIMER_MODE_PERIODIC
+ * @param[in] unsigned int dly			在V_TIMER_MODE_ONE_SHOT模式下，表示延时时间
+ *										在V_TIMER_MODE_PERIODIC模式下，表示定时周期
+ * @param[in] TimerIsrHook hook_func	表示超时一次需要执行的回调函数
+ * @return 0：  堆空间不够
+ *         else  返回虚拟定时器的句柄
+ * @note 应用在调用此接口时不知道已经有多少个虚拟定时器挂在硬件定时器下，所以返回值相当于定时器句柄的作用
+ *       由于此虚拟定时器是基于硬件定时器TIME2实现的，TIMER2初始化为1ms中断，所以定时的最小单位为1ms
+*/
+VTIMER_HANDLE start_timer(unsigned char mode,unsigned int dly, TimerIsrHook hook_func)
+{
+	V_TIMER	*p_vtimer;
+	p_vtimer = (V_TIMER*)Jmalloc(sizeof(V_TIMER));
+	if (p_vtimer == 0)
 	{
-		TimingDelay --;
+		return 0;
+	}
+	p_vtimer->mode = mode;
+	p_vtimer->dly = dly;
+	p_vtimer->timer_hook = hook_func;
+	p_vtimer->prev = 0;
+	p_vtimer->next = 0;
+	p_vtimer->count = 0;
+
+	if (v_timer_list.v_timer_cnt == 0)
+	{
+		TIM_ITConfig(TIM2, TIM_IT_Update, ENABLE);
+		/* TIM counter enable */
+		TIM_Cmd(TIM2, ENABLE);
 	}
 	else
 	{
-		stop_timer();//定时时间到，关闭定时器
+		p_vtimer->prev = v_timer_list.v_timer_tail;
+		v_timer_list.v_timer_tail->next = p_vtimer;
 	}
+	v_timer_list.v_timer_tail = p_vtimer;
+	v_timer_list.v_timer_cnt ++;
+
+	return (VTIMER_HANDLE)p_vtimer;
+}
+
+/**
+ * @brief 判断虚拟定时器的句柄是否合法，检查给定的虚拟定时器句柄（实际是每个定时器控制块的指针）是否在定时器链表中
+ * @param[in]  VTIMER_HANDLE v_timer_h
+*/
+static int check_vtimer_handle(VTIMER_HANDLE v_timer_h)
+{
+	V_TIMER	*p_vtimer;
+
+	p_vtimer = v_timer_list.v_timer_tail;
+	while (p_vtimer)
+	{
+		if (p_vtimer == (V_TIMER*)v_timer_h)
+		{
+			return 1;
+		}
+		p_vtimer = p_vtimer->prev;
+	}
+
+	return 0;
+}
+
+/**
+ * @brief 重置某定时器
+ * @param[in]  VTIMER_HANDLE v_timer_h
+*/
+int reset_timer(VTIMER_HANDLE v_timer_h,unsigned char mode,unsigned int dly, TimerIsrHook hook_func)
+{
+	if (check_vtimer_handle(v_timer_h) == 0)
+	{
+		return -1;
+	}
+
+	V_TIMER	*p_vtimer = (V_TIMER*)v_timer_h;
+
+	p_vtimer->count = 0;
+	p_vtimer->mode = mode;
+	p_vtimer->dly = dly;
+	p_vtimer->timer_hook = hook_func;
+
+	return 0;
+}
+
+/**
+ * @brief 关闭某定时器
+ * @param[in]  VTIMER_HANDLE v_timer_h
+*/
+int stop_timer(VTIMER_HANDLE v_timer_h)
+{
+	if (check_vtimer_handle(v_timer_h) == 0)
+	{
+		return -1;
+	}
+
+	V_TIMER	*p_vtimer = (V_TIMER*)v_timer_h;
+
+	if (p_vtimer->next)
+	{
+		p_vtimer->next->prev = p_vtimer->prev;
+	}
+	else
+	{
+		v_timer_list.v_timer_tail = p_vtimer->prev;
+	}
+	
+	if(p_vtimer->prev)
+	{
+		p_vtimer->prev->next = p_vtimer->next;
+	}
+
+	v_timer_list.v_timer_cnt--;
+	Jfree(p_vtimer);
+	
+	if (v_timer_list.v_timer_cnt == 0)
+	{
+		TIM_ITConfig(TIM2, TIM_IT_Update, DISABLE);
+		/* TIM counter enable */
+		TIM_Cmd(TIM2, DISABLE);
+	}
+
+	return 0;
+}
+
+/**
+ * @brief TIM2的溢出中断ISR
+ * @param[in] none
+ * @return none
+ * @note  TIM2的中断服务函数调用
+*/
+void TIM2_UpdateISRHandler(void)
+{    
+	V_TIMER *p_vtimer;
+	if (TIM_GetITStatus(TIM2, TIM_IT_Update) != RESET)
+	{
+		p_vtimer = v_timer_list.v_timer_tail;
+		while (p_vtimer)
+		{
+			p_vtimer->count++;
+			if (p_vtimer->count == p_vtimer->dly)
+			{
+				if (p_vtimer->mode == V_TIMER_MODE_ONE_SHOT)
+				{
+					if (p_vtimer->next)
+					{
+						p_vtimer->next->prev = p_vtimer->prev;
+					}
+					else
+					{
+						v_timer_list.v_timer_tail = p_vtimer->prev;
+					}
+
+					if(p_vtimer->prev)
+					{
+						p_vtimer->prev->next = p_vtimer->next;
+					}
+
+					v_timer_list.v_timer_cnt--;
+					Jfree(p_vtimer);
+
+					if (v_timer_list.v_timer_cnt == 0)
+					{
+						TIM_ITConfig(TIM2, TIM_IT_Update, DISABLE);
+						/* TIM counter enable */
+						TIM_Cmd(TIM2, DISABLE);
+					}
+				}
+				else
+				{
+					p_vtimer->count = 0;
+				}
+
+				if (p_vtimer->timer_hook)
+				{
+					p_vtimer->timer_hook();
+				}
+			}
+			p_vtimer = p_vtimer->prev;
+		}
+		TIM_ClearITPendingBit(TIM2, TIM_IT_Update);
+	}
+}
+
+
+//===============================================利用timer提供的接口实现延时功能================================
+static int Delay_end_flag;
+//利用timer实现延时功能时的中断钩子函数
+void delay_func_hook(void)
+{
+	Delay_end_flag = 1;
 }
 
 /**
@@ -156,8 +365,10 @@ void delay_func_hook(void)
 */
 void StartDelay(unsigned short nTime)
 {
-    TimingDelay = nTime*2;
-	start_timer(delay_func_hook);
+	int	ret;
+    Delay_end_flag = 0;
+	ret = start_timer(V_TIMER_MODE_ONE_SHOT,nTime,delay_func_hook);
+	assert(ret != 0);
 }
 
 
@@ -169,8 +380,5 @@ void StartDelay(unsigned short nTime)
 */
 unsigned char DelayIsEnd(void)
 {
-	if(TimingDelay>0)
-		return 0;
-	else
-		return 1;
+	return	Delay_end_flag; 
 }

@@ -17,11 +17,25 @@
 #include "stm32f10x_lib.h"
 #include "ucos_ii.h"
 #include "TimeBase.h"
+#include <assert.h>
 
 static unsigned int	charge_state_cnt;
 static unsigned int	last_charge_detect_io_cnt;
 
 unsigned int	charge_detect_io_cnt;
+
+static unsigned char	current_led_state;
+static VTIMER_HANDLE	led_timer_h[4];
+
+#define		LED_RED_MASK			(0x01<<0)
+#define		LED_GREEN_MASK			(0x01<<1)
+#define		LED_YELLOW_MASK			(0x01<<2)
+#define		LED_BLUE_MASK			(0x01<<3)
+
+#define		LED_RED_ON_MASK			(0x01<<4)
+#define		LED_GREEN_ON_MASK		(0x01<<5)
+#define		LED_YELLOW_ON_MASK		(0x01<<6)
+#define		LED_BLUE_ON_MASK		(0x01<<7)
 
 //USB_CHK		PA1	  
 
@@ -180,6 +194,7 @@ void hw_platform_init(void)
 {
 	platform_misc_port_init();
 	ADC_Module_Init();
+	current_led_state = 0;
 }
 
 
@@ -195,7 +210,7 @@ void hw_platform_init(void)
 #define  LOW_POWER_TH	1960		//	
 unsigned int hw_platform_get_PowerClass(void)
 { 
-#if 0
+#if 1
 	unsigned int  i,result = 0;
 	unsigned short  temp[20];
 	unsigned short	min,max;
@@ -234,7 +249,7 @@ unsigned int hw_platform_get_PowerClass(void)
 		return 0;
 #endif
 
-	return 1;
+	//return 0;
 }
 
 /**
@@ -356,7 +371,7 @@ void hw_platform_motor_ctrl(unsigned short delay)
 	GPIO_SetBits(GPIOA, GPIO_Pin_7);
 	if (delay < 5)
 	{
-		Delay(delay*2000);
+		delay_ms(delay);
 	}
 	else
 	{
@@ -375,7 +390,7 @@ void hw_platform_trig_ctrl(unsigned short delay)
 	GPIO_ResetBits(GPIOB, GPIO_Pin_12);
 	if (delay < 5)
 	{
-		Delay(delay*2000);
+		delay_ms(delay);
 	}
 	else
 	{
@@ -393,56 +408,182 @@ void hw_platform_trig_ctrl(unsigned short delay)
 void hw_platform_beep_ctrl(unsigned short delay,unsigned int beep_freq)
 {
 	int i;
-	for (i = 0; i < (delay*beep_freq)/1000;i++)
+	for (i = 0; i < (delay*beep_freq)/2000;i++)
 	{
 		GPIO_SetBits(GPIOB, GPIO_Pin_5);
-		Delay(1000000/beep_freq);
+		hw_platform_trip_io();
+		delay_us(1000000/beep_freq);
+		//delay_us(100);
+		hw_platform_trip_io();
 		GPIO_ResetBits(GPIOB, GPIO_Pin_5);
-		Delay(1000000/beep_freq);
+		delay_us(1000000/beep_freq);
+		//delay_us(400);
 	}
 }
 
-static unsigned char	current_blink_led;
-static unsigned char	current_led_state;
-static unsigned short   current_blink_frq;
-static unsigned int   current_timer_cnt;
+/**
+* @brief	蜂鸣器与Motor同时控制接口
+* @param[in]  unsigned int delay	延时一段时间,单位ms,节拍时长
+* @param[in]  unsigned int	beep_freq	蜂鸣器的发声频率，音调
+* @return   none 
+*/
+void hw_platform_beep_motor_ctrl(unsigned short delay,unsigned int beep_freq)
+{
+	int i;
+	GPIO_SetBits(GPIOA, GPIO_Pin_7);
+	for (i = 0; i < (delay*beep_freq)/2000;i++)
+	{
+		GPIO_SetBits(GPIOB, GPIO_Pin_5);
+		hw_platform_trip_io();
+		delay_us(1000000/beep_freq);
+		//delay_us(100);
+		hw_platform_trip_io();
+		GPIO_ResetBits(GPIOB, GPIO_Pin_5);
+		delay_us(1000000/beep_freq);
+		//delay_us(400);
+	}
+	GPIO_ResetBits(GPIOA, GPIO_Pin_7);
+}
+
+
+
 /**
  * @brief 利用时基模块提供的定时器接口实现LED闪烁
 */
-static void led_blink_timer_hook(void)
+static void led_red_blink_timer_hook(void)
 {
-	current_timer_cnt++;
-	if (current_timer_cnt == current_blink_frq*2*10)
-	{
-		current_led_state ^= 0x01;
-		hw_platform_led_ctrl(current_blink_led,current_led_state);
-		current_timer_cnt = 0;
-	}
+	current_led_state ^= LED_RED_MASK;
+	hw_platform_led_ctrl(LED_RED,current_led_state & LED_RED_MASK);
+}
+
+static void led_blue_blink_timer_hook(void)
+{
+	current_led_state ^= LED_BLUE_MASK;
+	hw_platform_led_ctrl(LED_BLUE,current_led_state & LED_BLUE_MASK);
+}
+
+static void led_green_blink_timer_hook(void)
+{
+	current_led_state ^= LED_GREEN_MASK;
+	hw_platform_led_ctrl(LED_GREEN,current_led_state & LED_GREEN_MASK);
+}
+
+static void led_yellow_blink_timer_hook(void)
+{
+	current_led_state ^= LED_YELLOW_MASK;
+	hw_platform_led_ctrl(LED_YELLOW,current_led_state & LED_YELLOW_MASK);
 }
 
 /**
  * @brief 开始LED闪烁指示
  * @param[in] unsigned int		led		
  * @param[in] unsigned short	delay	闪烁的时间间隔，也就是闪烁频率,单位10ms
- * @note 注意此接口只能让一个LED在闪烁，不能实现几个LED同时闪烁
+ * @note 注意此接口可以让几个LED同时按照各自不同的频率闪烁
 */
 void hw_platform_start_led_blink(unsigned int led,unsigned short delay)
 {
-	current_timer_cnt = 0;
-	current_blink_led = led;
-	current_blink_frq = delay;
-	current_led_state = 1;
-	hw_platform_led_ctrl(current_blink_led,current_led_state);
-	start_timer(led_blink_timer_hook);
+	int ret;
+	hw_platform_led_ctrl(led,1);
+	if (led == LED_RED)
+	{
+		if (current_led_state & LED_RED_ON_MASK)
+		{
+			current_led_state |= LED_RED_MASK;
+			ret = reset_timer(led_timer_h[0],V_TIMER_MODE_PERIODIC,delay*10,led_red_blink_timer_hook);
+			assert(ret == 0);
+		}
+		else
+		{
+			current_led_state |= (LED_RED_MASK | LED_RED_ON_MASK);
+			led_timer_h[0] = start_timer(V_TIMER_MODE_PERIODIC,delay*10,led_red_blink_timer_hook);
+			assert(led_timer_h[0] != 0);
+		}
+	}
+	else if (led == LED_BLUE)
+	{
+		if (current_led_state & LED_BLUE_ON_MASK)
+		{
+			current_led_state |= LED_BLUE_MASK;
+			ret = reset_timer(led_timer_h[1],V_TIMER_MODE_PERIODIC,delay*10,led_blue_blink_timer_hook);
+			assert(ret == 0);
+		}
+		else
+		{
+			current_led_state |= (LED_BLUE_MASK | LED_BLUE_ON_MASK);
+			led_timer_h[1] = start_timer(V_TIMER_MODE_PERIODIC,delay*10,led_blue_blink_timer_hook);
+			assert(led_timer_h[1] != 0);
+		}
+	}
+	else if (led == LED_GREEN)
+	{
+		if (current_led_state & LED_GREEN_ON_MASK)
+		{
+			current_led_state |= LED_GREEN_MASK;
+			ret = reset_timer(led_timer_h[2],V_TIMER_MODE_PERIODIC,delay*10,led_green_blink_timer_hook);
+			assert(ret == 0);
+		}
+		else
+		{
+			current_led_state |= (LED_GREEN_MASK | LED_GREEN_ON_MASK);
+			led_timer_h[2] = start_timer(V_TIMER_MODE_PERIODIC,delay*10,led_green_blink_timer_hook);
+			assert(led_timer_h[2] != 0);
+		}
+	}
+	else
+	{
+		if (current_led_state & LED_YELLOW_ON_MASK)
+		{
+			current_led_state |= LED_YELLOW_MASK;
+			ret = reset_timer(led_timer_h[3],V_TIMER_MODE_PERIODIC,delay*10,led_yellow_blink_timer_hook);
+			assert(ret == 0);
+		}
+		else
+		{
+			current_led_state |= (LED_YELLOW_MASK | LED_YELLOW_ON_MASK);
+			led_timer_h[3] = start_timer(V_TIMER_MODE_PERIODIC,delay*10,led_yellow_blink_timer_hook);
+			assert(led_timer_h[3] != 0);
+		}
+	}
 }
 
 /**
- * @brief 关闭正在闪烁的LED
+ * @brief 关闭某一个在闪烁的LED
 */
-void hw_platform_stop_led_blink(void)
+void hw_platform_stop_led_blink(unsigned int led)
 {
-	stop_timer();
-	hw_platform_led_ctrl(current_blink_led,0);
+	int ret;
+	if (led == LED_RED)
+	{
+		hw_platform_led_ctrl(LED_RED,0);
+		current_led_state &= ~LED_RED_MASK;
+		current_led_state &= ~LED_RED_ON_MASK;
+		ret = stop_timer(led_timer_h[0]);
+		assert(ret == 0);
+	}
+	else if (led == LED_BLUE)
+	{
+		hw_platform_led_ctrl(LED_BLUE,0);
+		current_led_state &= ~LED_BLUE_MASK;
+		current_led_state &= ~LED_BLUE_ON_MASK;
+		ret = stop_timer(led_timer_h[1]);
+		assert(ret == 0);
+	}
+	else if (led == LED_GREEN)
+	{
+		hw_platform_led_ctrl(LED_GREEN,0);
+		current_led_state &= ~LED_GREEN_MASK;
+		current_led_state &= ~LED_GREEN_ON_MASK;
+		ret = stop_timer(led_timer_h[2]);
+		assert(ret == 0);
+	}
+	else
+	{
+		hw_platform_led_ctrl(LED_YELLOW,0);
+		current_led_state &= ~LED_YELLOW_MASK;
+		current_led_state &= ~LED_YELLOW_ON_MASK;
+		ret = stop_timer(led_timer_h[3]);
+		assert(ret == 0);
+	}
 }
 
 /**
@@ -452,4 +593,38 @@ void hw_platform_trip_io(void)
 {
 	GPIO_ResetBits(GPIOB, GPIO_Pin_8);
 	GPIO_SetBits(GPIOB, GPIO_Pin_8);
+}
+
+
+//测试LED的闪烁接口
+void hw_platform_led_blink_test(void)
+{
+	hw_platform_start_led_blink(LED_RED,6);
+	OSTimeDlyHMSM(0,0,10,0);
+	hw_platform_start_led_blink(LED_BLUE,20);
+	OSTimeDlyHMSM(0,0,10,0);
+	hw_platform_start_led_blink(LED_GREEN,50);
+	OSTimeDlyHMSM(0,0,10,0);
+	hw_platform_start_led_blink(LED_YELLOW,300);
+
+	OSTimeDlyHMSM(0,0,10,0);
+
+	hw_platform_stop_led_blink(LED_RED);
+
+	OSTimeDlyHMSM(0,0,10,0);
+
+	hw_platform_stop_led_blink(LED_BLUE);
+
+	OSTimeDlyHMSM(0,0,10,0);
+
+	hw_platform_stop_led_blink(LED_GREEN);
+
+	OSTimeDlyHMSM(0,0,10,0);
+
+	StartDelay(5000);
+
+	while (DelayIsEnd()==0);
+
+	hw_platform_stop_led_blink(LED_YELLOW);
+
 }

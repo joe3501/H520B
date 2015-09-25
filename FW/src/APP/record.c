@@ -2116,7 +2116,7 @@ int recover_record_by_logfile(void)
 	unsigned int	logfile_len,offset,logitem_len;
 	unsigned int				tmp;
 	int				err_code = 0;
-	unsigned char	log_bufffer[256];
+	unsigned char	log_bufffer[160];
 
 	if (f_open(&file3,log_file,FA_OPEN_ALWAYS | FA_READ | FA_WRITE) != FR_OK)
 	{

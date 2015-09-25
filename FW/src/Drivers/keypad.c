@@ -421,7 +421,7 @@ void Keypad_Timer_ISRHandler(void)
 			//keypad_state = KEYPAD_STATE_INIT;
 			Keypad_Timer_Disable();
 			Keypad_Int_Enable();
-			hw_platform_stop_led_blink();
+			hw_platform_stop_led_blink(LED_GREEN);
 		}
 	}
 }

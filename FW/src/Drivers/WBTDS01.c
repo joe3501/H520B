@@ -566,7 +566,7 @@ int WBTD_hid_send(unsigned char *str,unsigned int len,unsigned int *send_len)
 		send_data_to_WBTDS01(buffer, 16);
 		*send_len++;
 
-		Delay(2000);
+		delay_us(300);
 	}
 
 	send_data_to_WBTDS01("\x00\x00\x28\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", 16);

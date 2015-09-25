@@ -1,6 +1,6 @@
 ###############################################################################
 #                                                                             #
-# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     23/Sep/2015  15:47:12 #
+# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     25/Sep/2015  11:58:21 #
 # Copyright 1999-2009 IAR Systems AB.                                         #
 #                                                                             #
 #    Cpu mode     =  thumb                                                    #
@@ -457,7 +457,7 @@ E:\H520B\FW\src\Drivers\keypad.c
     421          			//keypad_state = KEYPAD_STATE_INIT;
     422          			Keypad_Timer_Disable();
     423          			Keypad_Int_Enable();
-    424          			hw_platform_stop_led_blink();
+    424          			hw_platform_stop_led_blink(LED_GREEN);
     425          		}
     426          	}
     427          }
@@ -496,7 +496,7 @@ E:\H520B\FW\src\Drivers\keypad.c
      Keypad_Init               16
      Keypad_EXTI_ISRHandler    60
      Keypad_ReadIO            120
-     Keypad_Timer_ISRHandler  464
+     Keypad_Timer_ISRHandler  468
      ??DataTable8               4
      ??DataTable17              4
      ??DataTable19              4
@@ -506,9 +506,9 @@ E:\H520B\FW\src\Drivers\keypad.c
 
  
     10 bytes in section .bss
- 1 136 bytes in section .text
+ 1 140 bytes in section .text
  
- 1 136 bytes of CODE memory
+ 1 140 bytes of CODE memory
     10 bytes of DATA memory
 
 Errors: none

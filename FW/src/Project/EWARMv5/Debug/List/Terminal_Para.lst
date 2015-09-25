@@ -1,6 +1,6 @@
 ###############################################################################
 #                                                                             #
-# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     22/Sep/2015  15:34:28 #
+# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     25/Sep/2015  16:30:42 #
 # Copyright 1999-2009 IAR Systems AB.                                         #
 #                                                                             #
 #    Cpu mode     =  thumb                                                    #
@@ -187,8 +187,8 @@ E:\H520B\FW\src\App\Terminal_Para.c
     149          	
     150          	//构造默认的终端参数
     151          	g_param.beep_volume = 3;		
-    152          	g_param.power_save_mode = 1;		//默认支持节能模式
-    153          	g_param.lower_power_timeout = 1;	//默认1分钟进入低功耗模式
+    152          	//g_param.power_save_mode = 1;		//默认支持节能模式
+    153          	g_param.lower_power_timeout = 0;	//默认1分钟进入低功耗模式
     154          	
     155          	return SaveTerminalPara();
     156          }
@@ -213,19 +213,19 @@ E:\H520B\FW\src\App\Terminal_Para.c
      g_param                     32
      ReadTerminalPara           132
      SaveTerminalPara           120
-     DefaultTerminalPara         54
+     DefaultTerminalPara         48
      ??DataTable13                4
      ??DataTable15                4
      ??DataTable22                4
-     ??DataTable29                4
+     ??DataTable28                4
      ?<Constant "/device.cfg">   12
 
  
  580 bytes in section .bss
   12 bytes in section .rodata
- 342 bytes in section .text
+ 336 bytes in section .text
  
- 322 bytes of CODE  memory (+ 20 bytes shared)
+ 316 bytes of CODE  memory (+ 20 bytes shared)
   12 bytes of CONST memory
  580 bytes of DATA  memory
 

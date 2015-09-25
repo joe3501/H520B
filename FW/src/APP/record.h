@@ -18,7 +18,7 @@
 
 //#define zd_rec_file						"/ZD.rec"
 
-#define log_file						"/T6_DB/log.tmp"		//日志文件 --- 断电保护，在一些文件操作之前会先将一些关键信息写入此文件
+#define log_file						"/log.tmp"		//日志文件 --- 断电保护，在一些文件操作之前会先将一些关键信息写入此文件
 
 
 //定义对记录文件的操作类型

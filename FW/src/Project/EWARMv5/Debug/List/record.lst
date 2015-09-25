@@ -1,6 +1,6 @@
 ###############################################################################
 #                                                                             #
-# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     18/Sep/2015  14:54:38 #
+# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     25/Sep/2015  16:09:19 #
 # Copyright 1999-2009 IAR Systems AB.                                         #
 #                                                                             #
 #    Cpu mode     =  thumb                                                    #
@@ -2152,7 +2152,7 @@ E:\H520B\FW\src\App\record.c
    2116          	unsigned int	logfile_len,offset,logitem_len;
    2117          	unsigned int				tmp;
    2118          	int				err_code = 0;
-   2119          	unsigned char	log_bufffer[256];
+   2119          	unsigned char	log_bufffer[160];
    2120          
    2121          	if (f_open(&file3,log_file,FA_OPEN_ALWAYS | FA_READ | FA_WRITE) != FR_OK)
    2122          	{
@@ -2416,7 +2416,7 @@ E:\H520B\FW\src\App\record.c
      record_module_read                 56
      record_recover                     24
      recover_hash_table_modify         168
-     recover_record_by_logfile         280
+     recover_record_by_logfile         184
      save_log_file                     552
      update_link_info_after_addNode    144
      write_rec_file                     24
@@ -2482,16 +2482,16 @@ E:\H520B\FW\src\App\record.c
      ?<Constant "/barhash.tbl">       16
      ?<Constant "/batch.inf">         12
      ?<Constant "/batch.lst">         12
-     ?<Constant "/T6_DB/log.tmp">     16
+     ?<Constant "/log.tmp">           12
      ?<Constant "/update.bin">        12
 
  
  1 816 bytes in section .bss
-    84 bytes in section .rodata
+    80 bytes in section .rodata
  7 212 bytes in section .text
  
  7 178 bytes of CODE  memory (+ 34 bytes shared)
-    84 bytes of CONST memory
+    80 bytes of CONST memory
  1 816 bytes of DATA  memory
 
 Errors: none

@@ -1,6 +1,6 @@
 ###############################################################################
 #                                                                             #
-# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     23/Sep/2015  16:12:47 #
+# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     25/Sep/2015  15:03:28 #
 # Copyright 1999-2009 IAR Systems AB.                                         #
 #                                                                             #
 #    Cpu mode     =  thumb                                                    #
@@ -54,442 +54,617 @@ E:\H520B\FW\src\Drivers\hw_platform.c
      17          #include "stm32f10x_lib.h"
      18          #include "ucos_ii.h"
      19          #include "TimeBase.h"
-     20          
-     21          static unsigned int	charge_state_cnt;
-     22          static unsigned int	last_charge_detect_io_cnt;
-     23          
-     24          unsigned int	charge_detect_io_cnt;
-     25          
-     26          //USB_CHK		PA1	  
-     27          
-     28          //LED_RED		PA4   
-     29          //LED_GREEN		PA5   
-     30          //LED_YELLOW	PA6   
-     31          //MOTOR			PA7   
-     32          
-     33          //ADC_IN		PB0	  
+     20          #include <assert.h>
+     21          
+     22          static unsigned int	charge_state_cnt;
+     23          static unsigned int	last_charge_detect_io_cnt;
+     24          
+     25          unsigned int	charge_detect_io_cnt;
+     26          
+     27          static unsigned char	current_led_state;
+     28          static VTIMER_HANDLE	led_timer_h[4];
+     29          
+     30          #define		LED_RED_MASK			(0x01<<0)
+     31          #define		LED_GREEN_MASK			(0x01<<1)
+     32          #define		LED_YELLOW_MASK			(0x01<<2)
+     33          #define		LED_BLUE_MASK			(0x01<<3)
      34          
-     35          //BEEP			PB5   
-     36          //CHARGE		PB6	  
-     37          //RFU_IO1		PB7
-     38          //RFU_IO2		PB8
+     35          #define		LED_RED_ON_MASK			(0x01<<4)
+     36          #define		LED_GREEN_ON_MASK		(0x01<<5)
+     37          #define		LED_YELLOW_ON_MASK		(0x01<<6)
+     38          #define		LED_BLUE_ON_MASK		(0x01<<7)
      39          
-     40          //TRIG			PB12
+     40          //USB_CHK		PA1	  
      41          
-     42          /**
-     43          * @brief	初始化用于电池电压检测的ADC模块
-     44          * @param[in]  none
-     45          * @param[out] none
-     46          * @return     none
-     47          * @note                    
-     48          */
-     49          static void ADC_Module_Init(void)
-     50          {
-     51          	ADC_InitTypeDef   adc_init;
-     52          	GPIO_InitTypeDef  gpio_init;
+     42          //LED_RED		PA4   
+     43          //LED_GREEN		PA5   
+     44          //LED_YELLOW	PA6   
+     45          //MOTOR			PA7   
+     46          
+     47          //ADC_IN		PB0	  
+     48          
+     49          //BEEP			PB5   
+     50          //CHARGE		PB6	  
+     51          //RFU_IO1		PB7
+     52          //RFU_IO2		PB8
      53          
-     54          
-     55          	RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
-     56          	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
-     57          
-     58          	//PB.0   ADC-IN
-     59          	gpio_init.GPIO_Pin  = GPIO_Pin_0;
-     60          	gpio_init.GPIO_Speed = GPIO_Speed_50MHz;
-     61          	gpio_init.GPIO_Mode = GPIO_Mode_AIN;
-     62          	GPIO_Init(GPIOB, &gpio_init);
-     63          
-     64          	adc_init.ADC_Mode               = ADC_Mode_Independent;		//
-     65          	adc_init.ADC_ScanConvMode       = DISABLE;
-     66          	adc_init.ADC_ContinuousConvMode = ENABLE;
-     67          	adc_init.ADC_ExternalTrigConv   = ADC_ExternalTrigConv_None;
-     68          	adc_init.ADC_DataAlign          = ADC_DataAlign_Right;
-     69          	adc_init.ADC_NbrOfChannel       = 1;
-     70          	ADC_Init(ADC1, &adc_init);
+     54          //TRIG			PB12
+     55          
+     56          /**
+     57          * @brief	初始化用于电池电压检测的ADC模块
+     58          * @param[in]  none
+     59          * @param[out] none
+     60          * @return     none
+     61          * @note                    
+     62          */
+     63          static void ADC_Module_Init(void)
+     64          {
+     65          	ADC_InitTypeDef   adc_init;
+     66          	GPIO_InitTypeDef  gpio_init;
+     67          
+     68          
+     69          	RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
+     70          	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
      71          
-     72          	ADC_RegularChannelConfig(ADC1, ADC_Channel_8, 1, ADC_SampleTime_13Cycles5);
-     73          	ADC_Cmd(ADC1, ENABLE);
-     74          
-     75          	// 下面是ADC自动校准，开机后需执行一次，保证精度
-     76          	// Enable ADC1 reset calibaration register 
-     77          	ADC_ResetCalibration(ADC1);
-     78          	// Check the end of ADC1 reset calibration register
-     79          	while(ADC_GetResetCalibrationStatus(ADC1));
-     80          
-     81          	// Start ADC1 calibaration
-     82          	ADC_StartCalibration(ADC1);
-     83          	// Check the end of ADC1 calibration
-     84          	while(ADC_GetCalibrationStatus(ADC1));
-     85          	// ADC自动校准结束---------------
-     86          
-     87          	ADC_SoftwareStartConvCmd(ADC1, ENABLE);			//开始转换
-     88          }
-     89          
-     90          /**
-     91          * @brief  Initialize the IO
-     92          * @return   none
-     93          */
-     94          static void platform_misc_port_init(void)
-     95          {
-     96          	GPIO_InitTypeDef	GPIO_InitStructure;
-     97          	EXTI_InitTypeDef	EXTI_InitStructure;
-     98          	NVIC_InitTypeDef	NVIC_InitStructure;
-     99          
-    100          	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB, ENABLE);
-    101          
-    102          	//USB_CHK -- PA.1
-    103          	GPIO_InitStructure.GPIO_Pin				= GPIO_Pin_1;
-    104          	GPIO_InitStructure.GPIO_Mode			= GPIO_Mode_IN_FLOATING;
-    105          	GPIO_InitStructure.GPIO_Speed			= GPIO_Speed_10MHz;
-    106          	GPIO_Init(GPIOA, &GPIO_InitStructure);
-    107          
-    108          	/* Connect EXTI Line6 to PB.6 */
-    109          	GPIO_EXTILineConfig(GPIO_PortSourceGPIOA, GPIO_PinSource1);
-    110          
-    111          	EXTI_ClearITPendingBit(EXTI_Line1);
-    112          	EXTI_InitStructure.EXTI_Line = EXTI_Line1;
-    113          	EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-    114          	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Falling;
-    115          	EXTI_InitStructure.EXTI_LineCmd = ENABLE;
-    116          	EXTI_Init(&EXTI_InitStructure); 
-    117          	EXTI_GenerateSWInterrupt(EXTI_Line1);
-    118          
-    119          	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);      
-    120          	NVIC_InitStructure.NVIC_IRQChannel = EXTI1_IRQChannel;
-    121          	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
-    122          	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 6;
-    123          	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-    124          	NVIC_Init(&NVIC_InitStructure);
-    125          
-    126          	//ChargeState detect -- PB.6
-    127          	GPIO_InitStructure.GPIO_Pin  = GPIO_Pin_6;
-    128          	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_10MHz;
-    129          	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-    130          	GPIO_Init(GPIOB, &GPIO_InitStructure);
-    131          
-    132          	/* Connect EXTI Line6 to PB.6 */
-    133          	GPIO_EXTILineConfig(GPIO_PortSourceGPIOE, GPIO_PinSource0);
-    134          
-    135          	EXTI_ClearITPendingBit(EXTI_Line6);
-    136          	EXTI_InitStructure.EXTI_Line = EXTI_Line6;
-    137          	EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-    138          	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
-    139          	EXTI_InitStructure.EXTI_LineCmd = ENABLE;
-    140          	EXTI_Init(&EXTI_InitStructure); 
-    141          	EXTI_GenerateSWInterrupt(EXTI_Line6);
-    142          
-    143          	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);      
-    144          	NVIC_InitStructure.NVIC_IRQChannel = EXTI9_5_IRQChannel;
-    145          	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
-    146          	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 6;
-    147          	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-    148          	NVIC_Init(&NVIC_InitStructure);
-    149          
-    150          	charge_detect_io_cnt = 0;
-    151          	last_charge_detect_io_cnt = 1;
-    152          
-    153          	//LED-Red -- PA.4	LED-Green -- PA.5	LED-Yellow -- PA.6		Motor -- PA.7
-    154          	GPIO_InitStructure.GPIO_Pin	= GPIO_Pin_4 | GPIO_Pin_5 | GPIO_Pin_6 | GPIO_Pin_7;
-    155          	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-    156          	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_10MHz;
-    157          	GPIO_Init(GPIOA, &GPIO_InitStructure);
-    158          	GPIO_SetBits(GPIOA, GPIO_Pin_4 | GPIO_Pin_5 | GPIO_Pin_6);
-    159          	GPIO_ResetBits(GPIOA, GPIO_Pin_7);
-    160          
-    161          	//Beep -- PB.5	LED-Blue -- PB.7  Trig -- PB.12
-    162          	GPIO_InitStructure.GPIO_Pin	= GPIO_Pin_5 | GPIO_Pin_7 | GPIO_Pin_8 | GPIO_Pin_12;
-    163          	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-    164          	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_10MHz;
-    165          	GPIO_Init(GPIOB, &GPIO_InitStructure);
-    166          	GPIO_SetBits(GPIOB,  GPIO_Pin_7 | GPIO_Pin_8 | GPIO_Pin_12);
-    167          	GPIO_ResetBits(GPIOB, GPIO_Pin_5);
-    168          
-    169          	//RFU-IO2 -- PB.8		
-    170          	//GPIO_InitStructure.GPIO_Pin	= GPIO_Pin_8;
-    171          	//GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-    172          	//GPIO_Init(GPIOB, &GPIO_InitStructure);
-    173          }
+     72          	//PB.0   ADC-IN
+     73          	gpio_init.GPIO_Pin  = GPIO_Pin_0;
+     74          	gpio_init.GPIO_Speed = GPIO_Speed_50MHz;
+     75          	gpio_init.GPIO_Mode = GPIO_Mode_AIN;
+     76          	GPIO_Init(GPIOB, &gpio_init);
+     77          
+     78          	adc_init.ADC_Mode               = ADC_Mode_Independent;		//
+     79          	adc_init.ADC_ScanConvMode       = DISABLE;
+     80          	adc_init.ADC_ContinuousConvMode = ENABLE;
+     81          	adc_init.ADC_ExternalTrigConv   = ADC_ExternalTrigConv_None;
+     82          	adc_init.ADC_DataAlign          = ADC_DataAlign_Right;
+     83          	adc_init.ADC_NbrOfChannel       = 1;
+     84          	ADC_Init(ADC1, &adc_init);
+     85          
+     86          	ADC_RegularChannelConfig(ADC1, ADC_Channel_8, 1, ADC_SampleTime_13Cycles5);
+     87          	ADC_Cmd(ADC1, ENABLE);
+     88          
+     89          	// 下面是ADC自动校准，开机后需执行一次，保证精度
+     90          	// Enable ADC1 reset calibaration register 
+     91          	ADC_ResetCalibration(ADC1);
+     92          	// Check the end of ADC1 reset calibration register
+     93          	while(ADC_GetResetCalibrationStatus(ADC1));
+     94          
+     95          	// Start ADC1 calibaration
+     96          	ADC_StartCalibration(ADC1);
+     97          	// Check the end of ADC1 calibration
+     98          	while(ADC_GetCalibrationStatus(ADC1));
+     99          	// ADC自动校准结束---------------
+    100          
+    101          	ADC_SoftwareStartConvCmd(ADC1, ENABLE);			//开始转换
+    102          }
+    103          
+    104          /**
+    105          * @brief  Initialize the IO
+    106          * @return   none
+    107          */
+    108          static void platform_misc_port_init(void)
+    109          {
+    110          	GPIO_InitTypeDef	GPIO_InitStructure;
+    111          	EXTI_InitTypeDef	EXTI_InitStructure;
+    112          	NVIC_InitTypeDef	NVIC_InitStructure;
+    113          
+    114          	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB, ENABLE);
+    115          
+    116          	//USB_CHK -- PA.1
+    117          	GPIO_InitStructure.GPIO_Pin				= GPIO_Pin_1;
+    118          	GPIO_InitStructure.GPIO_Mode			= GPIO_Mode_IN_FLOATING;
+    119          	GPIO_InitStructure.GPIO_Speed			= GPIO_Speed_10MHz;
+    120          	GPIO_Init(GPIOA, &GPIO_InitStructure);
+    121          
+    122          	/* Connect EXTI Line6 to PB.6 */
+    123          	GPIO_EXTILineConfig(GPIO_PortSourceGPIOA, GPIO_PinSource1);
+    124          
+    125          	EXTI_ClearITPendingBit(EXTI_Line1);
+    126          	EXTI_InitStructure.EXTI_Line = EXTI_Line1;
+    127          	EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
+    128          	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Falling;
+    129          	EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+    130          	EXTI_Init(&EXTI_InitStructure); 
+    131          	EXTI_GenerateSWInterrupt(EXTI_Line1);
+    132          
+    133          	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);      
+    134          	NVIC_InitStructure.NVIC_IRQChannel = EXTI1_IRQChannel;
+    135          	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
+    136          	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 6;
+    137          	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+    138          	NVIC_Init(&NVIC_InitStructure);
+    139          
+    140          	//ChargeState detect -- PB.6
+    141          	GPIO_InitStructure.GPIO_Pin  = GPIO_Pin_6;
+    142          	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_10MHz;
+    143          	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+    144          	GPIO_Init(GPIOB, &GPIO_InitStructure);
+    145          
+    146          	/* Connect EXTI Line6 to PB.6 */
+    147          	GPIO_EXTILineConfig(GPIO_PortSourceGPIOE, GPIO_PinSource0);
+    148          
+    149          	EXTI_ClearITPendingBit(EXTI_Line6);
+    150          	EXTI_InitStructure.EXTI_Line = EXTI_Line6;
+    151          	EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
+    152          	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
+    153          	EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+    154          	EXTI_Init(&EXTI_InitStructure); 
+    155          	EXTI_GenerateSWInterrupt(EXTI_Line6);
+    156          
+    157          	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);      
+    158          	NVIC_InitStructure.NVIC_IRQChannel = EXTI9_5_IRQChannel;
+    159          	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
+    160          	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 6;
+    161          	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+    162          	NVIC_Init(&NVIC_InitStructure);
+    163          
+    164          	charge_detect_io_cnt = 0;
+    165          	last_charge_detect_io_cnt = 1;
+    166          
+    167          	//LED-Red -- PA.4	LED-Green -- PA.5	LED-Yellow -- PA.6		Motor -- PA.7
+    168          	GPIO_InitStructure.GPIO_Pin	= GPIO_Pin_4 | GPIO_Pin_5 | GPIO_Pin_6 | GPIO_Pin_7;
+    169          	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+    170          	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_10MHz;
+    171          	GPIO_Init(GPIOA, &GPIO_InitStructure);
+    172          	GPIO_SetBits(GPIOA, GPIO_Pin_4 | GPIO_Pin_5 | GPIO_Pin_6);
+    173          	GPIO_ResetBits(GPIOA, GPIO_Pin_7);
     174          
-    175          /**
-    176          * @brief  Initialize the HW platform
-    177          * @return   none
-    178          */
-    179          void hw_platform_init(void)
-    180          {
-    181          	platform_misc_port_init();
-    182          	ADC_Module_Init();
-    183          }
-    184          
-    185          
-    186          /**
-    187          * @brief	返回检测到的电压的级别
-    188          * @param[in]  none
-    189          * @param[out] none
-    190          * @return     0:电池电量低		1：还有电
-    191          * @note     暂定2级，当测定的电压低于3.15V时，表示系统的电压低了
-    192          *			电池的工作电压范围是: 3.0 -- 4.0
-    193          */
-    194          
-    195          #define  LOW_POWER_TH	1960		//	
-    196          unsigned int hw_platform_get_PowerClass(void)
-    197          { 
-    198          #if 0
-    199          	unsigned int  i,result = 0;
-    200          	unsigned short  temp[20];
-    201          	unsigned short	min,max;
-    202          
-    203          	for(i = 0;i < 20;i++)
-    204          	{
-    205          		temp[i] = ADC_GetConversionValue(ADC1);		//得到AD转换的结果
-    206          		result += temp[i];
-    207          		if (i == 0)
-    208          		{
-    209          			min = temp[i];
-    210          			max = temp[i];
-    211          		}
-    212          
-    213          		if (temp[i] < min)
-    214          		{
-    215          			min = temp[i];
-    216          		}
+    175          	//Beep -- PB.5	LED-Blue -- PB.7  Trig -- PB.12
+    176          	GPIO_InitStructure.GPIO_Pin	= GPIO_Pin_5 | GPIO_Pin_7 | GPIO_Pin_8 | GPIO_Pin_12;
+    177          	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+    178          	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_10MHz;
+    179          	GPIO_Init(GPIOB, &GPIO_InitStructure);
+    180          	GPIO_SetBits(GPIOB,  GPIO_Pin_7 | GPIO_Pin_8 | GPIO_Pin_12);
+    181          	GPIO_ResetBits(GPIOB, GPIO_Pin_5);
+    182          
+    183          	//RFU-IO2 -- PB.8		
+    184          	//GPIO_InitStructure.GPIO_Pin	= GPIO_Pin_8;
+    185          	//GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+    186          	//GPIO_Init(GPIOB, &GPIO_InitStructure);
+    187          }
+    188          
+    189          /**
+    190          * @brief  Initialize the HW platform
+    191          * @return   none
+    192          */
+    193          void hw_platform_init(void)
+    194          {
+    195          	platform_misc_port_init();
+    196          	ADC_Module_Init();
+    197          	current_led_state = 0;
+    198          }
+    199          
+    200          
+    201          /**
+    202          * @brief	返回检测到的电压的级别
+    203          * @param[in]  none
+    204          * @param[out] none
+    205          * @return     0:电池电量低		1：还有电
+    206          * @note     暂定2级，当测定的电压低于3.15V时，表示系统的电压低了
+    207          *			电池的工作电压范围是: 3.0 -- 4.0
+    208          */
+    209          
+    210          #define  LOW_POWER_TH	1960		//	
+    211          unsigned int hw_platform_get_PowerClass(void)
+    212          { 
+    213          #if 1
+    214          	unsigned int  i,result = 0;
+    215          	unsigned short  temp[20];
+    216          	unsigned short	min,max;
     217          
-    218          		if (temp[i] > max)
-    219          		{
-    220          			max = temp[i];
-    221          		}
-    222          	}
-    223          
-    224          	//取20次值之后,去掉最小值和最大周，再取平均值，简单的平滑滤波
-    225          	result -= min;
-    226          	result -= max;
-    227          	result /= 18; 
-    228          
-    229          	if (result > LOW_POWER_TH) 
-    230          	{
-    231          		return 1;
-    232          	}
-    233          	else
-    234          		return 0;
-    235          #endif
-    236          
-    237          	return 1;
-    238          }
-    239          
-    240          /**
-    241          * @brief	检测充电状态
-    242          * @param[in]  none
-    243          * @param[out] none
-    244          * @return     1:  充电完成    0: 正在充电
-    245          * @note  正在充电时，充电检测IO输出脉冲，充满后输出低电平 
-    246          *        需要注意的是：此函数只有在得知充电电源已经插入的前提下，再去检测才有意义。因为没有插入充电电源时，检测IO也是低电平的。
-    247          *		利用IO的边沿中断来完成充电状态的检测，如果一直在进中断，那说明正在充电，否则表示充电完成
-    248          */
-    249          unsigned int  hw_platform_ChargeState_Detect(void)
-    250          {
-    251          	if (charge_detect_io_cnt != last_charge_detect_io_cnt)
-    252          	{
-    253          		charge_state_cnt = 50000;
-    254          		last_charge_detect_io_cnt = charge_detect_io_cnt;
-    255          		return 0;
-    256          	}
-    257          	else
-    258          	{
-    259          		if (charge_state_cnt--)
-    260          		{
-    261          			return 0;
-    262          		}
-    263          	}
-    264          	return 1;
-    265          }
-    266          
-    267          /**
-    268          * @brief	检测USB是否插入
-    269          * @param[in]  none
-    270          * @param[out] none
-    271          * @return     1:  插入    0: 没有插入
-    272          * @note  如果需要在中断里面去实现，那么还需要在初始化时给此检测IO分配外部中断
-    273          *		 如果在任务级查询，那么可以之际调用此函数来检测是否插入充电电源                 
-    274          */
-    275          unsigned int hw_platform_USBcable_Insert_Detect(void)
-    276          {
-    277          	unsigned int i;
-    278          	if(GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_1))
-    279          	{
-    280          		for (i=0;i < 2000;i++);		//延时一小段时间，防止是因为抖动造成的
-    281          		if(GPIO_ReadInputDataBit(GPIOA,GPIO_Pin_1))
-    282          		{
-    283          			return 1;
-    284          		}
-    285          		else
-    286          		{
-    287          			return 0;
-    288          		}
-    289          	}
-    290          	else
-    291          		return 0;
-    292          }
-    293          
-    294          /**
-    295          * @brief	LED控制接口
-    296          * @param[in]  unsigned int led	 LED_RED or  LED_GREEN  or LED_YELLOW
-    297          * @param[in]  unsigned int ctrl  0: close   1:open
-    298          * @return   none                 
-    299          */
-    300          void hw_platform_led_ctrl(unsigned int led,unsigned int ctrl)
-    301          {
-    302          	if (led == LED_RED)
-    303          	{
-    304          		if (ctrl)
-    305          		{
-    306          			GPIO_ResetBits(GPIOA, GPIO_Pin_4);
-    307          		}
-    308          		else
-    309          		{
-    310          			GPIO_SetBits(GPIOA, GPIO_Pin_4);
-    311          		}
-    312          	}
-    313          	else if (led == LED_GREEN)
-    314          	{
-    315          		if (ctrl)
-    316          		{
-    317          			GPIO_ResetBits(GPIOA, GPIO_Pin_5);
-    318          		}
-    319          		else
+    218          	for(i = 0;i < 20;i++)
+    219          	{
+    220          		temp[i] = ADC_GetConversionValue(ADC1);		//得到AD转换的结果
+    221          		result += temp[i];
+    222          		if (i == 0)
+    223          		{
+    224          			min = temp[i];
+    225          			max = temp[i];
+    226          		}
+    227          
+    228          		if (temp[i] < min)
+    229          		{
+    230          			min = temp[i];
+    231          		}
+    232          
+    233          		if (temp[i] > max)
+    234          		{
+    235          			max = temp[i];
+    236          		}
+    237          	}
+    238          
+    239          	//取20次值之后,去掉最小值和最大周，再取平均值，简单的平滑滤波
+    240          	result -= min;
+    241          	result -= max;
+    242          	result /= 18; 
+    243          
+    244          	if (result > LOW_POWER_TH) 
+    245          	{
+    246          		return 1;
+    247          	}
+    248          	else
+    249          		return 0;
+    250          #endif
+    251          
+    252          	//return 0;
+    253          }
+    254          
+    255          /**
+    256          * @brief	检测充电状态
+    257          * @param[in]  none
+    258          * @param[out] none
+    259          * @return     1:  充电完成    0: 正在充电
+    260          * @note  正在充电时，充电检测IO输出脉冲，充满后输出低电平 
+    261          *        需要注意的是：此函数只有在得知充电电源已经插入的前提下，再去检测才有意义。因为没有插入充电电源时，检测IO也是低电平的。
+    262          *		利用IO的边沿中断来完成充电状态的检测，如果一直在进中断，那说明正在充电，否则表示充电完成
+    263          */
+    264          unsigned int  hw_platform_ChargeState_Detect(void)
+    265          {
+    266          	if (charge_detect_io_cnt != last_charge_detect_io_cnt)
+    267          	{
+    268          		charge_state_cnt = 50000;
+    269          		last_charge_detect_io_cnt = charge_detect_io_cnt;
+    270          		return 0;
+    271          	}
+    272          	else
+    273          	{
+    274          		if (charge_state_cnt--)
+    275          		{
+    276          			return 0;
+    277          		}
+    278          	}
+    279          	return 1;
+    280          }
+    281          
+    282          /**
+    283          * @brief	检测USB是否插入
+    284          * @param[in]  none
+    285          * @param[out] none
+    286          * @return     1:  插入    0: 没有插入
+    287          * @note  如果需要在中断里面去实现，那么还需要在初始化时给此检测IO分配外部中断
+    288          *		 如果在任务级查询，那么可以之际调用此函数来检测是否插入充电电源                 
+    289          */
+    290          unsigned int hw_platform_USBcable_Insert_Detect(void)
+    291          {
+    292          	unsigned int i;
+    293          	if(GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_1))
+    294          	{
+    295          		for (i=0;i < 2000;i++);		//延时一小段时间，防止是因为抖动造成的
+    296          		if(GPIO_ReadInputDataBit(GPIOA,GPIO_Pin_1))
+    297          		{
+    298          			return 1;
+    299          		}
+    300          		else
+    301          		{
+    302          			return 0;
+    303          		}
+    304          	}
+    305          	else
+    306          		return 0;
+    307          }
+    308          
+    309          /**
+    310          * @brief	LED控制接口
+    311          * @param[in]  unsigned int led	 LED_RED or  LED_GREEN  or LED_YELLOW
+    312          * @param[in]  unsigned int ctrl  0: close   1:open
+    313          * @return   none                 
+    314          */
+    315          void hw_platform_led_ctrl(unsigned int led,unsigned int ctrl)
+    316          {
+    317          	if (led == LED_RED)
+    318          	{
+    319          		if (ctrl)
     320          		{
-    321          			GPIO_SetBits(GPIOA, GPIO_Pin_5);
+    321          			GPIO_ResetBits(GPIOA, GPIO_Pin_4);
     322          		}
-    323          	}
-    324          	else if (led == LED_YELLOW)
-    325          	{
-    326          		if (ctrl)
-    327          		{
-    328          			GPIO_ResetBits(GPIOA, GPIO_Pin_6);
-    329          		}
-    330          		else
+    323          		else
+    324          		{
+    325          			GPIO_SetBits(GPIOA, GPIO_Pin_4);
+    326          		}
+    327          	}
+    328          	else if (led == LED_GREEN)
+    329          	{
+    330          		if (ctrl)
     331          		{
-    332          			GPIO_SetBits(GPIOA, GPIO_Pin_6);
+    332          			GPIO_ResetBits(GPIOA, GPIO_Pin_5);
     333          		}
-    334          	}
-    335          	else if (led == LED_BLUE)
-    336          	{
-    337          		if (ctrl)
-    338          		{
-    339          			GPIO_ResetBits(GPIOB, GPIO_Pin_7);
-    340          		}
-    341          		else
+    334          		else
+    335          		{
+    336          			GPIO_SetBits(GPIOA, GPIO_Pin_5);
+    337          		}
+    338          	}
+    339          	else if (led == LED_YELLOW)
+    340          	{
+    341          		if (ctrl)
     342          		{
-    343          			GPIO_SetBits(GPIOB, GPIO_Pin_7);
+    343          			GPIO_ResetBits(GPIOA, GPIO_Pin_6);
     344          		}
-    345          	}
-    346          }
-    347          
-    348          
-    349          /**
-    350          * @brief	Motor控制接口
-    351          * @param[in]  unsigned int delay  延时一段时间,单位ms
-    352          * @return   none                 
-    353          */
-    354          void hw_platform_motor_ctrl(unsigned short delay)
-    355          {
-    356          	GPIO_SetBits(GPIOA, GPIO_Pin_7);
-    357          	if (delay < 5)
-    358          	{
-    359          		Delay(delay*2000);
+    345          		else
+    346          		{
+    347          			GPIO_SetBits(GPIOA, GPIO_Pin_6);
+    348          		}
+    349          	}
+    350          	else if (led == LED_BLUE)
+    351          	{
+    352          		if (ctrl)
+    353          		{
+    354          			GPIO_ResetBits(GPIOB, GPIO_Pin_7);
+    355          		}
+    356          		else
+    357          		{
+    358          			GPIO_SetBits(GPIOB, GPIO_Pin_7);
+    359          		}
     360          	}
-    361          	else
-    362          	{
-    363          		OSTimeDlyHMSM(0,0,0,delay);
-    364          	}
-    365          	GPIO_ResetBits(GPIOA, GPIO_Pin_7);
-    366          }
-    367          
-    368          /**
-    369          * @brief	Trig控制接口
-    370          * @param[in]  unsigned int delay  延时一段时间,单位ms
-    371          * @return   none                 
-    372          */
-    373          void hw_platform_trig_ctrl(unsigned short delay)
-    374          {
-    375          	GPIO_ResetBits(GPIOB, GPIO_Pin_12);
-    376          	if (delay < 5)
+    361          }
+    362          
+    363          
+    364          /**
+    365          * @brief	Motor控制接口
+    366          * @param[in]  unsigned int delay  延时一段时间,单位ms
+    367          * @return   none                 
+    368          */
+    369          void hw_platform_motor_ctrl(unsigned short delay)
+    370          {
+    371          	GPIO_SetBits(GPIOA, GPIO_Pin_7);
+    372          	if (delay < 5)
+    373          	{
+    374          		delay_ms(delay);
+    375          	}
+    376          	else
     377          	{
-    378          		Delay(delay*2000);
+    378          		OSTimeDlyHMSM(0,0,0,delay);
     379          	}
-    380          	else
-    381          	{
-    382          		OSTimeDlyHMSM(0,0,0,delay);
-    383          	}
-    384          	GPIO_SetBits(GPIOB, GPIO_Pin_12);
-    385          }
-    386          
-    387          /**
-    388          * @brief	蜂鸣器简单的控制接口
-    389          * @param[in]  unsigned int delay	延时一段时间,单位ms,节拍时长
-    390          * @param[in]  unsigned int	beep_freq	蜂鸣器的发声频率，音调
-    391          * @return   none 
-    392          */
-    393          void hw_platform_beep_ctrl(unsigned short delay,unsigned int beep_freq)
-    394          {
-    395          	int i;
-    396          	for (i = 0; i < (delay*beep_freq)/1000;i++)
-    397          	{
-    398          		GPIO_SetBits(GPIOB, GPIO_Pin_5);
-    399          		Delay(1000000/beep_freq);
-    400          		GPIO_ResetBits(GPIOB, GPIO_Pin_5);
-    401          		Delay(1000000/beep_freq);
-    402          	}
-    403          }
-    404          
-    405          static unsigned char	current_blink_led;
-    406          static unsigned char	current_led_state;
-    407          static unsigned short   current_blink_frq;
-    408          static unsigned int   current_timer_cnt;
-    409          /**
-    410           * @brief 利用时基模块提供的定时器接口实现LED闪烁
-    411          */
-    412          static void led_blink_timer_hook(void)
-    413          {
-    414          	current_timer_cnt++;
-    415          	if (current_timer_cnt == current_blink_frq*2*10)
-    416          	{
-    417          		current_led_state ^= 0x01;
-    418          		hw_platform_led_ctrl(current_blink_led,current_led_state);
-    419          		current_timer_cnt = 0;
-    420          	}
-    421          }
-    422          
-    423          /**
-    424           * @brief 开始LED闪烁指示
-    425           * @param[in] unsigned int		led		
-    426           * @param[in] unsigned short	delay	闪烁的时间间隔，也就是闪烁频率,单位10ms
-    427           * @note 注意此接口只能让一个LED在闪烁，不能实现几个LED同时闪烁
-    428          */
-    429          void hw_platform_start_led_blink(unsigned int led,unsigned short delay)
-    430          {
-    431          	current_timer_cnt = 0;
-    432          	current_blink_led = led;
-    433          	current_blink_frq = delay;
-    434          	current_led_state = 1;
-    435          	hw_platform_led_ctrl(current_blink_led,current_led_state);
-    436          	start_timer(led_blink_timer_hook);
-    437          }
-    438          
-    439          /**
-    440           * @brief 关闭正在闪烁的LED
-    441          */
-    442          void hw_platform_stop_led_blink(void)
-    443          {
-    444          	stop_timer();
-    445          	hw_platform_led_ctrl(current_blink_led,0);
+    380          	GPIO_ResetBits(GPIOA, GPIO_Pin_7);
+    381          }
+    382          
+    383          /**
+    384          * @brief	Trig控制接口
+    385          * @param[in]  unsigned int delay  延时一段时间,单位ms
+    386          * @return   none                 
+    387          */
+    388          void hw_platform_trig_ctrl(unsigned short delay)
+    389          {
+    390          	GPIO_ResetBits(GPIOB, GPIO_Pin_12);
+    391          	if (delay < 5)
+    392          	{
+    393          		delay_ms(delay);
+    394          	}
+    395          	else
+    396          	{
+    397          		OSTimeDlyHMSM(0,0,0,delay);
+    398          	}
+    399          	GPIO_SetBits(GPIOB, GPIO_Pin_12);
+    400          }
+    401          
+    402          /**
+    403          * @brief	蜂鸣器简单的控制接口
+    404          * @param[in]  unsigned int delay	延时一段时间,单位ms,节拍时长
+    405          * @param[in]  unsigned int	beep_freq	蜂鸣器的发声频率，音调
+    406          * @return   none 
+    407          */
+    408          void hw_platform_beep_ctrl(unsigned short delay,unsigned int beep_freq)
+    409          {
+    410          	int i;
+    411          	for (i = 0; i < (delay*beep_freq)/2000;i++)
+    412          	{
+    413          		GPIO_SetBits(GPIOB, GPIO_Pin_5);
+    414          		hw_platform_trip_io();
+    415          		delay_us(1000000/beep_freq);
+    416          		//delay_us(100);
+    417          		hw_platform_trip_io();
+    418          		GPIO_ResetBits(GPIOB, GPIO_Pin_5);
+    419          		delay_us(1000000/beep_freq);
+    420          		//delay_us(400);
+    421          	}
+    422          }
+    423          
+    424          /**
+    425          * @brief	蜂鸣器与Motor同时控制接口
+    426          * @param[in]  unsigned int delay	延时一段时间,单位ms,节拍时长
+    427          * @param[in]  unsigned int	beep_freq	蜂鸣器的发声频率，音调
+    428          * @return   none 
+    429          */
+    430          void hw_platform_beep_motor_ctrl(unsigned short delay,unsigned int beep_freq)
+    431          {
+    432          	int i;
+    433          	GPIO_SetBits(GPIOA, GPIO_Pin_7);
+    434          	for (i = 0; i < (delay*beep_freq)/2000;i++)
+    435          	{
+    436          		GPIO_SetBits(GPIOB, GPIO_Pin_5);
+    437          		hw_platform_trip_io();
+    438          		delay_us(1000000/beep_freq);
+    439          		//delay_us(100);
+    440          		hw_platform_trip_io();
+    441          		GPIO_ResetBits(GPIOB, GPIO_Pin_5);
+    442          		delay_us(1000000/beep_freq);
+    443          		//delay_us(400);
+    444          	}
+    445          	GPIO_ResetBits(GPIOA, GPIO_Pin_7);
     446          }
     447          
-    448          /**
-    449           * @brief 调试IO
-    450          */
-    451          void hw_platform_trip_io(void)
-    452          {
-    453          	GPIO_ResetBits(GPIOB, GPIO_Pin_8);
-    454          	GPIO_SetBits(GPIOB, GPIO_Pin_8);
-    455          }
+    448          
+    449          
+    450          /**
+    451           * @brief 利用时基模块提供的定时器接口实现LED闪烁
+    452          */
+    453          static void led_red_blink_timer_hook(void)
+    454          {
+    455          	current_led_state ^= LED_RED_MASK;
+    456          	hw_platform_led_ctrl(LED_RED,current_led_state & LED_RED_MASK);
+    457          }
+    458          
+    459          static void led_blue_blink_timer_hook(void)
+    460          {
+    461          	current_led_state ^= LED_BLUE_MASK;
+    462          	hw_platform_led_ctrl(LED_BLUE,current_led_state & LED_BLUE_MASK);
+    463          }
+    464          
+    465          static void led_green_blink_timer_hook(void)
+    466          {
+    467          	current_led_state ^= LED_GREEN_MASK;
+    468          	hw_platform_led_ctrl(LED_GREEN,current_led_state & LED_GREEN_MASK);
+    469          }
+    470          
+    471          static void led_yellow_blink_timer_hook(void)
+    472          {
+    473          	current_led_state ^= LED_YELLOW_MASK;
+    474          	hw_platform_led_ctrl(LED_YELLOW,current_led_state & LED_YELLOW_MASK);
+    475          }
+    476          
+    477          /**
+    478           * @brief 开始LED闪烁指示
+    479           * @param[in] unsigned int		led		
+    480           * @param[in] unsigned short	delay	闪烁的时间间隔，也就是闪烁频率,单位10ms
+    481           * @note 注意此接口可以让几个LED同时按照各自不同的频率闪烁
+    482          */
+    483          void hw_platform_start_led_blink(unsigned int led,unsigned short delay)
+    484          {
+    485          	int ret;
+    486          	hw_platform_led_ctrl(led,1);
+    487          	if (led == LED_RED)
+    488          	{
+    489          		if (current_led_state & LED_RED_ON_MASK)
+    490          		{
+    491          			current_led_state |= LED_RED_MASK;
+    492          			ret = reset_timer(led_timer_h[0],V_TIMER_MODE_PERIODIC,delay*10,led_red_blink_timer_hook);
+    493          			assert(ret == 0);
+    494          		}
+    495          		else
+    496          		{
+    497          			current_led_state |= (LED_RED_MASK | LED_RED_ON_MASK);
+    498          			led_timer_h[0] = start_timer(V_TIMER_MODE_PERIODIC,delay*10,led_red_blink_timer_hook);
+    499          			assert(led_timer_h[0] != 0);
+    500          		}
+    501          	}
+    502          	else if (led == LED_BLUE)
+    503          	{
+    504          		if (current_led_state & LED_BLUE_ON_MASK)
+    505          		{
+    506          			current_led_state |= LED_BLUE_MASK;
+    507          			ret = reset_timer(led_timer_h[1],V_TIMER_MODE_PERIODIC,delay*10,led_blue_blink_timer_hook);
+    508          			assert(ret == 0);
+    509          		}
+    510          		else
+    511          		{
+    512          			current_led_state |= (LED_BLUE_MASK | LED_BLUE_ON_MASK);
+    513          			led_timer_h[1] = start_timer(V_TIMER_MODE_PERIODIC,delay*10,led_blue_blink_timer_hook);
+    514          			assert(led_timer_h[1] != 0);
+    515          		}
+    516          	}
+    517          	else if (led == LED_GREEN)
+    518          	{
+    519          		if (current_led_state & LED_GREEN_ON_MASK)
+    520          		{
+    521          			current_led_state |= LED_GREEN_MASK;
+    522          			ret = reset_timer(led_timer_h[2],V_TIMER_MODE_PERIODIC,delay*10,led_green_blink_timer_hook);
+    523          			assert(ret == 0);
+    524          		}
+    525          		else
+    526          		{
+    527          			current_led_state |= (LED_GREEN_MASK | LED_GREEN_ON_MASK);
+    528          			led_timer_h[2] = start_timer(V_TIMER_MODE_PERIODIC,delay*10,led_green_blink_timer_hook);
+    529          			assert(led_timer_h[2] != 0);
+    530          		}
+    531          	}
+    532          	else
+    533          	{
+    534          		if (current_led_state & LED_YELLOW_ON_MASK)
+    535          		{
+    536          			current_led_state |= LED_YELLOW_MASK;
+    537          			ret = reset_timer(led_timer_h[3],V_TIMER_MODE_PERIODIC,delay*10,led_yellow_blink_timer_hook);
+    538          			assert(ret == 0);
+    539          		}
+    540          		else
+    541          		{
+    542          			current_led_state |= (LED_YELLOW_MASK | LED_YELLOW_ON_MASK);
+    543          			led_timer_h[3] = start_timer(V_TIMER_MODE_PERIODIC,delay*10,led_yellow_blink_timer_hook);
+    544          			assert(led_timer_h[3] != 0);
+    545          		}
+    546          	}
+    547          }
+    548          
+    549          /**
+    550           * @brief 关闭某一个在闪烁的LED
+    551          */
+    552          void hw_platform_stop_led_blink(unsigned int led)
+    553          {
+    554          	int ret;
+    555          	if (led == LED_RED)
+    556          	{
+    557          		hw_platform_led_ctrl(LED_RED,0);
+    558          		current_led_state &= ~LED_RED_MASK;
+    559          		current_led_state &= ~LED_RED_ON_MASK;
+    560          		ret = stop_timer(led_timer_h[0]);
+    561          		assert(ret == 0);
+    562          	}
+    563          	else if (led == LED_BLUE)
+    564          	{
+    565          		hw_platform_led_ctrl(LED_BLUE,0);
+    566          		current_led_state &= ~LED_BLUE_MASK;
+    567          		current_led_state &= ~LED_BLUE_ON_MASK;
+    568          		ret = stop_timer(led_timer_h[1]);
+    569          		assert(ret == 0);
+    570          	}
+    571          	else if (led == LED_GREEN)
+    572          	{
+    573          		hw_platform_led_ctrl(LED_GREEN,0);
+    574          		current_led_state &= ~LED_GREEN_MASK;
+    575          		current_led_state &= ~LED_GREEN_ON_MASK;
+    576          		ret = stop_timer(led_timer_h[2]);
+    577          		assert(ret == 0);
+    578          	}
+    579          	else
+    580          	{
+    581          		hw_platform_led_ctrl(LED_YELLOW,0);
+    582          		current_led_state &= ~LED_YELLOW_MASK;
+    583          		current_led_state &= ~LED_YELLOW_ON_MASK;
+    584          		ret = stop_timer(led_timer_h[3]);
+    585          		assert(ret == 0);
+    586          	}
+    587          }
+    588          
+    589          /**
+    590           * @brief 调试IO
+    591          */
+    592          void hw_platform_trip_io(void)
+    593          {
+    594          	GPIO_ResetBits(GPIOB, GPIO_Pin_8);
+    595          	GPIO_SetBits(GPIOB, GPIO_Pin_8);
+    596          }
+    597          
+    598          
+    599          //测试LED的闪烁接口
+    600          void hw_platform_led_blink_test(void)
+    601          {
+    602          	hw_platform_start_led_blink(LED_RED,6);
+    603          	OSTimeDlyHMSM(0,0,10,0);
+    604          	hw_platform_start_led_blink(LED_BLUE,20);
+    605          	OSTimeDlyHMSM(0,0,10,0);
+    606          	hw_platform_start_led_blink(LED_GREEN,50);
+    607          	OSTimeDlyHMSM(0,0,10,0);
+    608          	hw_platform_start_led_blink(LED_YELLOW,300);
+    609          
+    610          	OSTimeDlyHMSM(0,0,10,0);
+    611          
+    612          	hw_platform_stop_led_blink(LED_RED);
+    613          
+    614          	OSTimeDlyHMSM(0,0,10,0);
+    615          
+    616          	hw_platform_stop_led_blink(LED_BLUE);
+    617          
+    618          	OSTimeDlyHMSM(0,0,10,0);
+    619          
+    620          	hw_platform_stop_led_blink(LED_GREEN);
+    621          
+    622          	OSTimeDlyHMSM(0,0,10,0);
+    623          
+    624          	StartDelay(5000);
+    625          
+    626          	while (DelayIsEnd()==0);
+    627          
+    628          	hw_platform_stop_led_blink(LED_YELLOW);
+    629          
+    630          }
 
    Maximum stack usage in bytes:
 
@@ -500,59 +675,77 @@ E:\H520B\FW\src\Drivers\hw_platform.c
      hw_platform_USBcable_Insert_Detect
                                          8
      hw_platform_beep_ctrl              16
-     hw_platform_get_PowerClass          0
+     hw_platform_beep_motor_ctrl        16
+     hw_platform_get_PowerClass         64
      hw_platform_init                    8
+     hw_platform_led_blink_test          8
      hw_platform_led_ctrl                8
      hw_platform_motor_ctrl              8
-     hw_platform_start_led_blink         8
+     hw_platform_start_led_blink        16
      hw_platform_stop_led_blink          8
      hw_platform_trig_ctrl               8
      hw_platform_trip_io                 8
-     led_blink_timer_hook                8
+     led_blue_blink_timer_hook           8
+     led_green_blink_timer_hook          8
+     led_red_blink_timer_hook            8
+     led_yellow_blink_timer_hook         8
      platform_misc_port_init            24
 
 
    Section sizes:
 
-     Function/Label                 Bytes
-     --------------                 -----
-     charge_state_cnt                  4
-     last_charge_detect_io_cnt         4
-     charge_detect_io_cnt              4
-     ADC_Module_Init                 160
-     platform_misc_port_init         340
-     hw_platform_init                 12
-     hw_platform_get_PowerClass        4
-     hw_platform_ChargeState_Detect   56
+     Function/Label                             Bytes
+     --------------                             -----
+     charge_state_cnt                              4
+     last_charge_detect_io_cnt                     4
+     charge_detect_io_cnt                          4
+     current_led_state                             1
+     led_timer_h                                  16
+     ADC_Module_Init                             154
+     platform_misc_port_init                     350
+     hw_platform_init                             20
+     hw_platform_get_PowerClass                  118
+     hw_platform_ChargeState_Detect               56
      hw_platform_USBcable_Insert_Detect
-                                      48
-     hw_platform_led_ctrl            114
-     hw_platform_motor_ctrl           56
-     hw_platform_trig_ctrl            60
-     hw_platform_beep_ctrl            72
-     current_blink_led                 1
-     current_led_state                 1
-     current_blink_frq                 2
-     current_timer_cnt                 4
-     led_blink_timer_hook             62
-     hw_platform_start_led_blink      48
-     hw_platform_stop_led_blink       18
-     hw_platform_trip_io              24
-     ??DataTable13                     4
-     ??DataTable14                     4
-     ??DataTable26                     4
-     ??DataTable40                     4
-     ??DataTable42                     4
-     ??DataTable44                     4
-     ??DataTable46                     4
-     ??DataTable48                     4
+                                                  48
+     hw_platform_led_ctrl                        118
+     hw_platform_motor_ctrl                       52
+     hw_platform_trig_ctrl                        60
+     hw_platform_beep_ctrl                        80
+     hw_platform_beep_motor_ctrl                  96
+     led_red_blink_timer_hook                     36
+     led_blue_blink_timer_hook                    36
+     led_green_blink_timer_hook                   36
+     led_yellow_blink_timer_hook                  36
+     hw_platform_start_led_blink                 552
+     hw_platform_stop_led_blink                  262
+     hw_platform_trip_io                          24
+     hw_platform_led_blink_test                  162
+     ??DataTable20                                 4
+     ??DataTable23                                 4
+     ??DataTable24                                 4
+     ??DataTable47                                 4
+     ??DataTable48                                 4
+     ??DataTable129                                4
+     ??DataTable130                                4
+     ??DataTable131                                4
+     ??DataTable132                                4
+     ??DataTable134                                4
+     ?<Constant "ret == 0">                       12
+     ?<Constant "E:\\H520B\\FW\\src\\Drive...">   40
+     ?<Constant "led_timer_h[0] != 0">            20
+     ?<Constant "led_timer_h[1] != 0">            20
+     ?<Constant "led_timer_h[2] != 0">            20
+     ?<Constant "led_timer_h[3] != 0">            20
 
  
-    20 bytes in section .bss
- 1 106 bytes in section .text
+    29 bytes in section .bss
+   132 bytes in section .rodata
+ 2 336 bytes in section .text
  
- 1 106 bytes of CODE memory
-    20 bytes of DATA memory
+ 2 336 bytes of CODE  memory
+   132 bytes of CONST memory
+    29 bytes of DATA  memory
 
 Errors: none
 Warnings: none

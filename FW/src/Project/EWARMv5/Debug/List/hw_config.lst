@@ -1,6 +1,6 @@
 ###############################################################################
 #                                                                             #
-# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     22/Sep/2015  11:58:32 #
+# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     25/Sep/2015  11:58:23 #
 # Copyright 1999-2009 IAR Systems AB.                                         #
 #                                                                             #
 #    Cpu mode     =  thumb                                                    #
@@ -128,7 +128,7 @@ E:\H520B\FW\src\usb_lib\hw_config.c
      92          		while (count_in != 0 && delay_cnt != 0 &&(bDeviceState == CONFIGURED))
      93          		{
      94          			delay_cnt--;
-     95          			Delay(20000);
+     95          			delay_ms(2);
      96          		}
      97          	}
      98          	//else if(g_usb_type == USB_VIRTUAL_PORT)

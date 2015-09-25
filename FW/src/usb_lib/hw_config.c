@@ -92,7 +92,7 @@ void SendData_To_PC(unsigned char *pData, int length)
 		while (count_in != 0 && delay_cnt != 0 &&(bDeviceState == CONFIGURED))
 		{
 			delay_cnt--;
-			Delay(20000);
+			delay_ms(2);
 		}
 	}
 	//else if(g_usb_type == USB_VIRTUAL_PORT)

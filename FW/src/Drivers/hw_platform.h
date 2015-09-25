@@ -7,10 +7,10 @@
 #include "WBTDS01.h"
 #include "data_uart.h"
 
-#define		LED_RED			1
-#define		LED_GREEN		2
-#define		LED_YELLOW		3
-#define		LED_BLUE		4
+#define		LED_RED			0
+#define		LED_GREEN		1
+#define		LED_YELLOW		2
+#define		LED_BLUE		3
 
 
 extern unsigned int	charge_detect_io_cnt;
@@ -25,7 +25,10 @@ void hw_platform_trig_ctrl(unsigned short delay);
 void hw_platform_beep_ctrl(unsigned short delay,unsigned int beep_freq);
 
 void hw_platform_start_led_blink(unsigned int led,unsigned short delay);
-void hw_platform_stop_led_blink(void);
+void hw_platform_stop_led_blink(unsigned int led);
+void hw_platform_beep_motor_ctrl(unsigned short delay,unsigned int beep_freq);
 
 void hw_platform_trip_io(void);
+
+void hw_platform_led_blink_test(void);
 #endif
