@@ -570,7 +570,6 @@ int WBTD_hid_send(unsigned char *str,unsigned int len,unsigned int *send_len)
 	}
 
 	send_data_to_WBTDS01("\x00\x00\x28\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", 16);
-	
 	return 0;
 }
 

@@ -226,7 +226,7 @@ void Keypad_EXTI_ISRHandler(unsigned char	exti_line)
 */
 static unsigned char Keypad_ReadIO(unsigned char key)
 {
-	unsigned char h1,h2;
+	unsigned char h1=0,h2=0;
 	unsigned int	i;
 reread:
 	if (key == SCAN_KEY)
@@ -358,6 +358,7 @@ void Keypad_Timer_ISRHandler(void)
 				else
 				{
 					//其余状态下没有必要检测SCAN键的双击行为
+					hw_platform_start_led_blink(LED_GREEN,3);
 					OSQPost(pEvent_Queue,(void*)EVENT_SCAN_KEY_SINGLE_CLICK);
 					Keypad_Timer_Disable();
 					Keypad_Int_Enable();
@@ -378,6 +379,7 @@ void Keypad_Timer_ISRHandler(void)
 			if (release_cnt == DOUBLE_CLICK_INTERVAL)
 			{
 				//单击后，在双击间隔时间内没有再次按下按键，及可以确认单击事件的发生
+				hw_platform_start_led_blink(LED_GREEN,3);
 				OSQPost(pEvent_Queue,(void*)EVENT_SCAN_KEY_SINGLE_CLICK);
 				//keypad_state = KEYPAD_STATE_INIT;
 				Keypad_Timer_Disable();

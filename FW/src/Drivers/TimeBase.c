@@ -258,7 +258,7 @@ int stop_timer(VTIMER_HANDLE v_timer_h)
 {
 	if (check_vtimer_handle(v_timer_h) == 0)
 	{
-		return -1;
+		return 0;
 	}
 
 	V_TIMER	*p_vtimer = (V_TIMER*)v_timer_h;

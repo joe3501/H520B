@@ -1,13 +1,13 @@
 ###############################################################################
 #                                                                             #
-# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     24/Sep/2015  18:22:48 #
+# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     26/Sep/2015  11:37:28 #
 # Copyright 1999-2009 IAR Systems AB.                                         #
 #                                                                             #
 #    Cpu mode     =  thumb                                                    #
 #    Endian       =  little                                                   #
 #    Source file  =  E:\H520B\FW\src\Lib\src\stm32f10x_gpio.c                 #
-#    Command line =  E:\H520B\FW\src\Lib\src\stm32f10x_gpio.c -D DEBUG_VER    #
-#                    -lcN E:\H520B\FW\src\Project\EWARMv5\Debug\List\ -o      #
+#    Command line =  E:\H520B\FW\src\Lib\src\stm32f10x_gpio.c -lcN            #
+#                    E:\H520B\FW\src\Project\EWARMv5\Debug\List\ -o           #
 #                    E:\H520B\FW\src\Project\EWARMv5\Debug\Obj\ --no_cse      #
 #                    --no_unroll --no_inline --no_code_motion --no_tbaa       #
 #                    --no_clustering --no_scheduling --debug --endian=little  #

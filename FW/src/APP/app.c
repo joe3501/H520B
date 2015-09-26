@@ -35,9 +35,9 @@
 
 //define the stack size of each task
 #define STACK_SIZE_TASKEC			128	
-#define STACK_SIZE_TASKSM			256
+#define STACK_SIZE_TASKSM			356
 #define STACK_SIZE_TASKBT			128
-#define STACK_SIZE_TASKINI			128
+#define STACK_SIZE_TASKINI			224
 
 static OS_STK	thread_eventcapture_stk[STACK_SIZE_TASKEC];		//the stack of the Event_capture_thread
 static OS_STK	thread_statemachine_stk[STACK_SIZE_TASKSM];		//the stack of the State_Machine_thread
@@ -101,12 +101,11 @@ static inline void scan_barcode_ok_tip(void)
 /**
 * @brief	将条码推入条码的静态缓冲区，返回保存的地址
 * @param[in] unsigned char* barcode				需要缓存的条码
-* @param[in] unsigned char	ios_keypad_flag     是否需要唤取IOS softkeypad
 * @return   缓存的地址
-* @note 策略:只要找到一个空位置就放进去，每一列的最有一个字节为0表示该位置是空的
+* @note 策略:只要找到一个空位置就放进去，每一列的最后一个字节为0表示该位置是空的
 *											     最后一个字节0x55表示该位置已经缓存了条码
 */
-unsigned char * push_barcode_into_cash(unsigned char* barcode,unsigned char	ios_keypad_flag)
+unsigned char * push_barcode_into_cash(unsigned char* barcode)
 {
 	unsigned int	i;
 	for (i = 0; i < BARCODE_CASH_NUM;i++)
@@ -123,10 +122,6 @@ unsigned char * push_barcode_into_cash(unsigned char* barcode,unsigned char	ios_
 				strcpy((char*)barcode_cash[i],(char const*)barcode);
 			}
 			barcode_cash[i][MAX_BARCODE_LEN+1] = 0x55;		//表示已经缓存数据了
-			if (ios_keypad_flag)
-			{
-				barcode_cash[i][MAX_BARCODE_LEN+1] |= 0xF0;
-			}
 			return (void*)barcode_cash[i];
 		}
 	}
@@ -419,7 +414,6 @@ void State_Machine_thread(void *p)
 			switch(event)
 			{
 			case EVENT_SCAN_KEY_SINGLE_CLICK:
-			case EVENT_SCAN_KEY_DOUBLE_CLICK:
 				//扫描条码
 				ret = scanner_get_barcode(barcode,MAX_BARCODE_LEN,codetype,&codelen);
 				hw_platform_stop_led_blink(LED_GREEN);
@@ -437,7 +431,7 @@ void State_Machine_thread(void *p)
 				//将获取到的条码先push到cash缓存起来，然后Post到系统的
 				//Queue，由蓝牙模块线程负责去发送到主机
 repost:
-				ret = OSQPost(pBarcode_Queue,(void*)push_barcode_into_cash((unsigned char*)barcode,(event == EVENT_SCAN_KEY_SINGLE_CLICK)?0:1));
+				ret = OSQPost(pBarcode_Queue,(void*)push_barcode_into_cash((unsigned char*)barcode));
 				if(ret != OS_ERR_NONE)
 				{
 					if(ret == OS_ERR_Q_FULL || ret == OS_ERR_PEVENT_NULL)
@@ -450,6 +444,12 @@ repost:
 					{
 						assert(0);	//系统错误
 					}
+				}
+				break;
+			case EVENT_SCAN_KEY_DOUBLE_CLICK:
+				if (g_param.ios_softkeypad_enable)
+				{
+					WBTD_set_ioskeypad(1);
 				}
 				break;
 			case EVENT_SCAN_KEY_LONG_PRESS:
@@ -844,6 +844,9 @@ void BT_Daemon_thread(void *p)
 				printf("WBTD send data Fail!\r\n");
 #endif
 			}
+
+			pull_barcode_from_cash(pbarcode);
+			//OSTimeDlyHMSM(0,0,0,50);
 
 #ifdef DEBUG_VER
 			printf("WBTD send data Success!\r\n");

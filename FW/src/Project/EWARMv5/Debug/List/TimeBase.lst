@@ -1,12 +1,12 @@
 ###############################################################################
 #                                                                             #
-# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     25/Sep/2015  11:58:23 #
+# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     26/Sep/2015  11:37:19 #
 # Copyright 1999-2009 IAR Systems AB.                                         #
 #                                                                             #
 #    Cpu mode     =  thumb                                                    #
 #    Endian       =  little                                                   #
 #    Source file  =  E:\H520B\FW\src\Drivers\TimeBase.c                       #
-#    Command line =  E:\H520B\FW\src\Drivers\TimeBase.c -D DEBUG_VER -lcN     #
+#    Command line =  E:\H520B\FW\src\Drivers\TimeBase.c -lcN                  #
 #                    E:\H520B\FW\src\Project\EWARMv5\Debug\List\ -o           #
 #                    E:\H520B\FW\src\Project\EWARMv5\Debug\Obj\ --no_cse      #
 #                    --no_unroll --no_inline --no_code_motion --no_tbaa       #
@@ -294,7 +294,7 @@ E:\H520B\FW\src\Drivers\TimeBase.c
     258          {
     259          	if (check_vtimer_handle(v_timer_h) == 0)
     260          	{
-    261          		return -1;
+    261          		return 0;
     262          	}
     263          
     264          	V_TIMER	*p_vtimer = (V_TIMER*)v_timer_h;
@@ -447,7 +447,7 @@ E:\H520B\FW\src\Drivers\TimeBase.c
      start_timer                                 104
      check_vtimer_handle                          24
      reset_timer                                  40
-     stop_timer                                  102
+     stop_timer                                  100
      TIM2_UpdateISRHandler                       154
      Delay_end_flag                                4
      delay_func_hook                               8
@@ -461,9 +461,9 @@ E:\H520B\FW\src\Drivers\TimeBase.c
  
   12 bytes in section .bss
   48 bytes in section .rodata
- 664 bytes in section .text
+ 662 bytes in section .text
  
- 664 bytes of CODE  memory
+ 662 bytes of CODE  memory
   48 bytes of CONST memory
   12 bytes of DATA  memory
 

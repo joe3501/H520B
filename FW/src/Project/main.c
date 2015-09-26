@@ -72,13 +72,13 @@ int main(void)
 {
 	/* System Clocks Configuration **********************************************/
 	RCC_Configuration(); 
-#ifdef RELEASE_VER
+//#ifdef RELEASE_VER
 	/* NVIC Configuration *******************************************************/
-	NVIC_SetVectorTable(NVIC_VectTab_FLASH, IAP_SIZE);		//需要加密的 bootcode
-#else	
+//	NVIC_SetVectorTable(NVIC_VectTab_FLASH, IAP_SIZE);		//需要加密的 bootcode
+//#else	
 	/* NVIC Configuration *******************************************************/
 	NVIC_SetVectorTable(NVIC_VectTab_FLASH, 0);
-#endif
+//#endif
 	
 	// Clear SLEEPDEEP bit of Cortex System Control Register
 	*(vu32 *) SCB_SysCtrl &= ~SysCtrl_SLEEPDEEP_Set;

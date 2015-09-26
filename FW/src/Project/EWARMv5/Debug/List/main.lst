@@ -1,12 +1,12 @@
 ###############################################################################
 #                                                                             #
-# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     25/Sep/2015  16:30:42 #
+# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     26/Sep/2015  11:37:25 #
 # Copyright 1999-2009 IAR Systems AB.                                         #
 #                                                                             #
 #    Cpu mode     =  thumb                                                    #
 #    Endian       =  little                                                   #
 #    Source file  =  E:\H520B\FW\src\Project\main.c                           #
-#    Command line =  E:\H520B\FW\src\Project\main.c -D DEBUG_VER -lcN         #
+#    Command line =  E:\H520B\FW\src\Project\main.c -lcN                      #
 #                    E:\H520B\FW\src\Project\EWARMv5\Debug\List\ -o           #
 #                    E:\H520B\FW\src\Project\EWARMv5\Debug\Obj\ --no_cse      #
 #                    --no_unroll --no_inline --no_code_motion --no_tbaa       #
@@ -108,13 +108,13 @@ E:\H520B\FW\src\Project\main.c
      72          {
      73          	/* System Clocks Configuration **********************************************/
      74          	RCC_Configuration(); 
-     75          #ifdef RELEASE_VER
+     75          //#ifdef RELEASE_VER
      76          	/* NVIC Configuration *******************************************************/
-     77          	NVIC_SetVectorTable(NVIC_VectTab_FLASH, IAP_SIZE);		//需要加密的 bootcode
-     78          #else	
+     77          //	NVIC_SetVectorTable(NVIC_VectTab_FLASH, IAP_SIZE);		//需要加密的 bootcode
+     78          //#else	
      79          	/* NVIC Configuration *******************************************************/
      80          	NVIC_SetVectorTable(NVIC_VectTab_FLASH, 0);
-     81          #endif
+     81          //#endif
      82          	
      83          	// Clear SLEEPDEEP bit of Cortex System Control Register
      84          	*(vu32 *) SCB_SysCtrl &= ~SysCtrl_SLEEPDEEP_Set;
@@ -319,30 +319,27 @@ E:\H520B\FW\src\Project\main.c
 
    Section sizes:
 
-     Function/Label                     Bytes
-     --------------                     -----
-     HSEStartUpStatus                      1
-     pos_state                             4
-     status_iap                            4
-     nouse                                12
-     main                                 68
-     RCC_Configuration                   140
-     Unconfigure_All                      26
-     GPIO_AllAinConfig                    60
-     EnterLowPowerMode                    58
-     ExitLowPowerMode                     48
-     ??DataTable1                          4
-     ?<Constant "H520B startup...\r\n">   20
+     Function/Label    Bytes
+     --------------    -----
+     HSEStartUpStatus     1
+     pos_state            4
+     status_iap           4
+     nouse               12
+     main                56
+     RCC_Configuration  140
+     Unconfigure_All     26
+     GPIO_AllAinConfig   60
+     EnterLowPowerMode   58
+     ExitLowPowerMode    48
+     ??DataTable1         4
 
  
    5 bytes in section .bss
-  20 bytes in section .rodata
- 404 bytes in section .text
+ 392 bytes in section .text
   16 bytes in section VENDOR_RAM
  
- 404 bytes of CODE  memory
-  20 bytes of CONST memory
-  21 bytes of DATA  memory
+ 392 bytes of CODE memory
+  21 bytes of DATA memory
 
 Errors: none
-Warnings: 3
+Warnings: 2
