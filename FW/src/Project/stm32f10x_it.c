@@ -392,13 +392,6 @@ void EXTI3_IRQHandler(void)
 *******************************************************************************/
 void EXTI4_IRQHandler(void)
 {
-	OSIntEnter();
-	if(EXTI_GetITStatus(EXTI_Line4) != RESET)
-	{   
-		EXTI_ClearITPendingBit(EXTI_Line4);
-		Keypad_EXTI_ISRHandler(RESET_KEY_EXTI_INT);
-	}
-	OSIntExit();
 }
 
 /*******************************************************************************

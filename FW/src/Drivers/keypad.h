@@ -3,12 +3,10 @@
 
 #define  SCAN_KEY_EXTI_INT		(1<<0)
 #define  ERASE_KEY_EXTI_INT		(1<<1)
-#define  RESET_KEY_EXTI_INT		(1<<2)
 
 
 #define  SCAN_KEY		1
 #define  ERASE_KEY		2
-#define  RESET_KEY		3
 
 		
 void Keypad_Init(void);

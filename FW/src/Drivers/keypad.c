@@ -39,7 +39,6 @@ extern unsigned int		keypress_timeout;
 *		按键的硬件连接如下图所示：
 *		ScanKey -- PA0
 *		EraseKey -- PB3
-*		ResetKey -- PB4
 */
 static void Keypad_Initport(void)
 {
@@ -56,25 +55,23 @@ static void Keypad_Initport(void)
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
 	GPIO_PinRemapConfig(GPIO_Remap_SWJ_JTAGDisable, ENABLE);
 
-	//EraseKey PB3		ResetKey  PB4
-	gpio_init.GPIO_Pin   = GPIO_Pin_3 | GPIO_Pin_4;
+	//EraseKey PB3
+	gpio_init.GPIO_Pin   = GPIO_Pin_3;
 	GPIO_Init(GPIOB, &gpio_init);
 
 	/* Connect EXTI Line0 to PA0 */
 	GPIO_EXTILineConfig(GPIO_PortSourceGPIOA, GPIO_PinSource0);
 	/* Connect EXTI Line3 to PB3 */
 	GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, GPIO_PinSource3);
-	/* Connect EXTI Line4 to PB4 */
-	GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, GPIO_PinSource4);
 
 	/* Configure EXTI LineX to generate an interrupt on falling edge */
-	EXTI_ClearITPendingBit(EXTI_Line0| EXTI_Line3 | EXTI_Line4);
-	EXTI_InitStructure.EXTI_Line = EXTI_Line0 | EXTI_Line3 | EXTI_Line4;
+	EXTI_ClearITPendingBit(EXTI_Line0| EXTI_Line3);
+	EXTI_InitStructure.EXTI_Line = EXTI_Line0 | EXTI_Line3;
 	EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
 	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Falling;
 	EXTI_InitStructure.EXTI_LineCmd = ENABLE;
 	EXTI_Init(&EXTI_InitStructure);
-	EXTI_GenerateSWInterrupt(EXTI_Line0 | EXTI_Line3 | EXTI_Line4);
+	EXTI_GenerateSWInterrupt(EXTI_Line0 | EXTI_Line3);
 }
 
 /**
@@ -84,7 +81,7 @@ static void Keypad_Initport(void)
 void Keypad_Int_Enable(void)
 {
 	NVIC_InitTypeDef	NVIC_InitStructure;
-	EXTI_ClearITPendingBit(EXTI_Line0| EXTI_Line3 | EXTI_Line4);
+	EXTI_ClearITPendingBit(EXTI_Line0| EXTI_Line3);
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);    // 抢占式优先级别
 
 	NVIC_InitStructure.NVIC_IRQChannel = EXTI0_IRQChannel;
@@ -96,11 +93,6 @@ void Keypad_Int_Enable(void)
 	NVIC_InitStructure.NVIC_IRQChannel = EXTI3_IRQChannel;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
-
-
-	NVIC_InitStructure.NVIC_IRQChannel = EXTI4_IRQChannel;
-    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-	NVIC_Init(&NVIC_InitStructure);
 }
 
 /**
@@ -110,7 +102,7 @@ void Keypad_Int_Enable(void)
 void Keypad_Int_Disable(void)
 {
 	NVIC_InitTypeDef	NVIC_InitStructure;
-	EXTI_ClearITPendingBit(EXTI_Line0| EXTI_Line3 | EXTI_Line4);
+	EXTI_ClearITPendingBit(EXTI_Line0| EXTI_Line3);
 
 	NVIC_InitStructure.NVIC_IRQChannel = EXTI0_IRQChannel;
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
@@ -119,10 +111,6 @@ void Keypad_Int_Disable(void)
 	NVIC_Init(&NVIC_InitStructure);
 
 	NVIC_InitStructure.NVIC_IRQChannel = EXTI3_IRQChannel;
-	NVIC_InitStructure.NVIC_IRQChannelCmd = DISABLE;
-	NVIC_Init(&NVIC_InitStructure);
-
-	NVIC_InitStructure.NVIC_IRQChannel = EXTI4_IRQChannel;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = DISABLE;
 	NVIC_Init(&NVIC_InitStructure);
 }
@@ -207,8 +195,8 @@ void Keypad_Init(void)
 #define KEYPAD_STATE_LONG_PRESS				4
 
 /**
- * @brief keypad 三个Key对应的IO外部中断ISR
- * @note  EXIT0、EXTI3、EXTI4的中断服务函数调用
+ * @brief keypad 2个Key对应的IO外部中断ISR
+ * @note  EXIT0、EXTI3的中断服务函数调用
 */
 void Keypad_EXTI_ISRHandler(unsigned char	exti_line)
 {
@@ -225,10 +213,6 @@ void Keypad_EXTI_ISRHandler(unsigned char	exti_line)
 	else if (exti_line == ERASE_KEY_EXTI_INT)
 	{
 		current_press_key = ERASE_KEY;
-	}
-	else
-	{
-		current_press_key = RESET_KEY;
 	}
 	press_cnt = 0;
 	keypad_state = KEYPAD_STATE_INIT;
@@ -253,10 +237,6 @@ reread:
 	{
 		h1 = GPIO_ReadInputDataBit(GPIOB,GPIO_Pin_3);
 	}
-	else
-	{
-		h1 = GPIO_ReadInputDataBit(GPIOB,GPIO_Pin_4);
-	}
 
 	//hw_platform_trip_io();
 	for(i=0;i < 10000;i++);	//约1ms(在72M频率下，实测972us)
@@ -269,10 +249,6 @@ reread:
 	else if (key == ERASE_KEY)
 	{
 		h2 = GPIO_ReadInputDataBit(GPIOB,GPIO_Pin_3);
-	}
-	else
-	{
-		h2 = GPIO_ReadInputDataBit(GPIOB,GPIO_Pin_4);
 	}
 
 	if(h1 == h2)
@@ -312,14 +288,7 @@ void Keypad_Timer_ISRHandler(void)
 			{
 				keypress_timeout = 0;
 				keypad_state = KEYPAD_STATE_AT_LEAST_CLICK;
-				if (current_press_key == RESET_KEY)
-				{
-					OSQPost(pEvent_Queue,(void*)EVENT_RESET_KEY_PRESS);
-					//keypad_state = KEYPAD_STATE_INIT;
-					Keypad_Timer_Disable();
-					Keypad_Int_Enable();
-				}
-				else if (current_press_key == SCAN_KEY)
+				if (current_press_key == SCAN_KEY)
 				{
 					hw_platform_start_led_blink(LED_GREEN,3);
 					if (device_current_state == STATE_HID_Mode)
