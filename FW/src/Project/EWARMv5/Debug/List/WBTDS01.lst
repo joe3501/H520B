@@ -1,6 +1,6 @@
 ###############################################################################
 #                                                                             #
-# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     26/Sep/2015  15:20:24 #
+# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     28/Sep/2015  18:18:13 #
 # Copyright 1999-2009 IAR Systems AB.                                         #
 #                                                                             #
 #    Cpu mode     =  thumb                                                    #
@@ -606,74 +606,88 @@ E:\H520B\FW\src\Drivers\WBTDS01.c
     570          	}
     571          
     572          	send_data_to_WBTDS01("\x00\x00\x28\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", 16);
-    573          	return 0;
-    574          }
-    575          
+    573          	delay_us(300);
+    574          	return 0;
+    575          }
     576          
-    577          /*
-    578           * @brief 蓝牙模块WBTDS01的初始化
-    579          */
-    580          int WBTD_init(void)
-    581          {
-    582          	unsigned char	str[21];
-    583          
-    584          	wbtd_res.DataBuffer = wbtd_recbuffer;
-    585          	WBTD_reset_resVar();
-    586          	//got_notify_flag = 0;
-    587          	//memset(wbtd_notify_buffer,0,WBTD_NOTIFY_BUFFER_LEN);
-    588          
-    589          	WBTD_GPIO_config(115200);		//default波特率
-    590          	WBTD_NVIC_config();
-    591          
-    592          	if(WBTD_query_version(str))
-    593          	{
-    594          		return -1;
-    595          	}
-    596          
-    597          #ifdef DEBUG_VER
-    598          	printf("BlueTooth Module Ver:%s\r\n",str);
-    599          #endif
-    600          
-    601          	//if (WBTD_set_name("H520B Device"))
-    602          	if (WBTD_set_name("WBTDS01"))
-    603          	{
-    604          		return -3;
-    605          	}
-    606          
-    607          	if (WBTD_set_profile(BT_PROFILE_HID))
-    608          	{
-    609          		return -4;
-    610          	}
-    611          
-    612          	return 0;
-    613          }
-    614          
-    615          /*
-    616           * @brief 蓝牙模块是否获取一个通知消息
-    617           * @return 0:  没有获取到通知消息
-    618           *         1： 获取到连接成功的通知消息
-    619           *         2： 获取到连接断开的通知消息
-    620           *		   3:  unknown message
-    621          */
-    622          int WBTD_got_notify_type(void)
-    623          {
-    624          	if (wbtd_res.status & (WBTD_RESPONSE_GOT_NOTIFY_CON | WBTD_RESPONSE_GOT_NOTIFY_DISCON))
-    625          	{
-    626          		if (wbtd_res.status & WBTD_RESPONSE_GOT_NOTIFY_CON)
-    627          		{
-    628          			wbtd_res.status &= 	~WBTD_RESPONSE_GOT_NOTIFY_CON;
-    629          			return 1;
-    630          		}
-    631          		else
-    632          		{
-    633          			wbtd_res.status &= 	~WBTD_RESPONSE_GOT_NOTIFY_DISCON;
-    634          			return 2;
-    635          		}
-    636          	}
-    637          
-    638          	return 0;
-    639          }
-    640          
+    577          
+    578          /*
+    579           * @brief 蓝牙模块WBTDS01的初始化
+    580          */
+    581          int WBTD_init(void)
+    582          {
+    583          	unsigned char	str[21];
+    584          
+    585          	wbtd_res.DataBuffer = wbtd_recbuffer;
+    586          	WBTD_reset_resVar();
+    587          	//got_notify_flag = 0;
+    588          	//memset(wbtd_notify_buffer,0,WBTD_NOTIFY_BUFFER_LEN);
+    589          
+    590          	WBTD_GPIO_config(115200);		//default波特率
+    591          	WBTD_NVIC_config();
+    592          
+    593          	if(WBTD_query_version(str))
+    594          	{
+    595          		return -1;
+    596          	}
+    597          
+    598          #ifdef DEBUG_VER
+    599          	printf("BlueTooth Module Ver:%s\r\n",str);
+    600          #endif
+    601          
+    602          	//if (WBTD_set_name("H520B Device"))
+    603          	if (WBTD_set_name("WBTDS01"))
+    604          	{
+    605          		return -3;
+    606          	}
+    607          
+    608          	if (WBTD_set_profile(BT_PROFILE_HID))
+    609          	{
+    610          		return -4;
+    611          	}
+    612          
+    613          	return 0;
+    614          }
+    615          
+    616          /*
+    617           * @brief 蓝牙模块是否获取一个通知消息
+    618           * @return 0:  没有获取到通知消息
+    619           *         1： 获取到连接成功的通知消息
+    620           *         2： 获取到连接断开的通知消息
+    621           *		   3:  unknown message
+    622          */
+    623          int WBTD_got_notify_type(void)
+    624          {
+    625          	if (wbtd_res.status & (WBTD_RESPONSE_GOT_NOTIFY_CON | WBTD_RESPONSE_GOT_NOTIFY_DISCON))
+    626          	{
+    627          		if (wbtd_res.status & WBTD_RESPONSE_GOT_NOTIFY_CON)
+    628          		{
+    629          			wbtd_res.status &= 	~WBTD_RESPONSE_GOT_NOTIFY_CON;
+    630          			return 1;
+    631          		}
+    632          		else
+    633          		{
+    634          			wbtd_res.status &= 	~WBTD_RESPONSE_GOT_NOTIFY_DISCON;
+    635          			return 2;
+    636          		}
+    637          	}
+    638          
+    639          	return 0;
+    640          }
+    641          
+    642          
+    643          /*
+    644           * @brief 蓝牙模块HID模式发送测试
+    645          */
+    646          int WBTD_hid_send_test(void)
+    647          {
+    648          	unsigned int i,s;
+    649          	for (i = 0; i < 50;i++)
+    650          	{
+    651          		WBTD_hid_send("12345678901234567890",20,&s);
+    652          		delay_ms(150);
+    653          	}
+    654          }
 
    Maximum stack usage in bytes:
 
@@ -685,6 +699,7 @@ E:\H520B\FW\src\Drivers\WBTDS01.c
      WBTD_RxISRHandler        16
      WBTD_got_notify_type      0
      WBTD_hid_send            40
+     WBTD_hid_send_test       16
      WBTD_init                32
      WBTD_query_version       32
      WBTD_reset_resVar         0
@@ -719,9 +734,10 @@ E:\H520B\FW\src\Drivers\WBTDS01.c
      WBTD_set_autocon                                 64
      WBTD_set_profile                                 80
      WBTD_set_ioskeypad                               64
-     WBTD_hid_send                                   100
+     WBTD_hid_send                                   108
      WBTD_init                                        84
      WBTD_got_notify_type                             56
+     WBTD_hid_send_test                               36
      ??DataTable15                                     4
      ??DataTable16                                     4
      ??DataTable41                                     4
@@ -750,15 +766,16 @@ E:\H520B\FW\src\Drivers\WBTDS01.c
      ?<Constant "\000\000\000\000\000\000\000\000\0   20
      ?<Constant "\000\000(\000\000\000\000\000\000\   20
      ?<Constant "WBTDS01">                             8
+     ?<Constant "12345678901234567890">               24
 
  
    172 bytes in section .bss
-   272 bytes in section .rodata
- 1 982 bytes in section .text
+   296 bytes in section .rodata
+ 2 026 bytes in section .text
  
- 1 968 bytes of CODE  memory (+ 14 bytes shared)
-   272 bytes of CONST memory
+ 2 012 bytes of CODE  memory (+ 14 bytes shared)
+   296 bytes of CONST memory
    172 bytes of DATA  memory
 
 Errors: none
-Warnings: 3
+Warnings: 6

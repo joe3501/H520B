@@ -1,6 +1,6 @@
 ###############################################################################
 #                                                                             #
-# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     26/Sep/2015  11:37:25 #
+# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     28/Sep/2015  18:18:14 #
 # Copyright 1999-2009 IAR Systems AB.                                         #
 #                                                                             #
 #    Cpu mode     =  thumb                                                    #
@@ -448,223 +448,217 @@ E:\H520B\FW\src\Drivers\hw_platform.c
     411          	for (i = 0; i < (delay*beep_freq)/2000;i++)
     412          	{
     413          		GPIO_SetBits(GPIOB, GPIO_Pin_5);
-    414          		hw_platform_trip_io();
-    415          		delay_us(1000000/beep_freq);
-    416          		//delay_us(100);
-    417          		hw_platform_trip_io();
-    418          		GPIO_ResetBits(GPIOB, GPIO_Pin_5);
-    419          		delay_us(1000000/beep_freq);
-    420          		//delay_us(400);
-    421          	}
-    422          }
-    423          
-    424          /**
-    425          * @brief	蜂鸣器与Motor同时控制接口
-    426          * @param[in]  unsigned int delay	延时一段时间,单位ms,节拍时长
-    427          * @param[in]  unsigned int	beep_freq	蜂鸣器的发声频率，音调
-    428          * @return   none 
-    429          */
-    430          void hw_platform_beep_motor_ctrl(unsigned short delay,unsigned int beep_freq)
-    431          {
-    432          	int i;
-    433          	GPIO_SetBits(GPIOA, GPIO_Pin_7);
-    434          	for (i = 0; i < (delay*beep_freq)/2000;i++)
-    435          	{
-    436          		GPIO_SetBits(GPIOB, GPIO_Pin_5);
-    437          		hw_platform_trip_io();
-    438          		delay_us(1000000/beep_freq);
-    439          		//delay_us(100);
-    440          		hw_platform_trip_io();
-    441          		GPIO_ResetBits(GPIOB, GPIO_Pin_5);
-    442          		delay_us(1000000/beep_freq);
-    443          		//delay_us(400);
-    444          	}
-    445          	GPIO_ResetBits(GPIOA, GPIO_Pin_7);
-    446          }
-    447          
-    448          
-    449          
-    450          /**
-    451           * @brief 利用时基模块提供的定时器接口实现LED闪烁
-    452          */
-    453          static void led_red_blink_timer_hook(void)
+    414          		delay_us(1000000/beep_freq);
+    415          		//delay_us(100);
+    416          		GPIO_ResetBits(GPIOB, GPIO_Pin_5);
+    417          		delay_us(1000000/beep_freq);
+    418          		//delay_us(400);
+    419          	}
+    420          }
+    421          
+    422          /**
+    423          * @brief	蜂鸣器与Motor同时控制接口
+    424          * @param[in]  unsigned int delay	延时一段时间,单位ms,节拍时长
+    425          * @param[in]  unsigned int	beep_freq	蜂鸣器的发声频率，音调
+    426          * @return   none 
+    427          */
+    428          void hw_platform_beep_motor_ctrl(unsigned short delay,unsigned int beep_freq)
+    429          {
+    430          	int i;
+    431          	GPIO_SetBits(GPIOA, GPIO_Pin_7);
+    432          	for (i = 0; i < (delay*beep_freq)/2000;i++)
+    433          	{
+    434          		GPIO_SetBits(GPIOB, GPIO_Pin_5);
+    435          		delay_us(1000000/beep_freq);
+    436          		GPIO_ResetBits(GPIOB, GPIO_Pin_5);
+    437          		delay_us(1000000/beep_freq);
+    438          	}
+    439          	GPIO_ResetBits(GPIOA, GPIO_Pin_7);
+    440          }
+    441          
+    442          
+    443          
+    444          /**
+    445           * @brief 利用时基模块提供的定时器接口实现LED闪烁
+    446          */
+    447          static void led_red_blink_timer_hook(void)
+    448          {
+    449          	current_led_state ^= LED_RED_MASK;
+    450          	hw_platform_led_ctrl(LED_RED,current_led_state & LED_RED_MASK);
+    451          }
+    452          
+    453          static void led_blue_blink_timer_hook(void)
     454          {
-    455          	current_led_state ^= LED_RED_MASK;
-    456          	hw_platform_led_ctrl(LED_RED,current_led_state & LED_RED_MASK);
+    455          	current_led_state ^= LED_BLUE_MASK;
+    456          	hw_platform_led_ctrl(LED_BLUE,current_led_state & LED_BLUE_MASK);
     457          }
     458          
-    459          static void led_blue_blink_timer_hook(void)
+    459          static void led_green_blink_timer_hook(void)
     460          {
-    461          	current_led_state ^= LED_BLUE_MASK;
-    462          	hw_platform_led_ctrl(LED_BLUE,current_led_state & LED_BLUE_MASK);
+    461          	current_led_state ^= LED_GREEN_MASK;
+    462          	hw_platform_led_ctrl(LED_GREEN,current_led_state & LED_GREEN_MASK);
     463          }
     464          
-    465          static void led_green_blink_timer_hook(void)
+    465          static void led_yellow_blink_timer_hook(void)
     466          {
-    467          	current_led_state ^= LED_GREEN_MASK;
-    468          	hw_platform_led_ctrl(LED_GREEN,current_led_state & LED_GREEN_MASK);
+    467          	current_led_state ^= LED_YELLOW_MASK;
+    468          	hw_platform_led_ctrl(LED_YELLOW,current_led_state & LED_YELLOW_MASK);
     469          }
     470          
-    471          static void led_yellow_blink_timer_hook(void)
-    472          {
-    473          	current_led_state ^= LED_YELLOW_MASK;
-    474          	hw_platform_led_ctrl(LED_YELLOW,current_led_state & LED_YELLOW_MASK);
-    475          }
-    476          
-    477          /**
-    478           * @brief 开始LED闪烁指示
-    479           * @param[in] unsigned int		led		
-    480           * @param[in] unsigned short	delay	闪烁的时间间隔，也就是闪烁频率,单位10ms
-    481           * @note 注意此接口可以让几个LED同时按照各自不同的频率闪烁
-    482          */
-    483          void hw_platform_start_led_blink(unsigned int led,unsigned short delay)
-    484          {
-    485          	int ret;
-    486          	hw_platform_led_ctrl(led,1);
-    487          	if (led == LED_RED)
-    488          	{
-    489          		if (current_led_state & LED_RED_ON_MASK)
+    471          /**
+    472           * @brief 开始LED闪烁指示
+    473           * @param[in] unsigned int		led		
+    474           * @param[in] unsigned short	delay	闪烁的时间间隔，也就是闪烁频率,单位10ms
+    475           * @note 注意此接口可以让几个LED同时按照各自不同的频率闪烁
+    476          */
+    477          void hw_platform_start_led_blink(unsigned int led,unsigned short delay)
+    478          {
+    479          	int ret;
+    480          	hw_platform_led_ctrl(led,1);
+    481          	if (led == LED_RED)
+    482          	{
+    483          		if (current_led_state & LED_RED_ON_MASK)
+    484          		{
+    485          			current_led_state |= LED_RED_MASK;
+    486          			ret = reset_timer(led_timer_h[0],V_TIMER_MODE_PERIODIC,delay*10,led_red_blink_timer_hook);
+    487          			assert(ret == 0);
+    488          		}
+    489          		else
     490          		{
-    491          			current_led_state |= LED_RED_MASK;
-    492          			ret = reset_timer(led_timer_h[0],V_TIMER_MODE_PERIODIC,delay*10,led_red_blink_timer_hook);
-    493          			assert(ret == 0);
+    491          			current_led_state |= (LED_RED_MASK | LED_RED_ON_MASK);
+    492          			led_timer_h[0] = start_timer(V_TIMER_MODE_PERIODIC,delay*10,led_red_blink_timer_hook);
+    493          			assert(led_timer_h[0] != 0);
     494          		}
-    495          		else
-    496          		{
-    497          			current_led_state |= (LED_RED_MASK | LED_RED_ON_MASK);
-    498          			led_timer_h[0] = start_timer(V_TIMER_MODE_PERIODIC,delay*10,led_red_blink_timer_hook);
-    499          			assert(led_timer_h[0] != 0);
-    500          		}
-    501          	}
-    502          	else if (led == LED_BLUE)
-    503          	{
-    504          		if (current_led_state & LED_BLUE_ON_MASK)
+    495          	}
+    496          	else if (led == LED_BLUE)
+    497          	{
+    498          		if (current_led_state & LED_BLUE_ON_MASK)
+    499          		{
+    500          			current_led_state |= LED_BLUE_MASK;
+    501          			ret = reset_timer(led_timer_h[1],V_TIMER_MODE_PERIODIC,delay*10,led_blue_blink_timer_hook);
+    502          			assert(ret == 0);
+    503          		}
+    504          		else
     505          		{
-    506          			current_led_state |= LED_BLUE_MASK;
-    507          			ret = reset_timer(led_timer_h[1],V_TIMER_MODE_PERIODIC,delay*10,led_blue_blink_timer_hook);
-    508          			assert(ret == 0);
+    506          			current_led_state |= (LED_BLUE_MASK | LED_BLUE_ON_MASK);
+    507          			led_timer_h[1] = start_timer(V_TIMER_MODE_PERIODIC,delay*10,led_blue_blink_timer_hook);
+    508          			assert(led_timer_h[1] != 0);
     509          		}
-    510          		else
-    511          		{
-    512          			current_led_state |= (LED_BLUE_MASK | LED_BLUE_ON_MASK);
-    513          			led_timer_h[1] = start_timer(V_TIMER_MODE_PERIODIC,delay*10,led_blue_blink_timer_hook);
-    514          			assert(led_timer_h[1] != 0);
-    515          		}
-    516          	}
-    517          	else if (led == LED_GREEN)
-    518          	{
-    519          		if (current_led_state & LED_GREEN_ON_MASK)
+    510          	}
+    511          	else if (led == LED_GREEN)
+    512          	{
+    513          		if (current_led_state & LED_GREEN_ON_MASK)
+    514          		{
+    515          			current_led_state |= LED_GREEN_MASK;
+    516          			ret = reset_timer(led_timer_h[2],V_TIMER_MODE_PERIODIC,delay*10,led_green_blink_timer_hook);
+    517          			assert(ret == 0);
+    518          		}
+    519          		else
     520          		{
-    521          			current_led_state |= LED_GREEN_MASK;
-    522          			ret = reset_timer(led_timer_h[2],V_TIMER_MODE_PERIODIC,delay*10,led_green_blink_timer_hook);
-    523          			assert(ret == 0);
+    521          			current_led_state |= (LED_GREEN_MASK | LED_GREEN_ON_MASK);
+    522          			led_timer_h[2] = start_timer(V_TIMER_MODE_PERIODIC,delay*10,led_green_blink_timer_hook);
+    523          			assert(led_timer_h[2] != 0);
     524          		}
-    525          		else
-    526          		{
-    527          			current_led_state |= (LED_GREEN_MASK | LED_GREEN_ON_MASK);
-    528          			led_timer_h[2] = start_timer(V_TIMER_MODE_PERIODIC,delay*10,led_green_blink_timer_hook);
-    529          			assert(led_timer_h[2] != 0);
-    530          		}
-    531          	}
-    532          	else
-    533          	{
-    534          		if (current_led_state & LED_YELLOW_ON_MASK)
+    525          	}
+    526          	else
+    527          	{
+    528          		if (current_led_state & LED_YELLOW_ON_MASK)
+    529          		{
+    530          			current_led_state |= LED_YELLOW_MASK;
+    531          			ret = reset_timer(led_timer_h[3],V_TIMER_MODE_PERIODIC,delay*10,led_yellow_blink_timer_hook);
+    532          			assert(ret == 0);
+    533          		}
+    534          		else
     535          		{
-    536          			current_led_state |= LED_YELLOW_MASK;
-    537          			ret = reset_timer(led_timer_h[3],V_TIMER_MODE_PERIODIC,delay*10,led_yellow_blink_timer_hook);
-    538          			assert(ret == 0);
+    536          			current_led_state |= (LED_YELLOW_MASK | LED_YELLOW_ON_MASK);
+    537          			led_timer_h[3] = start_timer(V_TIMER_MODE_PERIODIC,delay*10,led_yellow_blink_timer_hook);
+    538          			assert(led_timer_h[3] != 0);
     539          		}
-    540          		else
-    541          		{
-    542          			current_led_state |= (LED_YELLOW_MASK | LED_YELLOW_ON_MASK);
-    543          			led_timer_h[3] = start_timer(V_TIMER_MODE_PERIODIC,delay*10,led_yellow_blink_timer_hook);
-    544          			assert(led_timer_h[3] != 0);
-    545          		}
-    546          	}
-    547          }
-    548          
-    549          /**
-    550           * @brief 关闭某一个在闪烁的LED
-    551          */
-    552          void hw_platform_stop_led_blink(unsigned int led)
-    553          {
-    554          	int ret;
-    555          	if (led == LED_RED)
-    556          	{
-    557          		hw_platform_led_ctrl(LED_RED,0);
-    558          		current_led_state &= ~LED_RED_MASK;
-    559          		current_led_state &= ~LED_RED_ON_MASK;
-    560          		ret = stop_timer(led_timer_h[0]);
-    561          		assert(ret == 0);
-    562          	}
-    563          	else if (led == LED_BLUE)
-    564          	{
-    565          		hw_platform_led_ctrl(LED_BLUE,0);
-    566          		current_led_state &= ~LED_BLUE_MASK;
-    567          		current_led_state &= ~LED_BLUE_ON_MASK;
-    568          		ret = stop_timer(led_timer_h[1]);
-    569          		assert(ret == 0);
-    570          	}
-    571          	else if (led == LED_GREEN)
-    572          	{
-    573          		hw_platform_led_ctrl(LED_GREEN,0);
-    574          		current_led_state &= ~LED_GREEN_MASK;
-    575          		current_led_state &= ~LED_GREEN_ON_MASK;
-    576          		ret = stop_timer(led_timer_h[2]);
-    577          		assert(ret == 0);
-    578          	}
-    579          	else
-    580          	{
-    581          		hw_platform_led_ctrl(LED_YELLOW,0);
-    582          		current_led_state &= ~LED_YELLOW_MASK;
-    583          		current_led_state &= ~LED_YELLOW_ON_MASK;
-    584          		ret = stop_timer(led_timer_h[3]);
-    585          		assert(ret == 0);
-    586          	}
-    587          }
-    588          
-    589          /**
-    590           * @brief 调试IO
-    591          */
-    592          void hw_platform_trip_io(void)
-    593          {
-    594          	GPIO_ResetBits(GPIOB, GPIO_Pin_8);
-    595          	GPIO_SetBits(GPIOB, GPIO_Pin_8);
-    596          }
-    597          
-    598          
-    599          //测试LED的闪烁接口
-    600          void hw_platform_led_blink_test(void)
-    601          {
-    602          	hw_platform_start_led_blink(LED_RED,6);
-    603          	OSTimeDlyHMSM(0,0,10,0);
-    604          	hw_platform_start_led_blink(LED_BLUE,20);
-    605          	OSTimeDlyHMSM(0,0,10,0);
-    606          	hw_platform_start_led_blink(LED_GREEN,50);
-    607          	OSTimeDlyHMSM(0,0,10,0);
-    608          	hw_platform_start_led_blink(LED_YELLOW,300);
+    540          	}
+    541          }
+    542          
+    543          /**
+    544           * @brief 关闭某一个在闪烁的LED
+    545          */
+    546          void hw_platform_stop_led_blink(unsigned int led)
+    547          {
+    548          	int ret;
+    549          	if (led == LED_RED)
+    550          	{
+    551          		hw_platform_led_ctrl(LED_RED,0);
+    552          		current_led_state &= ~LED_RED_MASK;
+    553          		current_led_state &= ~LED_RED_ON_MASK;
+    554          		ret = stop_timer(led_timer_h[0]);
+    555          		assert(ret == 0);
+    556          	}
+    557          	else if (led == LED_BLUE)
+    558          	{
+    559          		hw_platform_led_ctrl(LED_BLUE,0);
+    560          		current_led_state &= ~LED_BLUE_MASK;
+    561          		current_led_state &= ~LED_BLUE_ON_MASK;
+    562          		ret = stop_timer(led_timer_h[1]);
+    563          		assert(ret == 0);
+    564          	}
+    565          	else if (led == LED_GREEN)
+    566          	{
+    567          		hw_platform_led_ctrl(LED_GREEN,0);
+    568          		current_led_state &= ~LED_GREEN_MASK;
+    569          		current_led_state &= ~LED_GREEN_ON_MASK;
+    570          		ret = stop_timer(led_timer_h[2]);
+    571          		assert(ret == 0);
+    572          	}
+    573          	else
+    574          	{
+    575          		hw_platform_led_ctrl(LED_YELLOW,0);
+    576          		current_led_state &= ~LED_YELLOW_MASK;
+    577          		current_led_state &= ~LED_YELLOW_ON_MASK;
+    578          		ret = stop_timer(led_timer_h[3]);
+    579          		assert(ret == 0);
+    580          	}
+    581          }
+    582          
+    583          /**
+    584           * @brief 调试IO
+    585          */
+    586          void hw_platform_trip_io(void)
+    587          {
+    588          	GPIO_ResetBits(GPIOB, GPIO_Pin_8);
+    589          	GPIO_SetBits(GPIOB, GPIO_Pin_8);
+    590          }
+    591          
+    592          
+    593          //测试LED的闪烁接口
+    594          void hw_platform_led_blink_test(void)
+    595          {
+    596          	hw_platform_start_led_blink(LED_RED,6);
+    597          	OSTimeDlyHMSM(0,0,10,0);
+    598          	hw_platform_start_led_blink(LED_BLUE,20);
+    599          	OSTimeDlyHMSM(0,0,10,0);
+    600          	hw_platform_start_led_blink(LED_GREEN,50);
+    601          	OSTimeDlyHMSM(0,0,10,0);
+    602          	hw_platform_start_led_blink(LED_YELLOW,300);
+    603          
+    604          	OSTimeDlyHMSM(0,0,10,0);
+    605          
+    606          	hw_platform_stop_led_blink(LED_RED);
+    607          
+    608          	OSTimeDlyHMSM(0,0,10,0);
     609          
-    610          	OSTimeDlyHMSM(0,0,10,0);
+    610          	hw_platform_stop_led_blink(LED_BLUE);
     611          
-    612          	hw_platform_stop_led_blink(LED_RED);
+    612          	OSTimeDlyHMSM(0,0,10,0);
     613          
-    614          	OSTimeDlyHMSM(0,0,10,0);
+    614          	hw_platform_stop_led_blink(LED_GREEN);
     615          
-    616          	hw_platform_stop_led_blink(LED_BLUE);
+    616          	OSTimeDlyHMSM(0,0,10,0);
     617          
-    618          	OSTimeDlyHMSM(0,0,10,0);
+    618          	StartDelay(5000);
     619          
-    620          	hw_platform_stop_led_blink(LED_GREEN);
+    620          	while (DelayIsEnd()==0);
     621          
-    622          	OSTimeDlyHMSM(0,0,10,0);
+    622          	hw_platform_stop_led_blink(LED_YELLOW);
     623          
-    624          	StartDelay(5000);
-    625          
-    626          	while (DelayIsEnd()==0);
-    627          
-    628          	hw_platform_stop_led_blink(LED_YELLOW);
-    629          
-    630          }
+    624          }
 
    Maximum stack usage in bytes:
 
@@ -711,8 +705,8 @@ E:\H520B\FW\src\Drivers\hw_platform.c
      hw_platform_led_ctrl                        118
      hw_platform_motor_ctrl                       52
      hw_platform_trig_ctrl                        60
-     hw_platform_beep_ctrl                        80
-     hw_platform_beep_motor_ctrl                  96
+     hw_platform_beep_ctrl                        72
+     hw_platform_beep_motor_ctrl                  88
      led_red_blink_timer_hook                     36
      led_blue_blink_timer_hook                    36
      led_green_blink_timer_hook                   36
@@ -741,9 +735,9 @@ E:\H520B\FW\src\Drivers\hw_platform.c
  
     29 bytes in section .bss
    132 bytes in section .rodata
- 2 336 bytes in section .text
+ 2 320 bytes in section .text
  
- 2 336 bytes of CODE  memory
+ 2 320 bytes of CODE  memory
    132 bytes of CONST memory
     29 bytes of DATA  memory
 

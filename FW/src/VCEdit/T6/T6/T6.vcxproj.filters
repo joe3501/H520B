@@ -260,6 +260,12 @@
     <ClInclude Include="..\..\..\Drivers\crc32.h">
       <Filter>Driver</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\App\record_m.h">
+      <Filter>App</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\App\record_mod.h">
+      <Filter>App</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\..\Lib\src\hardfault_isr_handle_a.asm">
@@ -498,6 +504,15 @@
     </ClCompile>
     <ClCompile Include="..\..\..\Drivers\crc32.c">
       <Filter>Driver</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\App\record_m.c">
+      <Filter>App</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\App\record_mod.c">
+      <Filter>App</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\App\Terminal_Para_m.c">
+      <Filter>App</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

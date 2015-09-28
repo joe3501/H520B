@@ -570,6 +570,7 @@ int WBTD_hid_send(unsigned char *str,unsigned int len,unsigned int *send_len)
 	}
 
 	send_data_to_WBTDS01("\x00\x00\x28\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", 16);
+	delay_us(300);
 	return 0;
 }
 
@@ -638,3 +639,16 @@ int WBTD_got_notify_type(void)
 	return 0;
 }
 
+
+/*
+ * @brief 蓝牙模块HID模式发送测试
+*/
+int WBTD_hid_send_test(void)
+{
+	unsigned int i,s;
+	for (i = 0; i < 50;i++)
+	{
+		WBTD_hid_send("12345678901234567890",20,&s);
+		delay_ms(150);
+	}
+}

@@ -1,6 +1,6 @@
 ###############################################################################
 #                                                                             #
-# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     26/Sep/2015  11:37:17 #
+# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     28/Sep/2015  18:18:04 #
 # Copyright 1999-2009 IAR Systems AB.                                         #
 #                                                                             #
 #    Cpu mode     =  thumb                                                    #
@@ -150,7 +150,7 @@ E:\H520B\FW\src\usb_lib\mass_mal.c
     114          				return MAL_FAIL;
     115          			}
     116          
-    117          			Status = spi_flash_write(Memory_Offset/512,pBuf,1);
+    117          			Status = spi_flash_write(fatfs_sector_offset+Memory_Offset/512,pBuf,1);
     118          			if (Status)
     119          			{
     120          				return MAL_FAIL;
@@ -232,8 +232,8 @@ E:\H520B\FW\src\usb_lib\mass_mal.c
     196          				return MAL_FAIL;
     197          			}
     198          
-    199          			spi_flash_raddr(Memory_Offset, Transfer_Length,(unsigned char*)Readbuff);
-    200                      break;
+    199          			spi_flash_raddr(fatfs_sector_offset*512+Memory_Offset, Transfer_Length,(unsigned char*)Readbuff);
+    200          			break;
     201          		}
     202          		//else
     203          		//{
@@ -364,17 +364,18 @@ E:\H520B\FW\src\usb_lib\mass_mal.c
      Mass_Block_Count    8
      Status              4
      MAL_Init           18
-     MAL_Write          82
-     MAL_Read           92
+     MAL_Write          88
+     MAL_Read          102
      MAL_GetStatus      88
-     ??DataTable7        4
+     ??DataTable8        4
      ??DataTable9        4
+     ??DataTable11       4
 
  
   28 bytes in section .bss
- 288 bytes in section .text
+ 308 bytes in section .text
  
- 288 bytes of CODE memory
+ 308 bytes of CODE memory
   28 bytes of DATA memory
 
 Errors: none

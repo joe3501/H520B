@@ -411,10 +411,8 @@ void hw_platform_beep_ctrl(unsigned short delay,unsigned int beep_freq)
 	for (i = 0; i < (delay*beep_freq)/2000;i++)
 	{
 		GPIO_SetBits(GPIOB, GPIO_Pin_5);
-		hw_platform_trip_io();
 		delay_us(1000000/beep_freq);
 		//delay_us(100);
-		hw_platform_trip_io();
 		GPIO_ResetBits(GPIOB, GPIO_Pin_5);
 		delay_us(1000000/beep_freq);
 		//delay_us(400);
@@ -434,13 +432,9 @@ void hw_platform_beep_motor_ctrl(unsigned short delay,unsigned int beep_freq)
 	for (i = 0; i < (delay*beep_freq)/2000;i++)
 	{
 		GPIO_SetBits(GPIOB, GPIO_Pin_5);
-		hw_platform_trip_io();
 		delay_us(1000000/beep_freq);
-		//delay_us(100);
-		hw_platform_trip_io();
 		GPIO_ResetBits(GPIOB, GPIO_Pin_5);
 		delay_us(1000000/beep_freq);
-		//delay_us(400);
 	}
 	GPIO_ResetBits(GPIOA, GPIO_Pin_7);
 }

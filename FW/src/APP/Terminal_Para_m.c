@@ -10,12 +10,8 @@
 #include "Terminal_Para.h"
 #include <string.h>
 #include "crc32.h"
-#include "ff.h"
+#include "record_mod.h"
 
-extern FATFS fs;
-FIL	 file1;
-
-#define PARAM_FILE	"/device.cfg"
 
 
 /* private Variable -----------------------------------------------*/
@@ -25,6 +21,7 @@ FIL	 file1;
 //定义终端的系统参数
 TTerminalPara		g_param;				//终端参数
 
+static unsigned char param_mod_state = 0;
 
 /* Private function prototypes -----------------------------------------------*/
 /* Private function  -----------------------------------------------*/
@@ -38,28 +35,38 @@ TTerminalPara		g_param;				//终端参数
 */
 int ReadTerminalPara(void)
 {
-	unsigned char			*pDst;
-//	unsigned char			i,j;
 	unsigned long			checkvalue;
-	unsigned int				rd;
+	int		ret;
 
-	pDst				= (unsigned char *)&g_param;	//指向全局参数存储区	
-	if( f_open(&file1, PARAM_FILE, FA_OPEN_EXISTING | FA_READ ) != FR_OK )
+	if (param_mod_state == 0)
 	{
-		return -1;
+		ret = param_init(sizeof(TTerminalPara));
+		if (ret)
+		{
+			if (ret == -3 || ret == -4 || ret == -6)
+			{
+				ret = param_format(sizeof(TTerminalPara));
+				if (ret)
+				{
+					return ret;
+				}
+			}
+			else
+			{
+				return ret;
+			}
+		}
+
+		param_mod_state = 1;
 	}
 
-	if(f_lseek(&file1,0) != FR_OK)
+	ret = param_read((unsigned char*)&g_param,sizeof(TTerminalPara));
+	if(ret)
 	{
-		f_close(&file1);
-		return -1;
+		return ret;
 	}
-	
-	if (f_read(&file1,(void*)pDst,sizeof(TTerminalPara),&rd) != FR_OK)
-	{
-		f_close(&file1);
-		return -1;
-	}
+
+
 
 #if 1
 	//计算校验值是否正确
@@ -93,39 +100,13 @@ int ReadTerminalPara(void)
 */
 int SaveTerminalPara(void)
 {
-	unsigned char		*pSrc;
-	unsigned int		wr;
-
-	pSrc				= (unsigned char *)&g_param;
+	int					ret;
 
 	// 重新计算校验        
 	g_param.checkvalue = crc32(0,&g_param.struct_ver, sizeof(TTerminalPara)-4);
 
-	if( f_open(&file1, PARAM_FILE, FA_OPEN_ALWAYS | FA_WRITE ) != FR_OK )
-	{
-		return -1;
-	}
-
-	if(f_lseek(&file1,0) != FR_OK)
-	{
-		f_close(&file1);
-		return -1;
-	}
-
-	if (f_write(&file1,(void*)pSrc,sizeof(TTerminalPara),&wr) != FR_OK)
-	{
-		f_close(&file1);
-		return -1;
-	}
-
-	if (wr != sizeof(TTerminalPara))
-	{
-		f_close(&file1);
-		return -1;
-	}
-	 
-	f_close(&file1);
-	return 0;
+	ret = param_write((unsigned char*)&g_param,sizeof(TTerminalPara));
+	return ret;
 }
 
 

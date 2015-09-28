@@ -24,7 +24,7 @@
 #include "hw_config.h"
 #include "basic_fun.h"
 #include <stdio.h>
-#include "record.h"
+#include "record_m.h"
 #include "Terminal_Para.h"
 #include "usb_lib.h"
 #include "PCUsart.h"
@@ -327,6 +327,8 @@ void State_Machine_thread(void *p)
 
 	//hw_platform_led_blink_test();		//for test
 	//lowpower_tip();					//for test
+	//record_m_test();					//for test
+	
 	while(1)
 	{
 		event = (unsigned int)OSQPend(pEvent_Queue,25,&err);
@@ -461,6 +463,7 @@ repost:
 				enter_into_Memory_Mode();
 				break;
 			case EVENT_ERASE_KEY_SINGLE_CLICK:
+				//WBTD_hid_send_test();
 				break;
 			case EVENT_ERASE_KEY_LONG_PRESS:
 				//进入配对模式

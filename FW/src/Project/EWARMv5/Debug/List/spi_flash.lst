@@ -1,6 +1,6 @@
 ###############################################################################
 #                                                                             #
-# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     26/Sep/2015  11:37:13 #
+# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     28/Sep/2015  18:18:08 #
 # Copyright 1999-2009 IAR Systems AB.                                         #
 #                                                                             #
 #    Cpu mode     =  thumb                                                    #
@@ -90,7 +90,7 @@ E:\H520B\FW\src\Drivers\spi_flash.c
      54          /* Private variables ---------------------------------------------------------*/
      55          const TSPIFlashID id_array[] = {
      56          	{0xEF, 0x40, 0x17, 0x800000},			// KH25L1605DM2C
-     57              {0xEF, 0x30, 0x16, 0x200000},			// KH25L1605DM2C
+     57          	{0xEF, 0x30, 0x16, 0x200000},			// KH25L1605DM2C
      58          	{0xC8, 0x30, 0x13, 0x080000},			// GigaDevice GD25D40	《GD25DXX_Rev1.1.pdf》
      59          	{0xC8, 0x30, 0x14, 0x100000},			// GigaDevice GD25D80	《GD25DXX_Rev1.1.pdf》
      60          	{0xC8, 0x40, 0x15, 0x200000},			// GigaDevice GD25Q16   《GD25Q16_Rev1.1.pdf》
@@ -107,756 +107,801 @@ E:\H520B\FW\src\Drivers\spi_flash.c
      71          
      72          static unsigned char buffer[4096];		//4K缓存
      73          static int	 current_cache_block;		//当前被缓存的Block
-     74          
-     75          /* Private function prototypes -----------------------------------------------*/
-     76          int		spi_flash_page_write(unsigned char* pBuffer, unsigned int WriteAddr, unsigned short NumByteToWrite);
-     77          /*----- Low layer function -----*/
-     78          unsigned char spi_flash_read_byte(void);
-     79          unsigned char spi_flash_send_byte(unsigned char byte);
-     80          unsigned short spi_flash_send_halfword(unsigned short HalfWord);
-     81          void spi_flash_write_enable(void);
-     82          int spi_flash_wait_for_write_end(void);
-     83          
-     84          /* Private functions ---------------------------------------------------------*/
-     85          /*------------------ High layer function ----------------*/
-     86          
-     87          /**
-     88          * @brief  Initializes the peripherals used by the SPI FLASH driver.
-     89          * @param  None
-     90          * @retval : 0 成功
-     91          *          -1 失败
-     92          */
-     93          int spi_flash_init(void)
-     94          {
-     95          	SPI_InitTypeDef		SPI_InitStructure;
-     96          	GPIO_InitTypeDef	GPIO_InitStructure;
-     97          	TSPIFlashID			spi_flash_id;
-     98          	const TSPIFlashID	*pSPIFLASHID;
-     99          
-    100          	/* Enable SPI2 and GPIO clocks */
-    101          	RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI2, ENABLE);
-    102          	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
-    103          	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIO_CS, ENABLE);
-    104          
-    105          	/* Configure SPI2 pins: SCK, MISO and MOSI */
-    106          	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_13 | GPIO_Pin_14 | GPIO_Pin_15;
-    107          	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
-    108          	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    109          	GPIO_Init(GPIOB, &GPIO_InitStructure);
-    110          
-    111          	/* Configure I/O for Flash Chip select */
-    112          	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_CS;
-    113          	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-    114          	GPIO_Init(GPIO_CS, &GPIO_InitStructure);
-    115          
-    116          	/* Deselect the FLASH: Chip Select high */
-    117          	SPI_FLASH_CS_HIGH();
-    118          
-    119          	/* SPI2 configuration */
-    120          	SPI_InitStructure.SPI_Direction = SPI_Direction_2Lines_FullDuplex;
-    121          	SPI_InitStructure.SPI_Mode = SPI_Mode_Master;
-    122          	SPI_InitStructure.SPI_DataSize = SPI_DataSize_8b;
-    123          	SPI_InitStructure.SPI_CPOL = SPI_CPOL_High;
-    124          	SPI_InitStructure.SPI_CPHA = SPI_CPHA_2Edge;
-    125          	SPI_InitStructure.SPI_NSS = SPI_NSS_Soft;
-    126          	SPI_InitStructure.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_2;
-    127          	SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_MSB;
-    128          	SPI_InitStructure.SPI_CRCPolynomial = 7;
-    129          	SPI_Init(SPI2, &SPI_InitStructure);
-    130          
-    131          	/* Enable SPI2  */
-    132          	SPI_Cmd(SPI2, ENABLE);
-    133          
-    134          	/* Select the FLASH: Chip Select low */
-    135          	SPI_FLASH_CS_LOW();
-    136          
-    137          	/* Send "RDID " instruction */
-    138          	spi_flash_send_byte(RDID);
-    139          
-    140          	/* Read a byte from the FLASH */
-    141          	spi_flash_id.Manufacturer = spi_flash_send_byte(Dummy_Byte);
-    142          
-    143          	/* Read a byte from the FLASH */
-    144          	spi_flash_id.MemoryType = spi_flash_send_byte(Dummy_Byte);
-    145          
-    146          	/* Read a byte from the FLASH */
-    147          	spi_flash_id.Capacity = spi_flash_send_byte(Dummy_Byte);
-    148          
-    149          	/* Deselect the FLASH: Chip Select high */
-    150          	SPI_FLASH_CS_HIGH();
-    151          
-    152          	pSPIFLASHID	= &id_array[0];
+     74          unsigned int			recmod_flasize;
+     75          unsigned int			fatfs_sector_offset;
+     76          
+     77          /* Private function prototypes -----------------------------------------------*/
+     78          int		spi_flash_page_write(unsigned char* pBuffer, unsigned int WriteAddr, unsigned short NumByteToWrite);
+     79          /*----- Low layer function -----*/
+     80          unsigned char spi_flash_read_byte(void);
+     81          unsigned char spi_flash_send_byte(unsigned char byte);
+     82          unsigned short spi_flash_send_halfword(unsigned short HalfWord);
+     83          void spi_flash_write_enable(void);
+     84          int spi_flash_wait_for_write_end(void);
+     85          
+     86          /* Private functions ---------------------------------------------------------*/
+     87          /*------------------ High layer function ----------------*/
+     88          
+     89          /**
+     90          * @brief  Initializes the peripherals used by the SPI FLASH driver.
+     91          * @param  None
+     92          * @retval : 0 成功
+     93          *          -1 失败
+     94          */
+     95          int spi_flash_init(void)
+     96          {
+     97          	SPI_InitTypeDef		SPI_InitStructure;
+     98          	GPIO_InitTypeDef	GPIO_InitStructure;
+     99          	TSPIFlashID			spi_flash_id;
+    100          	const TSPIFlashID	*pSPIFLASHID;
+    101          
+    102          	/* Enable SPI2 and GPIO clocks */
+    103          	RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI2, ENABLE);
+    104          	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
+    105          	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIO_CS, ENABLE);
+    106          
+    107          	/* Configure SPI2 pins: SCK, MISO and MOSI */
+    108          	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_13 | GPIO_Pin_14 | GPIO_Pin_15;
+    109          	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+    110          	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    111          	GPIO_Init(GPIOB, &GPIO_InitStructure);
+    112          
+    113          	/* Configure I/O for Flash Chip select */
+    114          	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_CS;
+    115          	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+    116          	GPIO_Init(GPIO_CS, &GPIO_InitStructure);
+    117          
+    118          	/* Deselect the FLASH: Chip Select high */
+    119          	SPI_FLASH_CS_HIGH();
+    120          
+    121          	/* SPI2 configuration */
+    122          	SPI_InitStructure.SPI_Direction = SPI_Direction_2Lines_FullDuplex;
+    123          	SPI_InitStructure.SPI_Mode = SPI_Mode_Master;
+    124          	SPI_InitStructure.SPI_DataSize = SPI_DataSize_8b;
+    125          	SPI_InitStructure.SPI_CPOL = SPI_CPOL_High;
+    126          	SPI_InitStructure.SPI_CPHA = SPI_CPHA_2Edge;
+    127          	SPI_InitStructure.SPI_NSS = SPI_NSS_Soft;
+    128          	SPI_InitStructure.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_2;
+    129          	SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_MSB;
+    130          	SPI_InitStructure.SPI_CRCPolynomial = 7;
+    131          	SPI_Init(SPI2, &SPI_InitStructure);
+    132          
+    133          	/* Enable SPI2  */
+    134          	SPI_Cmd(SPI2, ENABLE);
+    135          
+    136          	/* Select the FLASH: Chip Select low */
+    137          	SPI_FLASH_CS_LOW();
+    138          
+    139          	/* Send "RDID " instruction */
+    140          	spi_flash_send_byte(RDID);
+    141          
+    142          	/* Read a byte from the FLASH */
+    143          	spi_flash_id.Manufacturer = spi_flash_send_byte(Dummy_Byte);
+    144          
+    145          	/* Read a byte from the FLASH */
+    146          	spi_flash_id.MemoryType = spi_flash_send_byte(Dummy_Byte);
+    147          
+    148          	/* Read a byte from the FLASH */
+    149          	spi_flash_id.Capacity = spi_flash_send_byte(Dummy_Byte);
+    150          
+    151          	/* Deselect the FLASH: Chip Select high */
+    152          	SPI_FLASH_CS_HIGH();
     153          
-    154          	while(pSPIFLASHID->Manufacturer != 0x00)
-    155          	{
-    156          		if( pSPIFLASHID->Manufacturer == spi_flash_id.Manufacturer &&
-    157          			pSPIFLASHID->MemoryType == spi_flash_id.MemoryType &&
-    158          			pSPIFLASHID->Capacity == spi_flash_id.Capacity )
-    159          		{
-    160          			flasize	= pSPIFLASHID->FlashSize;
-    161          			break;
-    162          		}
-    163          		pSPIFLASHID++;
-    164          	}
-    165          
-    166          	if(pSPIFLASHID->Manufacturer == 0x00)
-    167          	{
-    168          		flash_state	= 0;
-    169          		return -1;									// 失败
-    170          	}
-    171          
-    172          	flash_state	= 1;
-    173          	current_cache_block = -1;
-    174          	//spi_flash_busy_flag = 0;
-    175          	return 0;										// 成功
-    176          }
+    154          	pSPIFLASHID	= &id_array[0];
+    155          
+    156          	while(pSPIFLASHID->Manufacturer != 0x00)
+    157          	{
+    158          		if( pSPIFLASHID->Manufacturer == spi_flash_id.Manufacturer &&
+    159          			pSPIFLASHID->MemoryType == spi_flash_id.MemoryType &&
+    160          			pSPIFLASHID->Capacity == spi_flash_id.Capacity )
+    161          		{
+    162          			flasize	= pSPIFLASHID->FlashSize;
+    163          			if (flasize > 1024*1024)
+    164          			{
+    165          				//flasize -= 1024*1024;		//将最后1M的空间划分给FAT文件系统管理
+    166          				recmod_flasize = flasize - 1024*1024;
+    167          				fatfs_sector_offset = recmod_flasize/512;
+    168          			}
+    169          			else
+    170          			{
+    171          				return -1;
+    172          			}
+    173          			break;
+    174          		}
+    175          		pSPIFLASHID++;
+    176          	}
     177          
-    178          /**
-    179          * @brief  CLose the peripherals used by the SPI FLASH driver.
-    180          * @param  None
-    181          * @retval : None
-    182          */
-    183          void spi_flash_close(void)
-    184          {
-    185          	/* Disable SPI2  */
-    186          	SPI_Cmd(SPI2, ENABLE);
-    187          
-    188          	/* Disable SPI2 clocks */
-    189          	RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI2, DISABLE);
-    190          	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, DISABLE);
-    191          	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIO_CS, DISABLE);
-    192          }
-    193          
-    194          
-    195          /**
-    196          * @brief  Check the spi flash state
-    197          * @param  None
-    198          * @retval	0: Flash已经正常初始化
-    199          *		    -1: Flash尚未初始化
-    200          */
-    201          int spi_flash_valid(void)
-    202          {
-    203          	if (flash_state)
-    204          	{
-    205          		return 0;
-    206          	}
-    207          	else
-    208          	{
-    209          		return -1;
-    210          	}
-    211          }
-    212          
-    213          
-    214          /**
-    215          * @brief  Erases the specified FLASH sector 4K.
-    216          * @param SectorAddr: address of the sector to erase.
-    217          * @retval	0: 成功
-    218          *		   -1: 超时
-    219          */
-    220          int spi_flash_erasesector(unsigned int SectorAddr)
-    221          {
-    222          	OS_CPU_SR  cpu_sr = 0;
-    223          	OS_ENTER_CRITICAL();
-    224          	/* Send write enable instruction */
-    225          	spi_flash_write_enable();
-    226          
-    227          	/* Sector Erase */
-    228          	/* Select the FLASH: Chip Select low */
-    229          	SPI_FLASH_CS_LOW();
-    230          	/* Send Sector Erase instruction */
-    231          	spi_flash_send_byte(SE);
-    232          	/* Send SectorAddr high nibble address byte */
-    233          	spi_flash_send_byte((SectorAddr & 0xFF0000) >> 16);
-    234          	/* Send SectorAddr medium nibble address byte */
-    235          	spi_flash_send_byte((SectorAddr & 0xFF00) >> 8);
-    236          	/* Send SectorAddr low nibble address byte */
-    237          	spi_flash_send_byte(SectorAddr & 0xFF);
-    238          	/* Deselect the FLASH: Chip Select high */
-    239          	SPI_FLASH_CS_HIGH();
-    240          
-    241          	/* Wait the end of Flash writing */
-    242          	return spi_flash_wait_for_write_end();
-    243          }
-    244          
-    245          
-    246          /**
-    247          * @brief  Erases the specified FLASH block 64K.
-    248          * @param SectorAddr: address of the block to erase.
-    249          * @retval	0: 成功
-    250          *		   -1: 超时
-    251          */
-    252          int spi_flash_eraseblock(unsigned int BlockAddr)
-    253          {
-    254          	OS_CPU_SR  cpu_sr = 0;
-    255          	OS_ENTER_CRITICAL();
-    256          	/* Send write enable instruction */
-    257          	spi_flash_write_enable();
-    258          
-    259          	/* Sector Erase */
-    260          	/* Select the FLASH: Chip Select low */
-    261          	SPI_FLASH_CS_LOW();
-    262          	/* Send Sector Erase instruction */
-    263          	spi_flash_send_byte(BE);
-    264          	/* Send SectorAddr high nibble address byte */
-    265          	spi_flash_send_byte((BlockAddr & 0xFF0000) >> 16);
-    266          	/* Send SectorAddr medium nibble address byte */
-    267          	spi_flash_send_byte((BlockAddr & 0xFF00) >> 8);
-    268          	/* Send SectorAddr low nibble address byte */
-    269          	spi_flash_send_byte(BlockAddr & 0xFF);
-    270          	/* Deselect the FLASH: Chip Select high */
-    271          	SPI_FLASH_CS_HIGH();
-    272          
-    273          	/* Wait the end of Flash writing */
-    274          	return spi_flash_wait_for_write_end();
-    275          }
-    276          
-    277          /**
-    278          * @brief  Erases the entire FLASH.
-    279          * @param  None
-    280          * @retval 0: 成功
-    281          *        -1: 超时
-    282          */
-    283          int spi_flash_erase(void)
-    284          {
-    285          	OS_CPU_SR  cpu_sr = 0;
-    286          	OS_ENTER_CRITICAL();
-    287          	/* Send write enable instruction */
-    288          	spi_flash_write_enable();
-    289          
-    290          	/* Bulk Erase */
-    291          	/* Select the FLASH: Chip Select low */
-    292          	SPI_FLASH_CS_LOW();
-    293          	/* Send Bulk Erase instruction  */
-    294          	spi_flash_send_byte(CE);
-    295          	/* Deselect the FLASH: Chip Select high */
-    296          	SPI_FLASH_CS_HIGH();
-    297          
-    298          	/* Wait the end of Flash writing */
-    299          	return spi_flash_wait_for_write_end();
-    300          }
-    301          
-    302          
-    303          /**
-    304          * @brief 读spi flash指定扇区数据
-    305          * @param [in] lba    : 以扇区为单位的地址
-    306          * @param [in] secnum : 需要读取的扇区个数
-    307          * @param [out] buf   : 读取数据存入的缓冲区
-    308          * @retval  0: 成功
-    309          */
-    310          int	spi_flash_rpage(int lba, int secnum, unsigned char *buf)
-    311          {
-    312          	int		i;
-    313          	OS_CPU_SR  cpu_sr = 0;
-    314                  
-    315              if(secnum == 0) return 0;
-    316                    
-    317          	lba		*= 0x200;
-    318          	//while(spi_flash_busy_flag);
-    319          	//spi_flash_busy_flag = 1;
-    320          
-    321          	OS_ENTER_CRITICAL();
-    322          	/* Select the FLASH: Chip Select low */
-    323          	SPI_FLASH_CS_LOW();
-    324          
-    325          	/* Send "Read from Memory " instruction */
-    326          	spi_flash_send_byte(READ);
-    327          
-    328          	/* Send ReadAddr high nibble address byte to read from */
-    329          	spi_flash_send_byte((lba & 0xFF0000) >> 16);
-    330          	/* Send ReadAddr medium nibble address byte to read from */
-    331          	spi_flash_send_byte((lba & 0xFF00) >> 8);
-    332          	/* Send ReadAddr low nibble address byte to read from */
-    333          	spi_flash_send_byte(lba & 0xFF);
-    334          
-    335          	memset((void *)buf, 0 , 512);
-    336          	for(i=0; i<secnum * 512; i++)
-    337          	{
-    338          		*buf	= spi_flash_send_byte(Dummy_Byte);
-    339          		buf++;
-    340          	}
-    341          
-    342          	/* Deselect the FLASH: Chip Select high */
-    343          	SPI_FLASH_CS_HIGH();
-    344          
-    345          	OS_EXIT_CRITICAL();
-    346          	return 0;	
-    347          }
-    348          
-    349          
-    350          /**
-    351          * @brief  Writes one page byte to the FLASH with a single WRITE
-    352          *         cycle(Page WRITE sequence). The number of byte can't exceed
-    353          *         the FLASH page size.
-    354          * @param pBuffer : pointer to the buffer  containing the data to be
-    355          *                  written to the FLASH.
-    356          * @param WriteAddr : FLASH's internal address to write to.
-    357          * @retval  0: 成功
-    358          *         -1: 超时
-    359          */
-    360          int spi_flash_wpage(unsigned int WriteAddr, unsigned char *pBuffer)
-    361          {
-    362          	int		i;
-    363          	OS_CPU_SR  cpu_sr = 0;
-    364          
-    365          	WriteAddr	&= SPI_FLASH_PageMsk;
-    366          	OS_ENTER_CRITICAL();
-    367          	/* Enable the write access to the FLASH */
-    368          	spi_flash_write_enable();
-    369          
-    370          	/* Select the FLASH: Chip Select low */
-    371          	SPI_FLASH_CS_LOW();
-    372          	/* Send "Write to Memory " instruction */
-    373          	spi_flash_send_byte(WRITE);
-    374          	/* Send WriteAddr high nibble address byte to write to */
-    375          	spi_flash_send_byte((WriteAddr & 0xFF0000) >> 16);
-    376          	/* Send WriteAddr medium nibble address byte to write to */
-    377          	spi_flash_send_byte((WriteAddr & 0xFF00) >> 8);
-    378          	/* Send WriteAddr low nibble address byte to write to */
-    379          	spi_flash_send_byte(WriteAddr & 0xFF);
+    178          	if(pSPIFLASHID->Manufacturer == 0x00)
+    179          	{
+    180          		flash_state	= 0;
+    181          		return -1;									// 失败
+    182          	}
+    183          
+    184          	flash_state	= 1;
+    185          	current_cache_block = -1;
+    186          	//spi_flash_busy_flag = 0;
+    187          	return 0;										// 成功
+    188          }
+    189          
+    190          /**
+    191          * @brief  CLose the peripherals used by the SPI FLASH driver.
+    192          * @param  None
+    193          * @retval : None
+    194          */
+    195          void spi_flash_close(void)
+    196          {
+    197          	/* Disable SPI2  */
+    198          	SPI_Cmd(SPI2, ENABLE);
+    199          
+    200          	/* Disable SPI2 clocks */
+    201          	RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI2, DISABLE);
+    202          	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, DISABLE);
+    203          	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIO_CS, DISABLE);
+    204          }
+    205          
+    206          /**
+    207          * @brief  Check the spi flash state
+    208          * @param  None
+    209          * @retval	0: Flash已经正常初始化
+    210          *		    -1: Flash尚未初始化
+    211          */
+    212          int spi_flash_valid(void)
+    213          {
+    214          	if (flash_state == 0)
+    215          	{
+    216          		if (spi_flash_init())
+    217          		{
+    218          			return -1;
+    219          		}
+    220          	}
+    221          	return 0;
+    222          }
+    223          
+    224          
+    225          /**
+    226          * @brief  Erases the specified FLASH sector 4K.
+    227          * @param SectorAddr: address of the sector to erase.
+    228          * @retval	0: 成功
+    229          *		   -1: 超时
+    230          */
+    231          int spi_flash_erasesector(unsigned int SectorAddr)
+    232          {
+    233          	OS_CPU_SR  cpu_sr = 0;
+    234          	OS_ENTER_CRITICAL();
+    235          	/* Send write enable instruction */
+    236          	spi_flash_write_enable();
+    237          
+    238          	/* Sector Erase */
+    239          	/* Select the FLASH: Chip Select low */
+    240          	SPI_FLASH_CS_LOW();
+    241          	/* Send Sector Erase instruction */
+    242          	spi_flash_send_byte(SE);
+    243          	/* Send SectorAddr high nibble address byte */
+    244          	spi_flash_send_byte((SectorAddr & 0xFF0000) >> 16);
+    245          	/* Send SectorAddr medium nibble address byte */
+    246          	spi_flash_send_byte((SectorAddr & 0xFF00) >> 8);
+    247          	/* Send SectorAddr low nibble address byte */
+    248          	spi_flash_send_byte(SectorAddr & 0xFF);
+    249          	/* Deselect the FLASH: Chip Select high */
+    250          	SPI_FLASH_CS_HIGH();
+    251          
+    252          	/* Wait the end of Flash writing */
+    253          	return spi_flash_wait_for_write_end();
+    254          }
+    255          
+    256          
+    257          /**
+    258          * @brief  Erases the specified FLASH block 64K.
+    259          * @param SectorAddr: address of the block to erase.
+    260          * @retval	0: 成功
+    261          *		   -1: 超时
+    262          */
+    263          int spi_flash_eraseblock(unsigned int BlockAddr)
+    264          {
+    265          	OS_CPU_SR  cpu_sr = 0;
+    266          	OS_ENTER_CRITICAL();
+    267          	/* Send write enable instruction */
+    268          	spi_flash_write_enable();
+    269          
+    270          	/* Sector Erase */
+    271          	/* Select the FLASH: Chip Select low */
+    272          	SPI_FLASH_CS_LOW();
+    273          	/* Send Sector Erase instruction */
+    274          	spi_flash_send_byte(BE);
+    275          	/* Send SectorAddr high nibble address byte */
+    276          	spi_flash_send_byte((BlockAddr & 0xFF0000) >> 16);
+    277          	/* Send SectorAddr medium nibble address byte */
+    278          	spi_flash_send_byte((BlockAddr & 0xFF00) >> 8);
+    279          	/* Send SectorAddr low nibble address byte */
+    280          	spi_flash_send_byte(BlockAddr & 0xFF);
+    281          	/* Deselect the FLASH: Chip Select high */
+    282          	SPI_FLASH_CS_HIGH();
+    283          
+    284          	/* Wait the end of Flash writing */
+    285          	return spi_flash_wait_for_write_end();
+    286          }
+    287          
+    288          /**
+    289          * @brief  Erases the entire FLASH.
+    290          * @param  None
+    291          * @retval 0: 成功
+    292          *        -1: 超时
+    293          */
+    294          int spi_flash_erase(void)
+    295          {
+    296          	OS_CPU_SR  cpu_sr = 0;
+    297          	OS_ENTER_CRITICAL();
+    298          	/* Send write enable instruction */
+    299          	spi_flash_write_enable();
+    300          
+    301          	/* Bulk Erase */
+    302          	/* Select the FLASH: Chip Select low */
+    303          	SPI_FLASH_CS_LOW();
+    304          	/* Send Bulk Erase instruction  */
+    305          	spi_flash_send_byte(CE);
+    306          	/* Deselect the FLASH: Chip Select high */
+    307          	SPI_FLASH_CS_HIGH();
+    308          
+    309          	/* Wait the end of Flash writing */
+    310          	return spi_flash_wait_for_write_end();
+    311          }
+    312          
+    313          
+    314          /**
+    315          * @brief 读spi flash指定扇区数据
+    316          * @param [in] lba    : 以扇区为单位的地址
+    317          * @param [in] secnum : 需要读取的扇区个数
+    318          * @param [out] buf   : 读取数据存入的缓冲区
+    319          * @retval  0: 成功
+    320          */
+    321          int	spi_flash_rpage(int lba, int secnum, unsigned char *buf)
+    322          {
+    323          	int		i;
+    324          	OS_CPU_SR  cpu_sr = 0;
+    325                  
+    326              if(secnum == 0) return 0;
+    327                    
+    328          	lba		*= 0x200;
+    329          	//while(spi_flash_busy_flag);
+    330          	//spi_flash_busy_flag = 1;
+    331          
+    332          	OS_ENTER_CRITICAL();
+    333          	/* Select the FLASH: Chip Select low */
+    334          	SPI_FLASH_CS_LOW();
+    335          
+    336          	/* Send "Read from Memory " instruction */
+    337          	spi_flash_send_byte(READ);
+    338          
+    339          	/* Send ReadAddr high nibble address byte to read from */
+    340          	spi_flash_send_byte((lba & 0xFF0000) >> 16);
+    341          	/* Send ReadAddr medium nibble address byte to read from */
+    342          	spi_flash_send_byte((lba & 0xFF00) >> 8);
+    343          	/* Send ReadAddr low nibble address byte to read from */
+    344          	spi_flash_send_byte(lba & 0xFF);
+    345          
+    346          	memset((void *)buf, 0 , 512);
+    347          	for(i=0; i<secnum * 512; i++)
+    348          	{
+    349          		*buf	= spi_flash_send_byte(Dummy_Byte);
+    350          		buf++;
+    351          	}
+    352          
+    353          	/* Deselect the FLASH: Chip Select high */
+    354          	SPI_FLASH_CS_HIGH();
+    355          
+    356          	OS_EXIT_CRITICAL();
+    357          	return 0;	
+    358          }
+    359          
+    360          
+    361          /**
+    362          * @brief  Writes one page byte to the FLASH with a single WRITE
+    363          *         cycle(Page WRITE sequence). The number of byte can't exceed
+    364          *         the FLASH page size.
+    365          * @param pBuffer : pointer to the buffer  containing the data to be
+    366          *                  written to the FLASH.
+    367          * @param WriteAddr : FLASH's internal address to write to.
+    368          * @retval  0: 成功
+    369          *         -1: 超时
+    370          */
+    371          int spi_flash_wpage(unsigned int WriteAddr, unsigned char *pBuffer)
+    372          {
+    373          	int		i;
+    374          	OS_CPU_SR  cpu_sr = 0;
+    375          
+    376          	WriteAddr	&= SPI_FLASH_PageMsk;
+    377          	OS_ENTER_CRITICAL();
+    378          	/* Enable the write access to the FLASH */
+    379          	spi_flash_write_enable();
     380          
-    381          	/* while there is data to be written on the FLASH */
-    382          	for ( i = 0; i < SPI_FLASH_PageSize; i++)
-    383          	{
-    384          		/* Send the current byte */
-    385          		spi_flash_send_byte(*pBuffer);
-    386          		/* Point on the next byte to be written */
-    387          		pBuffer++;
-    388          	}
-    389          
-    390          	/* Deselect the FLASH: Chip Select high */
-    391          	SPI_FLASH_CS_HIGH();
-    392          
-    393          	/* Wait the end of Flash writing */
-    394          	return spi_flash_wait_for_write_end();
-    395          }
-    396          
-    397          
-    398          /**
-    399          * @brief  Writes more than one byte to the FLASH with a single WRITE
-    400          *         cycle(Page WRITE sequence). The number of byte can't exceed
-    401          *         the FLASH page size.
-    402          * @param pBuffer : pointer to the buffer  containing the data to be
-    403          *                  written to the FLASH.
-    404          * @param WriteAddr : FLASH's internal address to write to.
-    405          * @param NumByteToWrite : number of bytes to write to the FLASH,
-    406          *                       must be equal or less than "SPI_FLASH_PageSize" value.
-    407          * @retval  0: 成功
-    408          *         -1: 超时
-    409          */
-    410          int spi_flash_page_write(unsigned char* pBuffer, unsigned int WriteAddr, unsigned short NumByteToWrite)
-    411          {
-    412          	/* Enable the write access to the FLASH */
-    413          	OS_CPU_SR  cpu_sr = 0;
-    414          	OS_ENTER_CRITICAL();
-    415          	spi_flash_write_enable();
-    416          
-    417          	/* Select the FLASH: Chip Select low */
-    418          	SPI_FLASH_CS_LOW();
-    419          	/* Send "Write to Memory " instruction */
-    420          	spi_flash_send_byte(WRITE);
-    421          	/* Send WriteAddr high nibble address byte to write to */
-    422          	spi_flash_send_byte((WriteAddr & 0xFF0000) >> 16);
-    423          	/* Send WriteAddr medium nibble address byte to write to */
-    424          	spi_flash_send_byte((WriteAddr & 0xFF00) >> 8);
-    425          	/* Send WriteAddr low nibble address byte to write to */
-    426          	spi_flash_send_byte(WriteAddr & 0xFF);
+    381          	/* Select the FLASH: Chip Select low */
+    382          	SPI_FLASH_CS_LOW();
+    383          	/* Send "Write to Memory " instruction */
+    384          	spi_flash_send_byte(WRITE);
+    385          	/* Send WriteAddr high nibble address byte to write to */
+    386          	spi_flash_send_byte((WriteAddr & 0xFF0000) >> 16);
+    387          	/* Send WriteAddr medium nibble address byte to write to */
+    388          	spi_flash_send_byte((WriteAddr & 0xFF00) >> 8);
+    389          	/* Send WriteAddr low nibble address byte to write to */
+    390          	spi_flash_send_byte(WriteAddr & 0xFF);
+    391          
+    392          	/* while there is data to be written on the FLASH */
+    393          	for ( i = 0; i < SPI_FLASH_PageSize; i++)
+    394          	{
+    395          		/* Send the current byte */
+    396          		spi_flash_send_byte(*pBuffer);
+    397          		/* Point on the next byte to be written */
+    398          		pBuffer++;
+    399          	}
+    400          
+    401          	/* Deselect the FLASH: Chip Select high */
+    402          	SPI_FLASH_CS_HIGH();
+    403          
+    404          	/* Wait the end of Flash writing */
+    405          	return spi_flash_wait_for_write_end();
+    406          }
+    407          
+    408          
+    409          /**
+    410          * @brief  Writes more than one byte to the FLASH with a single WRITE
+    411          *         cycle(Page WRITE sequence). The number of byte can't exceed
+    412          *         the FLASH page size.
+    413          * @param pBuffer : pointer to the buffer  containing the data to be
+    414          *                  written to the FLASH.
+    415          * @param WriteAddr : FLASH's internal address to write to.
+    416          * @param NumByteToWrite : number of bytes to write to the FLASH,
+    417          *                       must be equal or less than "SPI_FLASH_PageSize" value.
+    418          * @retval  0: 成功
+    419          *         -1: 超时
+    420          */
+    421          int spi_flash_page_write(unsigned char* pBuffer, unsigned int WriteAddr, unsigned short NumByteToWrite)
+    422          {
+    423          	/* Enable the write access to the FLASH */
+    424          	OS_CPU_SR  cpu_sr = 0;
+    425          	OS_ENTER_CRITICAL();
+    426          	spi_flash_write_enable();
     427          
-    428          	/* while there is data to be written on the FLASH */
-    429          	while (NumByteToWrite--)
-    430          	{
-    431          		/* Send the current byte */
-    432          		spi_flash_send_byte(*pBuffer);
-    433          		/* Point on the next byte to be written */
-    434          		pBuffer++;
-    435          	}
-    436          
-    437          	/* Deselect the FLASH: Chip Select high */
-    438          	SPI_FLASH_CS_HIGH();
-    439          
-    440          	/* Wait the end of Flash writing */
-    441          	return spi_flash_wait_for_write_end();
-    442          }
-    443          
-    444          /**
-    445          * @brief  Writes block of data to the FLASH. In this function, the
-    446          *         number of WRITE cycles are reduced, using Page WRITE sequence.
-    447          * @param pBuffer : pointer to the buffer  containing the data to be
-    448          *                  written to the FLASH.
-    449          * @param WriteAddr : FLASH's internal address to write to.
-    450          * @param NumByteToWrite : number of bytes to write to the FLASH.
-    451          * @retval  0: 成功
-    452          *         -1: 失败
-    453          */
-    454          int spi_flash_waddr(unsigned int WriteAddr, unsigned int NumByteToWrite, unsigned char *pBuffer)
-    455          {
-    456          	unsigned char NumOfPage = 0, NumOfSingle = 0, Addr = 0, count = 0, temp = 0;
-    457          
-    458          	Addr = WriteAddr % SPI_FLASH_PageSize;
-    459          	count = SPI_FLASH_PageSize - Addr;
-    460          	NumOfPage =  NumByteToWrite / SPI_FLASH_PageSize;
-    461          	NumOfSingle = NumByteToWrite % SPI_FLASH_PageSize;
-    462          
-    463          	if (Addr == 0) /* WriteAddr is SPI_FLASH_PageSize aligned  */
-    464          	{
-    465          		if (NumOfPage == 0) /* NumByteToWrite < SPI_FLASH_PageSize */
-    466          		{
-    467          			if (-1 == spi_flash_page_write(pBuffer, WriteAddr, NumByteToWrite))
-    468          			{
-    469          				return -1;
-    470          			}
-    471          		}
-    472          		else /* NumByteToWrite > SPI_FLASH_PageSize */
-    473          		{
-    474          			while (NumOfPage--)
-    475          			{
-    476          				if (-1 == spi_flash_page_write(pBuffer, WriteAddr, SPI_FLASH_PageSize))
-    477          				{
-    478          					return -1;
-    479          				}				
-    480          				WriteAddr +=  SPI_FLASH_PageSize;
-    481          				pBuffer += SPI_FLASH_PageSize;
-    482          			}
-    483          			if (-1 == spi_flash_page_write(pBuffer, WriteAddr, NumOfSingle))
-    484          			{
-    485          				return -1;
-    486          			}			
-    487          		}
-    488          	}
-    489          	else /* WriteAddr is not SPI_FLASH_PageSize aligned  */
-    490          	{
-    491          		if (NumOfPage == 0) /* NumByteToWrite < SPI_FLASH_PageSize */
-    492          		{
-    493          			if (NumOfSingle > count) /* (NumByteToWrite + WriteAddr) > SPI_FLASH_PageSize */
-    494          			{
-    495          				temp = NumOfSingle - count;
-    496          
-    497          				if (-1 == spi_flash_page_write(pBuffer, WriteAddr, count))
-    498          				{
-    499          					return -1;
-    500          				}				
-    501          				WriteAddr +=  count;
-    502          				pBuffer += count;
-    503          
-    504          				if (-1 == spi_flash_page_write(pBuffer, WriteAddr, temp))
-    505          				{
-    506          					return -1;
-    507          				}				
-    508          			}
-    509          			else
-    510          			{
-    511          				if (-1 == spi_flash_page_write(pBuffer, WriteAddr, NumByteToWrite))
-    512          				{
-    513          					return -1;
-    514          				}
-    515          			}
-    516          		}
-    517          		else /* NumByteToWrite > SPI_FLASH_PageSize */
-    518          		{
-    519          			NumByteToWrite -= count;
-    520          			NumOfPage =  NumByteToWrite / SPI_FLASH_PageSize;
-    521          			NumOfSingle = NumByteToWrite % SPI_FLASH_PageSize;
-    522          
-    523          			if (-1 == spi_flash_page_write(pBuffer, WriteAddr, count))
-    524          			{
-    525          				return -1;
+    428          	/* Select the FLASH: Chip Select low */
+    429          	SPI_FLASH_CS_LOW();
+    430          	/* Send "Write to Memory " instruction */
+    431          	spi_flash_send_byte(WRITE);
+    432          	/* Send WriteAddr high nibble address byte to write to */
+    433          	spi_flash_send_byte((WriteAddr & 0xFF0000) >> 16);
+    434          	/* Send WriteAddr medium nibble address byte to write to */
+    435          	spi_flash_send_byte((WriteAddr & 0xFF00) >> 8);
+    436          	/* Send WriteAddr low nibble address byte to write to */
+    437          	spi_flash_send_byte(WriteAddr & 0xFF);
+    438          
+    439          	/* while there is data to be written on the FLASH */
+    440          	while (NumByteToWrite--)
+    441          	{
+    442          		/* Send the current byte */
+    443          		spi_flash_send_byte(*pBuffer);
+    444          		/* Point on the next byte to be written */
+    445          		pBuffer++;
+    446          	}
+    447          
+    448          	/* Deselect the FLASH: Chip Select high */
+    449          	SPI_FLASH_CS_HIGH();
+    450          
+    451          	/* Wait the end of Flash writing */
+    452          	return spi_flash_wait_for_write_end();
+    453          }
+    454          
+    455          /**
+    456          * @brief  Writes block of data to the FLASH. In this function, the
+    457          *         number of WRITE cycles are reduced, using Page WRITE sequence.
+    458          * @param pBuffer : pointer to the buffer  containing the data to be
+    459          *                  written to the FLASH.
+    460          * @param WriteAddr : FLASH's internal address to write to.
+    461          * @param NumByteToWrite : number of bytes to write to the FLASH.
+    462          * @retval  0: 成功
+    463          *         -1: 失败
+    464          */
+    465          int spi_flash_waddr(unsigned int WriteAddr, unsigned int NumByteToWrite, unsigned char *pBuffer)
+    466          {
+    467          	unsigned char NumOfPage = 0, NumOfSingle = 0, Addr = 0, count = 0, temp = 0;
+    468          
+    469          	Addr = WriteAddr % SPI_FLASH_PageSize;
+    470          	count = SPI_FLASH_PageSize - Addr;
+    471          	NumOfPage =  NumByteToWrite / SPI_FLASH_PageSize;
+    472          	NumOfSingle = NumByteToWrite % SPI_FLASH_PageSize;
+    473          
+    474          	if (Addr == 0) /* WriteAddr is SPI_FLASH_PageSize aligned  */
+    475          	{
+    476          		if (NumOfPage == 0) /* NumByteToWrite < SPI_FLASH_PageSize */
+    477          		{
+    478          			if (-1 == spi_flash_page_write(pBuffer, WriteAddr, NumByteToWrite))
+    479          			{
+    480          				return -1;
+    481          			}
+    482          		}
+    483          		else /* NumByteToWrite > SPI_FLASH_PageSize */
+    484          		{
+    485          			while (NumOfPage--)
+    486          			{
+    487          				if (-1 == spi_flash_page_write(pBuffer, WriteAddr, SPI_FLASH_PageSize))
+    488          				{
+    489          					return -1;
+    490          				}				
+    491          				WriteAddr +=  SPI_FLASH_PageSize;
+    492          				pBuffer += SPI_FLASH_PageSize;
+    493          			}
+    494          			if (-1 == spi_flash_page_write(pBuffer, WriteAddr, NumOfSingle))
+    495          			{
+    496          				return -1;
+    497          			}			
+    498          		}
+    499          	}
+    500          	else /* WriteAddr is not SPI_FLASH_PageSize aligned  */
+    501          	{
+    502          		if (NumOfPage == 0) /* NumByteToWrite < SPI_FLASH_PageSize */
+    503          		{
+    504          			if (NumOfSingle > count) /* (NumByteToWrite + WriteAddr) > SPI_FLASH_PageSize */
+    505          			{
+    506          				temp = NumOfSingle - count;
+    507          
+    508          				if (-1 == spi_flash_page_write(pBuffer, WriteAddr, count))
+    509          				{
+    510          					return -1;
+    511          				}				
+    512          				WriteAddr +=  count;
+    513          				pBuffer += count;
+    514          
+    515          				if (-1 == spi_flash_page_write(pBuffer, WriteAddr, temp))
+    516          				{
+    517          					return -1;
+    518          				}				
+    519          			}
+    520          			else
+    521          			{
+    522          				if (-1 == spi_flash_page_write(pBuffer, WriteAddr, NumByteToWrite))
+    523          				{
+    524          					return -1;
+    525          				}
     526          			}
-    527          			
-    528          			WriteAddr +=  count;
-    529          			pBuffer += count;
-    530          
-    531          			while (NumOfPage--)
-    532          			{
-    533          				if (-1 == spi_flash_page_write(pBuffer, WriteAddr, SPI_FLASH_PageSize))
-    534          				{
-    535          					return -1;
-    536          				}
-    537          			
-    538          				WriteAddr +=  SPI_FLASH_PageSize;
-    539          				pBuffer += SPI_FLASH_PageSize;
-    540          			}
-    541          			if (NumOfSingle != 0)
-    542          			{
-    543          				if (-1 == spi_flash_page_write(pBuffer, WriteAddr, NumOfSingle))
-    544          				{
-    545          					return -1;
-    546          				}				
-    547          			}
-    548          		}
-    549          	}
-    550          	return 0;
-    551          }
-    552          
-    553          /**
-    554          * @brief  Reads a block of data from the FLASH.
-    555          * @param pBuffer : pointer to the buffer that receives the data read
-    556          *                  from the FLASH.
-    557          * @param ReadAddr : FLASH's internal address to read from.
-    558          * @param NumByteToRead : number of bytes to read from the FLASH.
-    559          * @retval : None
-    560          */
-    561          void spi_flash_raddr(unsigned int ReadAddr,unsigned int NumByteToRead, unsigned char *pBuffer)
-    562          {
-    563          	/* Select the FLASH: Chip Select low */
-    564          	OS_CPU_SR  cpu_sr = 0;
-    565          	OS_ENTER_CRITICAL();
-    566          	SPI_FLASH_CS_LOW();
-    567          
-    568          	/* Send "Read from Memory " instruction */
-    569          	spi_flash_send_byte(READ);
-    570          
-    571          	/* Send ReadAddr high nibble address byte to read from */
-    572          	spi_flash_send_byte((ReadAddr & 0xFF0000) >> 16);
-    573          	/* Send ReadAddr medium nibble address byte to read from */
-    574          	spi_flash_send_byte((ReadAddr& 0xFF00) >> 8);
-    575          	/* Send ReadAddr low nibble address byte to read from */
-    576          	spi_flash_send_byte(ReadAddr & 0xFF);
-    577          
-    578          	while (NumByteToRead--) /* while there is data to be read */
-    579          	{
-    580          		/* Read a byte from the FLASH */
-    581          		*pBuffer = spi_flash_send_byte(Dummy_Byte);
-    582          		/* Point to the next location where the byte read will be saved */
-    583          		pBuffer++;
-    584          	}
-    585          
-    586          	/* Deselect the FLASH: Chip Select high */
-    587          	SPI_FLASH_CS_HIGH();
-    588          	OS_EXIT_CRITICAL();
-    589          }
-    590          
-    591          /**
-    592          * @brief  Reads FLASH identification.
-    593          * @param  None
-    594          * @retval : FLASH identification
-    595          */
-    596          unsigned int spi_flash_read_id(void)
-    597          {
-    598          	unsigned int Temp = 0, Temp0 = 0, Temp1 = 0, Temp2 = 0;
-    599          
-    600          	OS_CPU_SR  cpu_sr = 0;
-    601          	OS_ENTER_CRITICAL();
-    602          	/* Select the FLASH: Chip Select low */
-    603          	SPI_FLASH_CS_LOW();
-    604          
-    605          	/* Send "RDID " instruction */
-    606          	spi_flash_send_byte(0x9F);
-    607          
-    608          	/* Read a byte from the FLASH */
-    609          	Temp0 = spi_flash_send_byte(Dummy_Byte);
+    527          		}
+    528          		else /* NumByteToWrite > SPI_FLASH_PageSize */
+    529          		{
+    530          			NumByteToWrite -= count;
+    531          			NumOfPage =  NumByteToWrite / SPI_FLASH_PageSize;
+    532          			NumOfSingle = NumByteToWrite % SPI_FLASH_PageSize;
+    533          
+    534          			if (-1 == spi_flash_page_write(pBuffer, WriteAddr, count))
+    535          			{
+    536          				return -1;
+    537          			}
+    538          			
+    539          			WriteAddr +=  count;
+    540          			pBuffer += count;
+    541          
+    542          			while (NumOfPage--)
+    543          			{
+    544          				if (-1 == spi_flash_page_write(pBuffer, WriteAddr, SPI_FLASH_PageSize))
+    545          				{
+    546          					return -1;
+    547          				}
+    548          			
+    549          				WriteAddr +=  SPI_FLASH_PageSize;
+    550          				pBuffer += SPI_FLASH_PageSize;
+    551          			}
+    552          			if (NumOfSingle != 0)
+    553          			{
+    554          				if (-1 == spi_flash_page_write(pBuffer, WriteAddr, NumOfSingle))
+    555          				{
+    556          					return -1;
+    557          				}				
+    558          			}
+    559          		}
+    560          	}
+    561          	return 0;
+    562          }
+    563          
+    564          /**
+    565          * @brief  Reads a block of data from the FLASH.
+    566          * @param pBuffer : pointer to the buffer that receives the data read
+    567          *                  from the FLASH.
+    568          * @param ReadAddr : FLASH's internal address to read from.
+    569          * @param NumByteToRead : number of bytes to read from the FLASH.
+    570          * @retval : None
+    571          */
+    572          void spi_flash_raddr(unsigned int ReadAddr,unsigned int NumByteToRead, unsigned char *pBuffer)
+    573          {
+    574          	/* Select the FLASH: Chip Select low */
+    575          	OS_CPU_SR  cpu_sr = 0;
+    576          	OS_ENTER_CRITICAL();
+    577          	SPI_FLASH_CS_LOW();
+    578          
+    579          	/* Send "Read from Memory " instruction */
+    580          	spi_flash_send_byte(READ);
+    581          
+    582          	/* Send ReadAddr high nibble address byte to read from */
+    583          	spi_flash_send_byte((ReadAddr & 0xFF0000) >> 16);
+    584          	/* Send ReadAddr medium nibble address byte to read from */
+    585          	spi_flash_send_byte((ReadAddr& 0xFF00) >> 8);
+    586          	/* Send ReadAddr low nibble address byte to read from */
+    587          	spi_flash_send_byte(ReadAddr & 0xFF);
+    588          
+    589          	while (NumByteToRead--) /* while there is data to be read */
+    590          	{
+    591          		/* Read a byte from the FLASH */
+    592          		*pBuffer = spi_flash_send_byte(Dummy_Byte);
+    593          		/* Point to the next location where the byte read will be saved */
+    594          		pBuffer++;
+    595          	}
+    596          
+    597          	/* Deselect the FLASH: Chip Select high */
+    598          	SPI_FLASH_CS_HIGH();
+    599          	OS_EXIT_CRITICAL();
+    600          }
+    601          
+    602          /**
+    603          * @brief  Reads FLASH identification.
+    604          * @param  None
+    605          * @retval : FLASH identification
+    606          */
+    607          unsigned int spi_flash_read_id(void)
+    608          {
+    609          	unsigned int Temp = 0, Temp0 = 0, Temp1 = 0, Temp2 = 0;
     610          
-    611          	/* Read a byte from the FLASH */
-    612          	Temp1 = spi_flash_send_byte(Dummy_Byte);
-    613          
-    614          	/* Read a byte from the FLASH */
-    615          	Temp2 = spi_flash_send_byte(Dummy_Byte);
-    616          
-    617          	/* Deselect the FLASH: Chip Select high */
-    618          	SPI_FLASH_CS_HIGH();
-    619          
-    620          	Temp = (Temp0 << 16) | (Temp1 << 8) | Temp2;
+    611          	OS_CPU_SR  cpu_sr = 0;
+    612          	OS_ENTER_CRITICAL();
+    613          	/* Select the FLASH: Chip Select low */
+    614          	SPI_FLASH_CS_LOW();
+    615          
+    616          	/* Send "RDID " instruction */
+    617          	spi_flash_send_byte(0x9F);
+    618          
+    619          	/* Read a byte from the FLASH */
+    620          	Temp0 = spi_flash_send_byte(Dummy_Byte);
     621          
-    622          	OS_EXIT_CRITICAL();
-    623          	return Temp;
-    624          }
-    625          
-    626          /*------------------ Low layer function ----------------*/
-    627          /**
-    628          * @brief  Reads a byte from the SPI Flash.
-    629          *   This function must be used only if the Start_Read_Sequence
-    630          *   function has been previously called.
-    631          * @param  None
-    632          * @retval : Byte Read from the SPI Flash.
-    633          */
-    634          unsigned char spi_flash_read_byte(void)
-    635          {
-    636          	return (spi_flash_send_byte(Dummy_Byte));
-    637          }
-    638          
-    639          /**
-    640          * @brief  Sends a byte through the SPI interface and return the byte
-    641          *   received from the SPI bus.
-    642          * @param byte : byte to send.
-    643          * @retval : The value of the received byte.
+    622          	/* Read a byte from the FLASH */
+    623          	Temp1 = spi_flash_send_byte(Dummy_Byte);
+    624          
+    625          	/* Read a byte from the FLASH */
+    626          	Temp2 = spi_flash_send_byte(Dummy_Byte);
+    627          
+    628          	/* Deselect the FLASH: Chip Select high */
+    629          	SPI_FLASH_CS_HIGH();
+    630          
+    631          	Temp = (Temp0 << 16) | (Temp1 << 8) | Temp2;
+    632          
+    633          	OS_EXIT_CRITICAL();
+    634          	return Temp;
+    635          }
+    636          
+    637          /*------------------ Low layer function ----------------*/
+    638          /**
+    639          * @brief  Reads a byte from the SPI Flash.
+    640          *   This function must be used only if the Start_Read_Sequence
+    641          *   function has been previously called.
+    642          * @param  None
+    643          * @retval : Byte Read from the SPI Flash.
     644          */
-    645          unsigned char spi_flash_send_byte(unsigned char byte)
+    645          unsigned char spi_flash_read_byte(void)
     646          {
-    647                   volatile short			i = 0;
-    648          	/* Loop while DR register in not emplty */
-    649          	while (SPI_I2S_GetFlagStatus(SPI2, SPI_I2S_FLAG_TXE) == RESET);
-    650          
-    651          	/* Send byte through the SPI2 peripheral */
-    652          	SPI_I2S_SendData(SPI2, byte);
-    653          
-    654          	/* Wait to receive a byte */
-    655          	//while (SPI_I2S_GetFlagStatus(SPI2, SPI_I2S_FLAG_RXNE) == RESET);
-    656                  for(i=0; i<10; i++);
-    657          
-    658          	/* Return the byte read from the SPI bus */
-    659          	return SPI_I2S_ReceiveData(SPI2);
-    660          }
+    647          	return (spi_flash_send_byte(Dummy_Byte));
+    648          }
+    649          
+    650          /**
+    651          * @brief  Sends a byte through the SPI interface and return the byte
+    652          *   received from the SPI bus.
+    653          * @param byte : byte to send.
+    654          * @retval : The value of the received byte.
+    655          */
+    656          unsigned char spi_flash_send_byte(unsigned char byte)
+    657          {
+    658                   volatile short			i = 0;
+    659          	/* Loop while DR register in not emplty */
+    660          	while (SPI_I2S_GetFlagStatus(SPI2, SPI_I2S_FLAG_TXE) == RESET);
     661          
-    662          /**
-    663          * @brief  Sends a Half Word through the SPI interface and return the
-    664          *         Half Word received from the SPI bus.
-    665          * @param HalfWord : Half Word to send.
-    666          * @retval : The value of the received Half Word.
-    667          */
-    668          unsigned short spi_flash_send_halfword(unsigned short HalfWord)
-    669          {
-    670                  volatile short			i = 0;
-    671          	/* Loop while DR register in not emplty */
-    672          	while (SPI_I2S_GetFlagStatus(SPI2, SPI_I2S_FLAG_TXE) == RESET);
+    662          	/* Send byte through the SPI2 peripheral */
+    663          	SPI_I2S_SendData(SPI2, byte);
+    664          
+    665          	/* Wait to receive a byte */
+    666          	//while (SPI_I2S_GetFlagStatus(SPI2, SPI_I2S_FLAG_RXNE) == RESET);
+    667                  //for(i=0; i<10; i++);
+    668          	for(i=0; i<5; i++);
+    669          
+    670          	/* Return the byte read from the SPI bus */
+    671          	return SPI_I2S_ReceiveData(SPI2);
+    672          }
     673          
-    674          	/* Send Half Word through the SPI2 peripheral */
-    675          	SPI_I2S_SendData(SPI2, HalfWord);
-    676          
-    677          	/* Wait to receive a Half Word */
-    678          	//while (SPI_I2S_GetFlagStatus(SPI2, SPI_I2S_FLAG_RXNE) == RESET);
-    679                  for(i=0; i<10; i++);
-    680                  
-    681          	/* Return the Half Word read from the SPI bus */
-    682          	return SPI_I2S_ReceiveData(SPI2);
-    683          }
-    684          
-    685          /**
-    686          * @brief  Enables the write access to the FLASH.
-    687          * @param  None
-    688          * @retval : None
-    689          */
-    690          void spi_flash_write_enable(void)
-    691          {
-    692          	/* Select the FLASH: Chip Select low */
-    693          	SPI_FLASH_CS_LOW();
-    694          
-    695          	/* Send "Write Enable" instruction */
-    696          	spi_flash_send_byte(WREN);
-    697          
-    698          	/* Deselect the FLASH: Chip Select high */
-    699          	SPI_FLASH_CS_HIGH();
-    700          }
-    701          
-    702          /**
-    703          * @brief  Polls the status of the Write In Progress (WIP) flag in the
-    704          *   FLASH's status  register  and  loop  until write  opertaion
-    705          *   has completed.
-    706          * @param  None
-    707          * @retval 0: 成功
-    708          *        -1: 超时
-    709          */
-    710          int spi_flash_wait_for_write_end(void)
-    711          {
-    712          	OS_CPU_SR  cpu_sr = 0;
-    713          	unsigned char FLASH_Status = 0;
-    714          	volatile unsigned int i = 0;
-    715          	/* Select the FLASH: Chip Select low */
-    716          	SPI_FLASH_CS_LOW();
-    717          
-    718          	/* Send "Read Status Register" instruction */
-    719          	spi_flash_send_byte(RDSR);
-    720          
-    721          	/* Loop as long as the memory is busy with a write cycle */
-    722          	do
-    723          	{
-    724          		/* Send a dummy byte to generate the clock needed by the FLASH
-    725          		and put the value of the status register in FLASH_Status variable */
-    726          		FLASH_Status = spi_flash_send_byte(Dummy_Byte);
-    727          		i++;
-    728          		if (i > 0xFFFFFFFE)	//测试超时
-    729          		{
-    730          			/* Deselect the FLASH: Chip Select high */
-    731          			SPI_FLASH_CS_HIGH();
-    732          			OS_EXIT_CRITICAL();
-    733          			return -1;
-    734          		}
-    735          	}
-    736          	while ((FLASH_Status & WIP_Flag) == SET); /* Write in progress */
-    737          
-    738          	/* Deselect the FLASH: Chip Select high */
-    739          	SPI_FLASH_CS_HIGH();
-    740          	//spi_flash_busy_flag = 0;
-    741          	OS_EXIT_CRITICAL();
-    742          	return 0;
-    743          }
-    744          
-    745          //返回当前SPI FLASH的容量,以sector为单位
-    746          int get_spi_flash_capacity(void)
-    747          {
-    748          	return flasize/512;
-    749          }
-    750          
-    751          //将缓存的数据写入SPI FLASH
-    752          int spi_flash_post_write(void)
-    753          {
-    754          	if (current_cache_block == -1)
-    755          	{
-    756          		return 0;
-    757          	}
-    758          	if (current_cache_block > flasize/4096)
-    759          	{
-    760          		return -1;
-    761          	}
-    762          
-    763          	if(spi_flash_erasesector(current_cache_block*4096)){	
-    764          		return -1;		//擦除失败
-    765          	}
-    766          
-    767          	if (spi_flash_waddr(current_cache_block*4096, 4096, buffer))
+    674          /**
+    675          * @brief  Sends a Half Word through the SPI interface and return the
+    676          *         Half Word received from the SPI bus.
+    677          * @param HalfWord : Half Word to send.
+    678          * @retval : The value of the received Half Word.
+    679          */
+    680          unsigned short spi_flash_send_halfword(unsigned short HalfWord)
+    681          {
+    682                  volatile short			i = 0;
+    683          	/* Loop while DR register in not emplty */
+    684          	while (SPI_I2S_GetFlagStatus(SPI2, SPI_I2S_FLAG_TXE) == RESET);
+    685          
+    686          	/* Send Half Word through the SPI2 peripheral */
+    687          	SPI_I2S_SendData(SPI2, HalfWord);
+    688          
+    689          	/* Wait to receive a Half Word */
+    690          	//while (SPI_I2S_GetFlagStatus(SPI2, SPI_I2S_FLAG_RXNE) == RESET);
+    691                  for(i=0; i<10; i++);
+    692                  
+    693          	/* Return the Half Word read from the SPI bus */
+    694          	return SPI_I2S_ReceiveData(SPI2);
+    695          }
+    696          
+    697          /**
+    698          * @brief  Enables the write access to the FLASH.
+    699          * @param  None
+    700          * @retval : None
+    701          */
+    702          void spi_flash_write_enable(void)
+    703          {
+    704          	/* Select the FLASH: Chip Select low */
+    705          	SPI_FLASH_CS_LOW();
+    706          
+    707          	/* Send "Write Enable" instruction */
+    708          	spi_flash_send_byte(WREN);
+    709          
+    710          	/* Deselect the FLASH: Chip Select high */
+    711          	SPI_FLASH_CS_HIGH();
+    712          }
+    713          
+    714          /**
+    715          * @brief  Polls the status of the Write In Progress (WIP) flag in the
+    716          *   FLASH's status  register  and  loop  until write  opertaion
+    717          *   has completed.
+    718          * @param  None
+    719          * @retval 0: 成功
+    720          *        -1: 超时
+    721          */
+    722          int spi_flash_wait_for_write_end(void)
+    723          {
+    724          	OS_CPU_SR  cpu_sr = 0;
+    725          	unsigned char FLASH_Status = 0;
+    726          	volatile unsigned int i = 0;
+    727          	/* Select the FLASH: Chip Select low */
+    728          	SPI_FLASH_CS_LOW();
+    729          
+    730          	/* Send "Read Status Register" instruction */
+    731          	spi_flash_send_byte(RDSR);
+    732          
+    733          	/* Loop as long as the memory is busy with a write cycle */
+    734          	do
+    735          	{
+    736          		/* Send a dummy byte to generate the clock needed by the FLASH
+    737          		and put the value of the status register in FLASH_Status variable */
+    738          		FLASH_Status = spi_flash_send_byte(Dummy_Byte);
+    739          		i++;
+    740          		if (i > 0xFFFFFFFE)	//测试超时
+    741          		{
+    742          			/* Deselect the FLASH: Chip Select high */
+    743          			SPI_FLASH_CS_HIGH();
+    744          			OS_EXIT_CRITICAL();
+    745          			return -1;
+    746          		}
+    747          	}
+    748          	while ((FLASH_Status & WIP_Flag) == SET); /* Write in progress */
+    749          
+    750          	/* Deselect the FLASH: Chip Select high */
+    751          	SPI_FLASH_CS_HIGH();
+    752          	//spi_flash_busy_flag = 0;
+    753          	OS_EXIT_CRITICAL();
+    754          	return 0;
+    755          }
+    756          
+    757          //返回SPI FLASH中FAT文件管理的容量,以sector为单位
+    758          int get_spi_flash_capacity(void)
+    759          {
+    760          	//return flasize/512;
+    761          	return (1024*1024)/512;			//只开放1M的空间给到FAST文件系统使用，SPI FLASH的实际容量还是由flasize指明
+    762          }
+    763          
+    764          //将缓存的数据写入SPI FLASH
+    765          int spi_flash_post_write(void)
+    766          {
+    767          	if (current_cache_block == -1)
     768          	{
-    769          		return -2;		//写失败
+    769          		return 0;
     770          	}
-    771          
-    772          	current_cache_block = -1;
-    773          
-    774          	return 0;
-    775          }
-    776          
-    777          //此函数一次写1或者多个Sector（512字节）的数据
-    778          int spi_flash_write(unsigned int sector_offset,unsigned char *pBuffer,unsigned int sector_cnt)
-    779          {
-    780          	int i,tmp;
-    781          	unsigned int	cnt;
-    782                
-    783          	if (sector_offset >= (flasize/512)){
-    784          		return -1;	//起始偏移超出容量
-    785          	}
+    771          	if (current_cache_block > flasize/4096)
+    772          	{
+    773          		return -1;
+    774          	}
+    775          
+    776          	if(spi_flash_erasesector(current_cache_block*4096)){	
+    777          		return -1;		//擦除失败
+    778          	}
+    779          
+    780          	if (spi_flash_waddr(current_cache_block*4096, 4096, buffer))
+    781          	{
+    782          		return -2;		//写失败
+    783          	}
+    784          
+    785          	current_cache_block = -1;
     786          
-    787          	cnt = sector_cnt;
-    788          	if ((sector_offset + cnt) > (flasize/512))
-    789          	{
-    790          		cnt = (flasize/512) - sector_offset;
-    791          	}
-    792          
-    793          	for (i = 0; i < cnt;i++)
-    794          	{
-    795          		if (((sector_offset+i)/8) == current_cache_block)
-    796          		{
-    797          			//如果当前要写的Sector位于已经被缓存的Block（4K Block）,那么直接将要写的数据写入缓存即可
-    798          			memcpy(buffer+((sector_offset+i)%8)*512,pBuffer+512*i,512);
-    799          			return 0;
-    800          		}
-    801          
-    802          		//需要先将被缓存的数据写入SPI FLASH
-    803          		if(spi_flash_post_write())
-    804          		{
-    805          			return -2;
-    806          		}
-    807          
-    808          		//将要写入的Sectro所在的Block全部读入缓存
-    809          		if(spi_flash_rpage((sector_offset+i)&0xfffffff8,8,buffer)){
-    810          			return -3;		//读取失败
-    811          		}
-    812          
-    813          		//往缓存写入新的数据
-    814          		tmp = (sector_offset+i)%8; 
-    815          		memcpy(buffer+tmp*512,pBuffer+i*512,512);
-    816          		current_cache_block = (sector_offset+i)/8;	//标记当前缓存的Block
-    817          	}
-    818          	
-    819          
-    820          	return 0;
-    821          }
-    822          
-    823          /******************* (C) COPYRIGHT 2010 heroje *****END OF FILE****/
+    787          	return 0;
+    788          }
+    789          
+    790          //此函数一次写1或者多个Sector（512字节）的数据
+    791          int spi_flash_write(unsigned int sector_offset,unsigned char *pBuffer,unsigned int sector_cnt)
+    792          {
+    793          	int i,tmp;
+    794          	unsigned int	cnt;
+    795                
+    796          	if (sector_offset >= (flasize/512)){
+    797          		return -1;	//起始偏移超出容量
+    798          	}
+    799          
+    800          	cnt = sector_cnt;
+    801          	if ((sector_offset + cnt) > (flasize/512))
+    802          	{
+    803          		cnt = (flasize/512) - sector_offset;
+    804          	}
+    805          
+    806          	for (i = 0; i < cnt;i++)
+    807          	{
+    808          		if (((sector_offset+i)/8) == current_cache_block)
+    809          		{
+    810          			//如果当前要写的Sector位于已经被缓存的Block（4K Block）,那么直接将要写的数据写入缓存即可
+    811          			memcpy(buffer+((sector_offset+i)%8)*512,pBuffer+512*i,512);
+    812          			continue;
+    813          		}
+    814          
+    815          		//需要先将被缓存的数据写入SPI FLASH
+    816          		if(spi_flash_post_write())
+    817          		{
+    818          			return -2;
+    819          		}
+    820          
+    821          		//将要写入的Sectro所在的Block全部读入缓存
+    822          		if(spi_flash_rpage((sector_offset+i)&0xfffffff8,8,buffer)){
+    823          			return -3;		//读取失败
+    824          		}
+    825          
+    826          		//往缓存写入新的数据
+    827          		tmp = (sector_offset+i)%8; 
+    828          		memcpy(buffer+tmp*512,pBuffer+i*512,512);
+    829          		current_cache_block = (sector_offset+i)/8;	//标记当前缓存的Block
+    830          	}
+    831          	
+    832          
+    833          	return 0;
+    834          }
+    835          
+    836          //此函数一次写1或者多个Sector（512字节）的数据
+    837          int spi_flash_read(unsigned int sector_offset,unsigned char *pBuffer,unsigned int sector_cnt)
+    838          {
+    839          	int i,tmp;
+    840          	unsigned int	cnt;
+    841          
+    842          	if (sector_offset >= (flasize/512)){
+    843          		return -1;	//起始偏移超出容量
+    844          	}
+    845          
+    846          	cnt = sector_cnt;
+    847          	if ((sector_offset + cnt) > (flasize/512))
+    848          	{
+    849          		cnt = (flasize/512) - sector_offset;
+    850          	}
+    851          
+    852          	for (i = 0; i < cnt;i++)
+    853          	{
+    854          		if (((sector_offset+i)/8) == current_cache_block)
+    855          		{
+    856          			//如果当前要读的Sector位于已经被缓存的Block（4K Block）,那么直接读缓存数据即可
+    857          			memcpy(pBuffer+512*i,buffer+((sector_offset+i)%8)*512,512);
+    858          			continue;
+    859          		}
+    860          
+    861          		if(spi_flash_rpage(sector_offset+i,1,pBuffer+512*i)){
+    862          			return -3;		//读取失败
+    863          		}
+    864          	}
+    865          
+    866          	return 0;
+    867          }
+    868          /******************* (C) COPYRIGHT 2010 netcom *****END OF FILE****/
 
    Maximum stack usage in bytes:
 
@@ -873,12 +918,13 @@ E:\H520B\FW\src\Drivers\spi_flash.c
      spi_flash_page_write             24
      spi_flash_post_write              8
      spi_flash_raddr                  24
+     spi_flash_read                   24
      spi_flash_read_byte               8
      spi_flash_read_id                24
      spi_flash_rpage                  24
      spi_flash_send_byte              16
      spi_flash_send_halfword          16
-     spi_flash_valid                   0
+     spi_flash_valid                   8
      spi_flash_waddr                  32
      spi_flash_wait_for_write_end     16
      spi_flash_wpage                  16
@@ -897,9 +943,11 @@ E:\H520B\FW\src\Drivers\spi_flash.c
      flasize                         4
      buffer                       4096
      current_cache_block             4
-     spi_flash_init                332
+     recmod_flasize                  4
+     fatfs_sector_offset             4
+     spi_flash_init                384
      spi_flash_close                40
-     spi_flash_valid                18
+     spi_flash_valid                28
      spi_flash_erasesector          76
      spi_flash_eraseblock           76
      spi_flash_erase                50
@@ -914,24 +962,25 @@ E:\H520B\FW\src\Drivers\spi_flash.c
      spi_flash_send_halfword        68
      spi_flash_write_enable         30
      spi_flash_wait_for_write_end  100
-     get_spi_flash_capacity          8
+     get_spi_flash_capacity          6
      spi_flash_post_write          108
-     spi_flash_write               198
-     ??DataTable11                   4
-     ??DataTable33                   4
-     ??DataTable38                   4
-     ??DataTable49                   4
-     ??DataTable52                   4
-     ??DataTable54                   4
+     spi_flash_write               196
+     spi_flash_read                136
+     ??DataTable13                   4
+     ??DataTable35                   4
+     ??DataTable40                   4
+     ??DataTable58                   4
+     ??DataTable59                   4
+     ??DataTable60                   4
 
  
- 4 105 bytes in section .bss
+ 4 113 bytes in section .bss
     64 bytes in section .rodata
- 2 222 bytes in section .text
+ 2 416 bytes in section .text
  
- 2 188 bytes of CODE  memory (+ 34 bytes shared)
+ 2 382 bytes of CODE  memory (+ 34 bytes shared)
     64 bytes of CONST memory
- 4 105 bytes of DATA  memory
+ 4 113 bytes of DATA  memory
 
 Errors: none
-Warnings: 5
+Warnings: 6

@@ -1,6 +1,6 @@
 ###############################################################################
 #                                                                             #
-# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     26/Sep/2015  11:37:25 #
+# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     28/Sep/2015  18:18:40 #
 # Copyright 1999-2009 IAR Systems AB.                                         #
 #                                                                             #
 #    Cpu mode     =  thumb                                                    #
@@ -63,7 +63,7 @@ E:\H520B\FW\src\Project\main.c
      27          #include "keypad.h"
      28          #include "TimeBase.h"
      29          #include "Terminal_para.h"
-     30          #include "record.h"
+     30          #include "record_m.h"
      31          #include "stm32f10x_flash_config.h"
      32          #include "scanner.h"
      33          #include "usb_lib.h"

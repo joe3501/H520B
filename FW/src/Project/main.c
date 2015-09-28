@@ -27,7 +27,7 @@
 #include "keypad.h"
 #include "TimeBase.h"
 #include "Terminal_para.h"
-#include "record.h"
+#include "record_m.h"
 #include "stm32f10x_flash_config.h"
 #include "scanner.h"
 #include "usb_lib.h"

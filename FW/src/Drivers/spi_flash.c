@@ -54,7 +54,7 @@ typedef struct tagSPIFlashID
 /* Private variables ---------------------------------------------------------*/
 const TSPIFlashID id_array[] = {
 	{0xEF, 0x40, 0x17, 0x800000},			// KH25L1605DM2C
-    {0xEF, 0x30, 0x16, 0x200000},			// KH25L1605DM2C
+	{0xEF, 0x30, 0x16, 0x200000},			// KH25L1605DM2C
 	{0xC8, 0x30, 0x13, 0x080000},			// GigaDevice GD25D40	《GD25DXX_Rev1.1.pdf》
 	{0xC8, 0x30, 0x14, 0x100000},			// GigaDevice GD25D80	《GD25DXX_Rev1.1.pdf》
 	{0xC8, 0x40, 0x15, 0x200000},			// GigaDevice GD25Q16   《GD25Q16_Rev1.1.pdf》
@@ -71,6 +71,8 @@ unsigned int			flasize;
 
 static unsigned char buffer[4096];		//4K缓存
 static int	 current_cache_block;		//当前被缓存的Block
+unsigned int			recmod_flasize;
+unsigned int			fatfs_sector_offset;
 
 /* Private function prototypes -----------------------------------------------*/
 int		spi_flash_page_write(unsigned char* pBuffer, unsigned int WriteAddr, unsigned short NumByteToWrite);
@@ -158,6 +160,16 @@ int spi_flash_init(void)
 			pSPIFLASHID->Capacity == spi_flash_id.Capacity )
 		{
 			flasize	= pSPIFLASHID->FlashSize;
+			if (flasize > 1024*1024)
+			{
+				//flasize -= 1024*1024;		//将最后1M的空间划分给FAT文件系统管理
+				recmod_flasize = flasize - 1024*1024;
+				fatfs_sector_offset = recmod_flasize/512;
+			}
+			else
+			{
+				return -1;
+			}
 			break;
 		}
 		pSPIFLASHID++;
@@ -191,7 +203,6 @@ void spi_flash_close(void)
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIO_CS, DISABLE);
 }
 
-
 /**
 * @brief  Check the spi flash state
 * @param  None
@@ -200,14 +211,14 @@ void spi_flash_close(void)
 */
 int spi_flash_valid(void)
 {
-	if (flash_state)
+	if (flash_state == 0)
 	{
-		return 0;
+		if (spi_flash_init())
+		{
+			return -1;
+		}
 	}
-	else
-	{
-		return -1;
-	}
+	return 0;
 }
 
 
@@ -653,7 +664,8 @@ unsigned char spi_flash_send_byte(unsigned char byte)
 
 	/* Wait to receive a byte */
 	//while (SPI_I2S_GetFlagStatus(SPI2, SPI_I2S_FLAG_RXNE) == RESET);
-        for(i=0; i<10; i++);
+        //for(i=0; i<10; i++);
+	for(i=0; i<5; i++);
 
 	/* Return the byte read from the SPI bus */
 	return SPI_I2S_ReceiveData(SPI2);
@@ -742,10 +754,11 @@ int spi_flash_wait_for_write_end(void)
 	return 0;
 }
 
-//返回当前SPI FLASH的容量,以sector为单位
+//返回SPI FLASH中FAT文件管理的容量,以sector为单位
 int get_spi_flash_capacity(void)
 {
-	return flasize/512;
+	//return flasize/512;
+	return (1024*1024)/512;			//只开放1M的空间给到FAST文件系统使用，SPI FLASH的实际容量还是由flasize指明
 }
 
 //将缓存的数据写入SPI FLASH
@@ -796,7 +809,7 @@ int spi_flash_write(unsigned int sector_offset,unsigned char *pBuffer,unsigned i
 		{
 			//如果当前要写的Sector位于已经被缓存的Block（4K Block）,那么直接将要写的数据写入缓存即可
 			memcpy(buffer+((sector_offset+i)%8)*512,pBuffer+512*i,512);
-			return 0;
+			continue;
 		}
 
 		//需要先将被缓存的数据写入SPI FLASH
@@ -820,4 +833,36 @@ int spi_flash_write(unsigned int sector_offset,unsigned char *pBuffer,unsigned i
 	return 0;
 }
 
-/******************* (C) COPYRIGHT 2010 heroje *****END OF FILE****/
+//此函数一次写1或者多个Sector（512字节）的数据
+int spi_flash_read(unsigned int sector_offset,unsigned char *pBuffer,unsigned int sector_cnt)
+{
+	int i,tmp;
+	unsigned int	cnt;
+
+	if (sector_offset >= (flasize/512)){
+		return -1;	//起始偏移超出容量
+	}
+
+	cnt = sector_cnt;
+	if ((sector_offset + cnt) > (flasize/512))
+	{
+		cnt = (flasize/512) - sector_offset;
+	}
+
+	for (i = 0; i < cnt;i++)
+	{
+		if (((sector_offset+i)/8) == current_cache_block)
+		{
+			//如果当前要读的Sector位于已经被缓存的Block（4K Block）,那么直接读缓存数据即可
+			memcpy(pBuffer+512*i,buffer+((sector_offset+i)%8)*512,512);
+			continue;
+		}
+
+		if(spi_flash_rpage(sector_offset+i,1,pBuffer+512*i)){
+			return -3;		//读取失败
+		}
+	}
+
+	return 0;
+}
+/******************* (C) COPYRIGHT 2010 netcom *****END OF FILE****/

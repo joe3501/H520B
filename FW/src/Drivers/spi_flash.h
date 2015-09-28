@@ -40,6 +40,8 @@
 /* Deselect SPI FLASH: Chip Select pin high */
 #define SPI_FLASH_CS_HIGH()      GPIO_SetBits(GPIO_CS, GPIO_Pin_CS)
 
+
+extern unsigned int			fatfs_sector_offset;
 /* Exported functions ------------------------------------------------------- */
 /*----- High layer function -----*/
 int		spi_flash_init(void);
@@ -61,7 +63,7 @@ int		spi_flash_wait_for_write_end(void);
 int		get_spi_flash_capacity(void);
 int		spi_flash_post_write(void);
 int spi_flash_write(unsigned int sector_offset,unsigned char *pBuffer,unsigned int sector_cnt);
-
+int spi_flash_read(unsigned int sector_offset,unsigned char *pBuffer,unsigned int sector_cnt);
 #endif /* __SPI_FLASH_H */
 
-/******************* (C) COPYRIGHT 2010 heroje *****END OF FILE****/
+/******************* (C) COPYRIGHT 2010 netcom *****END OF FILE****/

@@ -114,7 +114,7 @@ u16 MAL_Write(u8 lun, u32 Memory_Offset, u32 *Writebuff, u16 Transfer_Length)
 				return MAL_FAIL;
 			}
 
-			Status = spi_flash_write(Memory_Offset/512,pBuf,1);
+			Status = spi_flash_write(fatfs_sector_offset+Memory_Offset/512,pBuf,1);
 			if (Status)
 			{
 				return MAL_FAIL;
@@ -196,8 +196,8 @@ u16 MAL_Read(u8 lun, u32 Memory_Offset, u32 *Readbuff, u16 Transfer_Length)
 				return MAL_FAIL;
 			}
 
-			spi_flash_raddr(Memory_Offset, Transfer_Length,(unsigned char*)Readbuff);
-            break;
+			spi_flash_raddr(fatfs_sector_offset*512+Memory_Offset, Transfer_Length,(unsigned char*)Readbuff);
+			break;
 		}
 		//else
 		//{

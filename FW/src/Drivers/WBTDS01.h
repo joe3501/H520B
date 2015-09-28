@@ -37,4 +37,5 @@ int WBTD_hid_send(unsigned char *str,unsigned int len,unsigned int *send_len);
 int WBTD_got_notify_type(void);
 int WBTD_RxISRHandler(unsigned char *res, unsigned int res_len);
 
+int WBTD_hid_send_test(void);		//for test
 #endif
