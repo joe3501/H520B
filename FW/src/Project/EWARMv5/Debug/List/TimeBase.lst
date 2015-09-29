@@ -1,6 +1,6 @@
 ###############################################################################
 #                                                                             #
-# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     28/Sep/2015  18:18:06 #
+# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     29/Sep/2015  11:20:09 #
 # Copyright 1999-2009 IAR Systems AB.                                         #
 #                                                                             #
 #    Cpu mode     =  thumb                                                    #
@@ -326,98 +326,121 @@ E:\H520B\FW\src\Drivers\TimeBase.c
     290          	return 0;
     291          }
     292          
-    293          /**
-    294           * @brief TIM2的溢出中断ISR
-    295           * @param[in] none
-    296           * @return none
-    297           * @note  TIM2的中断服务函数调用
-    298          */
-    299          void TIM2_UpdateISRHandler(void)
-    300          {    
-    301          	V_TIMER *p_vtimer;
-    302          	if (TIM_GetITStatus(TIM2, TIM_IT_Update) != RESET)
-    303          	{
-    304          		p_vtimer = v_timer_list.v_timer_tail;
-    305          		while (p_vtimer)
-    306          		{
-    307          			p_vtimer->count++;
-    308          			if (p_vtimer->count == p_vtimer->dly)
-    309          			{
-    310          				if (p_vtimer->mode == V_TIMER_MODE_ONE_SHOT)
-    311          				{
-    312          					if (p_vtimer->next)
-    313          					{
-    314          						p_vtimer->next->prev = p_vtimer->prev;
-    315          					}
-    316          					else
-    317          					{
-    318          						v_timer_list.v_timer_tail = p_vtimer->prev;
-    319          					}
-    320          
-    321          					if(p_vtimer->prev)
-    322          					{
-    323          						p_vtimer->prev->next = p_vtimer->next;
-    324          					}
-    325          
-    326          					v_timer_list.v_timer_cnt--;
-    327          					Jfree(p_vtimer);
-    328          
-    329          					if (v_timer_list.v_timer_cnt == 0)
-    330          					{
-    331          						TIM_ITConfig(TIM2, TIM_IT_Update, DISABLE);
-    332          						/* TIM counter enable */
-    333          						TIM_Cmd(TIM2, DISABLE);
-    334          					}
-    335          				}
-    336          				else
-    337          				{
-    338          					p_vtimer->count = 0;
-    339          				}
-    340          
-    341          				if (p_vtimer->timer_hook)
-    342          				{
-    343          					p_vtimer->timer_hook();
-    344          				}
-    345          			}
-    346          			p_vtimer = p_vtimer->prev;
-    347          		}
-    348          		TIM_ClearITPendingBit(TIM2, TIM_IT_Update);
-    349          	}
-    350          }
+    293          
+    294          /**
+    295           * @brief 强制开启硬定时器
+    296          */
+    297          void start_real_timer(void)
+    298          {
+    299          	TIM_ITConfig(TIM2, TIM_IT_Update, ENABLE);
+    300          	/* TIM counter enable */
+    301          	TIM_Cmd(TIM2, ENABLE);
+    302          	return;
+    303          }
+    304          
+    305          /**
+    306           * @brief 强制关闭硬定时器
+    307          */
+    308          void stop_real_timer(void)
+    309          {
+    310          	TIM_ITConfig(TIM2, TIM_IT_Update, DISABLE);
+    311          	/* TIM counter enable */
+    312          	TIM_Cmd(TIM2, DISABLE);
+    313          	return;
+    314          }
+    315          
+    316          /**
+    317           * @brief TIM2的溢出中断ISR
+    318           * @param[in] none
+    319           * @return none
+    320           * @note  TIM2的中断服务函数调用
+    321          */
+    322          void TIM2_UpdateISRHandler(void)
+    323          {    
+    324          	V_TIMER *p_vtimer;
+    325          	if (TIM_GetITStatus(TIM2, TIM_IT_Update) != RESET)
+    326          	{
+    327          		p_vtimer = v_timer_list.v_timer_tail;
+    328          		while (p_vtimer)
+    329          		{
+    330          			p_vtimer->count++;
+    331          			if (p_vtimer->count == p_vtimer->dly)
+    332          			{
+    333          				if (p_vtimer->mode == V_TIMER_MODE_ONE_SHOT)
+    334          				{
+    335          					if (p_vtimer->next)
+    336          					{
+    337          						p_vtimer->next->prev = p_vtimer->prev;
+    338          					}
+    339          					else
+    340          					{
+    341          						v_timer_list.v_timer_tail = p_vtimer->prev;
+    342          					}
+    343          
+    344          					if(p_vtimer->prev)
+    345          					{
+    346          						p_vtimer->prev->next = p_vtimer->next;
+    347          					}
+    348          
+    349          					v_timer_list.v_timer_cnt--;
+    350          					Jfree(p_vtimer);
     351          
-    352          
-    353          //===============================================利用timer提供的接口实现延时功能================================
-    354          static int Delay_end_flag;
-    355          //利用timer实现延时功能时的中断钩子函数
-    356          void delay_func_hook(void)
-    357          {
-    358          	Delay_end_flag = 1;
-    359          }
-    360          
-    361          /**
-    362           * @brief 开始利用TIM2定时计数
-    363           * @param[in] unsigned int nTime   单位ms
-    364           * @return  none
-    365          */
-    366          void StartDelay(unsigned short nTime)
-    367          {
-    368          	int	ret;
-    369              Delay_end_flag = 0;
-    370          	ret = start_timer(V_TIMER_MODE_ONE_SHOT,nTime,delay_func_hook);
-    371          	assert(ret != 0);
-    372          }
-    373          
+    352          					if (v_timer_list.v_timer_cnt == 0)
+    353          					{
+    354          						TIM_ITConfig(TIM2, TIM_IT_Update, DISABLE);
+    355          						/* TIM counter enable */
+    356          						TIM_Cmd(TIM2, DISABLE);
+    357          					}
+    358          				}
+    359          				else
+    360          				{
+    361          					p_vtimer->count = 0;
+    362          				}
+    363          
+    364          				if (p_vtimer->timer_hook)
+    365          				{
+    366          					p_vtimer->timer_hook();
+    367          				}
+    368          			}
+    369          			p_vtimer = p_vtimer->prev;
+    370          		}
+    371          		TIM_ClearITPendingBit(TIM2, TIM_IT_Update);
+    372          	}
+    373          }
     374          
-    375          /**
-    376           * @brief 判断延时时间是否到
-    377           * @param[in] none
-    378           * @return 1: 定时到
-    379           *        0: 定时未到
-    380          */
-    381          unsigned char DelayIsEnd(void)
-    382          {
-    383          	return	Delay_end_flag; 
-    384          }
+    375          
+    376          //===============================================利用timer提供的接口实现延时功能================================
+    377          static int Delay_end_flag;
+    378          //利用timer实现延时功能时的中断钩子函数
+    379          void delay_func_hook(void)
+    380          {
+    381          	Delay_end_flag = 1;
+    382          }
+    383          
+    384          /**
+    385           * @brief 开始利用TIM2定时计数
+    386           * @param[in] unsigned int nTime   单位ms
+    387           * @return  none
+    388          */
+    389          void StartDelay(unsigned short nTime)
+    390          {
+    391          	int	ret;
+    392              Delay_end_flag = 0;
+    393          	ret = start_timer(V_TIMER_MODE_ONE_SHOT,nTime,delay_func_hook);
+    394          	assert(ret != 0);
+    395          }
+    396          
+    397          
+    398          /**
+    399           * @brief 判断延时时间是否到
+    400           * @param[in] none
+    401           * @return 1: 定时到
+    402           *        0: 定时未到
+    403          */
+    404          unsigned char DelayIsEnd(void)
+    405          {
+    406          	return	Delay_end_flag; 
+    407          }
 
    Maximum stack usage in bytes:
 
@@ -432,7 +455,9 @@ E:\H520B\FW\src\Drivers\TimeBase.c
      delay_ms                   0
      delay_us                   0
      reset_timer               24
+     start_real_timer           8
      start_timer               24
+     stop_real_timer            8
      stop_timer                 8
 
 
@@ -448,6 +473,8 @@ E:\H520B\FW\src\Drivers\TimeBase.c
      check_vtimer_handle                          24
      reset_timer                                  40
      stop_timer                                  100
+     start_real_timer                             26
+     stop_real_timer                              26
      TIM2_UpdateISRHandler                       154
      Delay_end_flag                                4
      delay_func_hook                               8
@@ -461,9 +488,9 @@ E:\H520B\FW\src\Drivers\TimeBase.c
  
   12 bytes in section .bss
   48 bytes in section .rodata
- 662 bytes in section .text
+ 714 bytes in section .text
  
- 662 bytes of CODE  memory
+ 714 bytes of CODE  memory
   48 bytes of CONST memory
   12 bytes of DATA  memory
 

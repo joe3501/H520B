@@ -1,6 +1,6 @@
 ###############################################################################
 #                                                                             #
-# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     28/Sep/2015  18:18:40 #
+# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     29/Sep/2015  11:29:22 #
 # Copyright 1999-2009 IAR Systems AB.                                         #
 #                                                                             #
 #    Cpu mode     =  thumb                                                    #
@@ -248,62 +248,64 @@ E:\H520B\FW\src\Project\main.c
     212          {
     213          	GPIO_InitTypeDef GPIO_InitStructure;
     214          
-    215          	//先关闭所有外设的时钟
-    216          	RCC_APB2PeriphClockCmd(RCC_APB2Periph_ALL, DISABLE);
-    217          	RCC_APB1PeriphClockCmd(RCC_APB1Periph_ALL, DISABLE);
-    218          	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_ALL, DISABLE);
-    219          
-    220          	//但是需要开启PWR模块的时钟
-    221          	RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE); // Enable PWR clock
-    222          
-    223          	//进入低功耗模式
-    224          	EXTI_ClearFlag(0xffff);
-    225          	PWR_EnterSTOPMode(PWR_Regulator_ON, PWR_STOPEntry_WFI);
-    226          }
-    227          
-    228          /************************************************
-    229          * Function Name  : ExitLowPowerMode()
-    230          ************************************************/
-    231          void ExitLowPowerMode(void)
-    232          {
-    233          	GPIO_InitTypeDef GPIO_InitStructure;
-    234          	//重新配置时钟
-    235          	RCC_Configuration();
+    215          	stop_real_timer();
+    216          	hw_platform_led_ctrl(LED_RED,0);
+    217          	hw_platform_led_ctrl(LED_BLUE,0);
+    218          	hw_platform_led_ctrl(LED_GREEN,0);
+    219          	hw_platform_led_ctrl(LED_YELLOW,0);
+    220          
+    221          	//先关闭所有外设的时钟
+    222          	//RCC_APB2PeriphClockCmd(RCC_APB2Periph_ALL, DISABLE);
+    223          	//RCC_APB1PeriphClockCmd(RCC_APB1Periph_ALL, DISABLE);
+    224          	//RCC_AHBPeriphClockCmd(RCC_AHBPeriph_ALL, DISABLE);
+    225          
+    226          	//但是需要开启PWR模块的时钟
+    227          	RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE); // Enable PWR clock
+    228          
+    229          	// enable Debug in Stop mode
+    230          	//DBGMCU->CR |= DBGMCU_CR_DBG_STOP;
+    231          	
+    232          	//进入低功耗模式
+    233          	EXTI_ClearFlag(0xffff);
+    234          	PWR_EnterSTOPMode(PWR_Regulator_ON, PWR_STOPEntry_WFI);
+    235          }
     236          
-    237          	//开启系统中使用到的模块的时钟
-    238          	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB |
-    239          		RCC_APB2Periph_GPIOC | RCC_APB2Periph_AFIO | RCC_APB2Periph_ADC1, ENABLE);
-    240          
-    241          	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2 | RCC_APB1Periph_TIM3 | RCC_APB1Periph_SPI2 | RCC_APB1Periph_USB | RCC_APB1Periph_PWR, ENABLE);
-    242          
-    243          	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1 | RCC_AHBPeriph_CRC, ENABLE);
-    244          
-    245          	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2 | RCC_APB1Periph_USART3, ENABLE);
-    246          }
-    247          
-    248          
-    249          /*******************************************************************************
-    250          * Function Name  : assert_failed
-    251          * Description    : Reports the name of the source file and the source line number
-    252          *                  where the assert_param error has occurred.
-    253          * Input          : - file: pointer to the source file name
-    254          *                  - line: assert_param error line source number
-    255          * Output         : None
-    256          * Return         : None
-    257          *******************************************************************************/
-    258          
-    259          //void assert_failed(u8* file, u32 line)
-    260          //{ 
-    261          /* User can add his own implementation to report the file name and line number,
-    262          ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
-    263          
-    264          /* Infinite loop */
-    265          //while (1)
-    266          //{
-    267          //}
-    268          //}
-    269          /******************* (C) COPYRIGHT 2008 STMicroelectronics *****END OF FILE****/
-    270          
+    237          /************************************************
+    238          * Function Name  : ExitLowPowerMode()
+    239          ************************************************/
+    240          void ExitLowPowerMode(void)
+    241          {
+    242          	GPIO_InitTypeDef GPIO_InitStructure;
+    243          	//重新配置时钟
+    244          	RCC_Configuration();
+    245          
+    246          	start_real_timer();
+    247          	scanner_mod_init();
+    248          }
+    249          
+    250          
+    251          /*******************************************************************************
+    252          * Function Name  : assert_failed
+    253          * Description    : Reports the name of the source file and the source line number
+    254          *                  where the assert_param error has occurred.
+    255          * Input          : - file: pointer to the source file name
+    256          *                  - line: assert_param error line source number
+    257          * Output         : None
+    258          * Return         : None
+    259          *******************************************************************************/
+    260          
+    261          //void assert_failed(u8* file, u32 line)
+    262          //{ 
+    263          /* User can add his own implementation to report the file name and line number,
+    264          ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+    265          
+    266          /* Infinite loop */
+    267          //while (1)
+    268          //{
+    269          //}
+    270          //}
+    271          /******************* (C) COPYRIGHT 2008 STMicroelectronics *****END OF FILE****/
+    272          
 
    Maximum stack usage in bytes:
 
@@ -327,18 +329,17 @@ E:\H520B\FW\src\Project\main.c
      nouse               12
      main                56
      RCC_Configuration  140
-     Unconfigure_All     26
+     Unconfigure_All     32
      GPIO_AllAinConfig   60
-     EnterLowPowerMode   58
-     ExitLowPowerMode    48
-     ??DataTable1         4
+     EnterLowPowerMode   66
+     ExitLowPowerMode    16
 
  
    5 bytes in section .bss
- 392 bytes in section .text
+ 370 bytes in section .text
   16 bytes in section VENDOR_RAM
  
- 392 bytes of CODE memory
+ 370 bytes of CODE memory
   21 bytes of DATA memory
 
 Errors: none

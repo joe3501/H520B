@@ -1,6 +1,6 @@
 ###############################################################################
 #                                                                             #
-# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     28/Sep/2015  18:18:13 #
+# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     29/Sep/2015  10:34:09 #
 # Copyright 1999-2009 IAR Systems AB.                                         #
 #                                                                             #
 #    Cpu mode     =  thumb                                                    #
@@ -170,10 +170,11 @@ E:\H520B\FW\src\App\Terminal_Para_m.c
     132          	g_param.beep_volume = 3;		
     133          	//g_param.power_save_mode = 1;		//默认支持节能模式
     134          	g_param.lower_power_timeout = 0;	//默认1分钟进入低功耗模式
-    135          	
-    136          	return SaveTerminalPara();
-    137          }
-    138          
+    135          	g_param.motor_enable = 1;
+    136          	
+    137          	return SaveTerminalPara();
+    138          }
+    139          
 
    Maximum stack usage in bytes:
 
@@ -194,15 +195,15 @@ E:\H520B\FW\src\App\Terminal_Para_m.c
      param_mod_state        1
      ReadTerminalPara     136
      SaveTerminalPara      26
-     DefaultTerminalPara   48
+     DefaultTerminalPara   54
      ??DataTable6           4
-     ??DataTable14          4
+     ??DataTable15          4
 
  
   33 bytes in section .bss
- 238 bytes in section .text
+ 244 bytes in section .text
  
- 218 bytes of CODE memory (+ 20 bytes shared)
+ 224 bytes of CODE memory (+ 20 bytes shared)
   33 bytes of DATA memory
 
 Errors: none

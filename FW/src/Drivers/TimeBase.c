@@ -290,6 +290,29 @@ int stop_timer(VTIMER_HANDLE v_timer_h)
 	return 0;
 }
 
+
+/**
+ * @brief 强制开启硬定时器
+*/
+void start_real_timer(void)
+{
+	TIM_ITConfig(TIM2, TIM_IT_Update, ENABLE);
+	/* TIM counter enable */
+	TIM_Cmd(TIM2, ENABLE);
+	return;
+}
+
+/**
+ * @brief 强制关闭硬定时器
+*/
+void stop_real_timer(void)
+{
+	TIM_ITConfig(TIM2, TIM_IT_Update, DISABLE);
+	/* TIM counter enable */
+	TIM_Cmd(TIM2, DISABLE);
+	return;
+}
+
 /**
  * @brief TIM2的溢出中断ISR
  * @param[in] none

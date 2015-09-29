@@ -25,4 +25,7 @@ int reset_timer(VTIMER_HANDLE v_timer_h,unsigned char mode,unsigned int dly, Tim
 void StartDelay(unsigned short nTime);
 unsigned char DelayIsEnd(void);
 
+void start_real_timer(void);
+void stop_real_timer(void);
+
 #endif

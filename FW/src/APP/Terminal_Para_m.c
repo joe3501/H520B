@@ -132,6 +132,7 @@ int DefaultTerminalPara(void)
 	g_param.beep_volume = 3;		
 	//g_param.power_save_mode = 1;		//默认支持节能模式
 	g_param.lower_power_timeout = 0;	//默认1分钟进入低功耗模式
+	g_param.motor_enable = 1;
 	
 	return SaveTerminalPara();
 }

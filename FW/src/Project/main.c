@@ -212,14 +212,23 @@ void EnterLowPowerMode(void)
 {
 	GPIO_InitTypeDef GPIO_InitStructure;
 
+	stop_real_timer();
+	hw_platform_led_ctrl(LED_RED,0);
+	hw_platform_led_ctrl(LED_BLUE,0);
+	hw_platform_led_ctrl(LED_GREEN,0);
+	hw_platform_led_ctrl(LED_YELLOW,0);
+
 	//先关闭所有外设的时钟
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_ALL, DISABLE);
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_ALL, DISABLE);
-	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_ALL, DISABLE);
+	//RCC_APB2PeriphClockCmd(RCC_APB2Periph_ALL, DISABLE);
+	//RCC_APB1PeriphClockCmd(RCC_APB1Periph_ALL, DISABLE);
+	//RCC_AHBPeriphClockCmd(RCC_AHBPeriph_ALL, DISABLE);
 
 	//但是需要开启PWR模块的时钟
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE); // Enable PWR clock
 
+	// enable Debug in Stop mode
+	//DBGMCU->CR |= DBGMCU_CR_DBG_STOP;
+	
 	//进入低功耗模式
 	EXTI_ClearFlag(0xffff);
 	PWR_EnterSTOPMode(PWR_Regulator_ON, PWR_STOPEntry_WFI);
@@ -234,15 +243,8 @@ void ExitLowPowerMode(void)
 	//重新配置时钟
 	RCC_Configuration();
 
-	//开启系统中使用到的模块的时钟
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB |
-		RCC_APB2Periph_GPIOC | RCC_APB2Periph_AFIO | RCC_APB2Periph_ADC1, ENABLE);
-
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2 | RCC_APB1Periph_TIM3 | RCC_APB1Periph_SPI2 | RCC_APB1Periph_USB | RCC_APB1Periph_PWR, ENABLE);
-
-	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1 | RCC_AHBPeriph_CRC, ENABLE);
-
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2 | RCC_APB1Periph_USART3, ENABLE);
+	start_real_timer();
+	scanner_mod_init();
 }
 
 

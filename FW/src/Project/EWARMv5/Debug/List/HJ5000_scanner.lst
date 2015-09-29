@@ -1,6 +1,6 @@
 ###############################################################################
 #                                                                             #
-# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     28/Sep/2015  18:18:13 #
+# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     29/Sep/2015  11:20:10 #
 # Copyright 1999-2009 IAR Systems AB.                                         #
 #                                                                             #
 #    Cpu mode     =  thumb                                                    #
@@ -741,40 +741,42 @@ E:\H520B\FW\src\Drivers\HJ5000_scanner.c
     703          		{
     704          			HJ5000_start_stop_decode(HJ5000_STOP_DECODE);
     705          			*barcode_len	= g_resCmd.CmdPos-1;
-    706          			memcpy(barcode, &g_resCmd.CmdBuffer[0], ((*barcode_len > max_num)?max_num:*barcode_len));
-    707          			strcpy((char*)barcode_type, "");
-    708          			//Beep(400);
-    709          			return 0;
-    710          		}//成功收到响应
-    711          		//else if (g_resCmd.status == RESPONSE_NAK)	//响应失败
-    712          		//{
-    713          		//	lineccd_start_stop_decode(LINECCD_STOP_DECODE);
-    714          		//	return -1;
-    715          		//}
-    716          		//else if (g_resCmd.status == RES_CHECKFAILURE)
-    717          		//{
-    718          		//	send_nak_to_sanner(RES_CHECKFAILURE);	
-    719          		//	lineccd_start_stop_decode(LINECCD_STOP_DECODE);
-    720          		//	return -1;
-    721          		//}
-    722          		else if (g_resCmd.status == RES_UNKOWN_MSG)
-    723          		{
-    724          			HJ5000_start_stop_decode(HJ5000_STOP_DECODE);
-    725          			return -1;
-    726          		}
-    727          
-    728          		OSTimeDlyHMSM(0, 0, 0, 100);
-    729          	}//延时
-    730          
-    731          	HJ5000_start_stop_decode(HJ5000_STOP_DECODE);
-    732          	return -1;
-    733          }
-    734          
-    735          
-    736          void scanner_power_off(void)
-    737          {
-    738          	//GPIO_SetBits(SCANNER_POWER_EN_GPIO_PORT,SCANNER_POWER_EN_PIN);
-    739          }
+    706          			i = ((*barcode_len > max_num)?max_num:*barcode_len);
+    707          			memcpy(barcode, &g_resCmd.CmdBuffer[0], i);
+    708          			barcode[i] = 0;
+    709          			strcpy((char*)barcode_type, "");
+    710          			//Beep(400);
+    711          			return 0;
+    712          		}//成功收到响应
+    713          		//else if (g_resCmd.status == RESPONSE_NAK)	//响应失败
+    714          		//{
+    715          		//	lineccd_start_stop_decode(LINECCD_STOP_DECODE);
+    716          		//	return -1;
+    717          		//}
+    718          		//else if (g_resCmd.status == RES_CHECKFAILURE)
+    719          		//{
+    720          		//	send_nak_to_sanner(RES_CHECKFAILURE);	
+    721          		//	lineccd_start_stop_decode(LINECCD_STOP_DECODE);
+    722          		//	return -1;
+    723          		//}
+    724          		else if (g_resCmd.status == RES_UNKOWN_MSG)
+    725          		{
+    726          			HJ5000_start_stop_decode(HJ5000_STOP_DECODE);
+    727          			return -1;
+    728          		}
+    729          
+    730          		OSTimeDlyHMSM(0, 0, 0, 100);
+    731          	}//延时
+    732          
+    733          	HJ5000_start_stop_decode(HJ5000_STOP_DECODE);
+    734          	return -1;
+    735          }
+    736          
+    737          
+    738          void scanner_power_off(void)
+    739          {
+    740          	//GPIO_SetBits(SCANNER_POWER_EN_GPIO_PORT,SCANNER_POWER_EN_PIN);
+    741          }
 
    Maximum stack usage in bytes:
 
@@ -819,7 +821,7 @@ E:\H520B\FW\src\Drivers\HJ5000_scanner.c
      scanner_mod_init          108
      HJ5000_RxISRHandler        82
      HJ5000_start_stop_decode   40
-     scanner_get_barcode       148
+     scanner_get_barcode       152
      scanner_power_off           2
      ??DataTable9                4
      ??DataTable50               4
@@ -830,9 +832,9 @@ E:\H520B\FW\src\Drivers\HJ5000_scanner.c
  
  180 bytes in section .bss
    1 byte  in section .rodata
- 950 bytes in section .text
+ 954 bytes in section .text
  
- 916 bytes of CODE  memory (+ 34 bytes shared)
+ 920 bytes of CODE  memory (+ 34 bytes shared)
    1 byte  of CONST memory
  180 bytes of DATA  memory
 

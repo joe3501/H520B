@@ -93,7 +93,15 @@ extern void ExitLowPowerMode(void);
 static inline void scan_barcode_ok_tip(void)
 {
 	hw_platform_led_ctrl(LED_YELLOW,1);
-	hw_platform_beep_motor_ctrl(100,4000);
+	if (g_param.motor_enable)
+	{
+		hw_platform_beep_motor_ctrl(100,4000);
+	}
+	else
+	{
+		hw_platform_beep_ctrl(100,4000);
+	}
+	
 	OSTimeDlyHMSM(0,0,0,10);
 	hw_platform_led_ctrl(LED_YELLOW,0);
 }
@@ -227,7 +235,7 @@ static inline void enter_into_BT_Mode(unsigned char child_state)
 	}
 	else if (child_state == 0)
 	{
-		hw_platform_start_led_blink(LED_BLUE,300);
+		hw_platform_start_led_blink(LED_BLUE,150);
 	}
 	else
 	{
@@ -342,6 +350,7 @@ void State_Machine_thread(void *p)
 					hw_platform_beep_ctrl(500,3000);
 					EnterLowPowerMode();
 					ExitLowPowerMode();
+					hw_platform_beep_ctrl(500,3000);
 				}
 			}
 			continue;
@@ -605,7 +614,9 @@ repost:
 				{
 					lowpower_tip();
 				}
+				OSSchedLock();
 				rec = rec_searchby_tag(barcode,&index);
+				OSSchedUnlock();
 				if (rec)
 				{
 					ret = delete_one_node(index);

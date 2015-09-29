@@ -703,7 +703,9 @@ int scanner_get_barcode(unsigned char *barcode,unsigned int max_num,unsigned cha
 		{
 			HJ5000_start_stop_decode(HJ5000_STOP_DECODE);
 			*barcode_len	= g_resCmd.CmdPos-1;
-			memcpy(barcode, &g_resCmd.CmdBuffer[0], ((*barcode_len > max_num)?max_num:*barcode_len));
+			i = ((*barcode_len > max_num)?max_num:*barcode_len);
+			memcpy(barcode, &g_resCmd.CmdBuffer[0], i);
+			barcode[i] = 0;
 			strcpy((char*)barcode_type, "");
 			//Beep(400);
 			return 0;

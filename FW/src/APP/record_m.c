@@ -17,6 +17,7 @@
 #include "record_mod.h"
 #include <string.h>
 #include "assert.h"
+#include "hw_platform.h"
 
 #define RECORD_MAX_SIZE		(MAX_BARCODE_LEN+1)		//最长的记录大小
 
@@ -279,11 +280,12 @@ int record_clear(void)
 unsigned char *rec_searchby_tag(unsigned char *in_tag, int *index)
 {
 	unsigned char					*pBuf;
-	unsigned int					i;
+	unsigned int					i,led_state;
 	int								count,ret;
 	unsigned char					flag;
 
 	i = 0;
+	led_state = 1;
 
 	count = record_count_ext(1);
 	if (count <= 0)
@@ -311,13 +313,22 @@ unsigned char *rec_searchby_tag(unsigned char *in_tag, int *index)
 			if (ret == 0) 
 			{
 				*index = i;
+				hw_platform_led_ctrl(LED_GREEN,0);
+				hw_platform_beep_ctrl(300,3000);
 				return pBuf;
 			}
 		}
 		
 		i ++;
+		if (i%10 == 0)
+		{
+			hw_platform_led_ctrl(LED_GREEN,led_state);
+			led_state = ~led_state;
+		}
+		
 	}while(i<count);
 
+	hw_platform_led_ctrl(LED_GREEN,0);
 	return (unsigned char*)0;		//没有搜索到与关键字匹配的记录
 }
 
@@ -464,7 +475,7 @@ int delete_one_node(unsigned int index)
 //	unsigned char rec_index;
 //	int k;
 
-	ret = record_modify(1,record_count_ext(1)-index,0xcf);
+	ret = record_modify(1,index,0xcf);
 	if (ret)
 	{
 		return ret;
