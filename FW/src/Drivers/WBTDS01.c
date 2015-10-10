@@ -13,6 +13,8 @@
 * <h1><center>&copy; COPYRIGHT 2015 heroje</center></h1>
 *
 */
+#include "hw_platform.h"
+#if(BT_MODULE == USE_WBTDS01)
 #include "WBTDS01.h"
 #include "ucos_ii.h"
 #include "stm32f10x_lib.h"
@@ -627,12 +629,12 @@ int WBTD_got_notify_type(void)
 		if (wbtd_res.status & WBTD_RESPONSE_GOT_NOTIFY_CON)
 		{
 			wbtd_res.status &= 	~WBTD_RESPONSE_GOT_NOTIFY_CON;
-			return 1;
+			return BT_MODULE_STATUS_CONNECTED;
 		}
 		else
 		{
 			wbtd_res.status &= 	~WBTD_RESPONSE_GOT_NOTIFY_DISCON;
-			return 2;
+			return BT_MODULE_STATUS_DISCONNECT;
 		}
 	}
 
@@ -652,3 +654,4 @@ int WBTD_hid_send_test(void)
 		delay_ms(150);
 	}
 }
+#endif

@@ -25,6 +25,9 @@ typedef enum
 	BT_PROFILE_BLE
 }BT_PROFILE;
 
+#define BT_MODULE_STATUS_CONNECTED		1
+#define BT_MODULE_STATUS_DISCONNECT		2
+
 void WBTD_Reset(void);
 int WBTD_init(void);
 int WBTD_query_version(unsigned char *ver_buffer);

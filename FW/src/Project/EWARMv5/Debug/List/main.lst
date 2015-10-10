@@ -1,12 +1,12 @@
 ###############################################################################
 #                                                                             #
-# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     29/Sep/2015  11:29:22 #
+# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     10/Oct/2015  17:26:09 #
 # Copyright 1999-2009 IAR Systems AB.                                         #
 #                                                                             #
 #    Cpu mode     =  thumb                                                    #
 #    Endian       =  little                                                   #
 #    Source file  =  E:\H520B\FW\src\Project\main.c                           #
-#    Command line =  E:\H520B\FW\src\Project\main.c -lcN                      #
+#    Command line =  E:\H520B\FW\src\Project\main.c -D DEBUG_VER -lcN         #
 #                    E:\H520B\FW\src\Project\EWARMv5\Debug\List\ -o           #
 #                    E:\H520B\FW\src\Project\EWARMv5\Debug\Obj\ --no_cse      #
 #                    --no_unroll --no_inline --no_code_motion --no_tbaa       #
@@ -321,26 +321,29 @@ E:\H520B\FW\src\Project\main.c
 
    Section sizes:
 
-     Function/Label    Bytes
-     --------------    -----
-     HSEStartUpStatus     1
-     pos_state            4
-     status_iap           4
-     nouse               12
-     main                56
-     RCC_Configuration  140
-     Unconfigure_All     32
-     GPIO_AllAinConfig   60
-     EnterLowPowerMode   66
-     ExitLowPowerMode    16
+     Function/Label                     Bytes
+     --------------                     -----
+     HSEStartUpStatus                      1
+     pos_state                             4
+     status_iap                            4
+     nouse                                12
+     main                                 68
+     RCC_Configuration                   140
+     Unconfigure_All                      32
+     GPIO_AllAinConfig                    60
+     EnterLowPowerMode                    66
+     ExitLowPowerMode                     16
+     ?<Constant "H520B startup...\r\n">   20
 
  
    5 bytes in section .bss
- 370 bytes in section .text
+  20 bytes in section .rodata
+ 382 bytes in section .text
   16 bytes in section VENDOR_RAM
  
- 370 bytes of CODE memory
-  21 bytes of DATA memory
+ 382 bytes of CODE  memory
+  20 bytes of CONST memory
+  21 bytes of DATA  memory
 
 Errors: none
-Warnings: 2
+Warnings: 3

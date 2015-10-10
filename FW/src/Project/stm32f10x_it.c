@@ -24,7 +24,6 @@
 #include "hw_platform.h"
 #include "usb_pwr.h"
 #include "keypad.h"
-#include "WBTDS01.h"
 #include "HJ5000_scanner.h"
 
 
@@ -745,15 +744,24 @@ void USART2_IRQHandler(void)
 		temp = USART2->SR;  
 		temp = USART2->DR; //清USART_IT_IDLE标志  
 		DMA_Cmd(DMA1_Channel6,DISABLE);  
+  
+#if(BT_MODULE == USE_WBTDS01)
+			temp = WBTD_RES_BUFFER_LEN - DMA_GetCurrDataCounter(DMA1_Channel6);  
 
-		temp = WBTD_RES_BUFFER_LEN - DMA_GetCurrDataCounter(DMA1_Channel6);  
-		//for (i = 0;i < temp;i++)  
-		{  
 			WBTD_RxISRHandler(wbtd_recbuffer,temp); 
-		}  
 
-		//设置传输数据长度  
-		DMA1_Channel6->CNDTR = WBTD_RES_BUFFER_LEN;
+			//设置传输数据长度  
+			DMA1_Channel6->CNDTR = WBTD_RES_BUFFER_LEN;
+#else
+			temp = BT816_RES_BUFFER_LEN - DMA_GetCurrDataCounter(DMA1_Channel6);  
+
+			BT816_RxISRHandler(BT816_recbuffer,temp); 
+
+			//设置传输数据长度  
+			DMA1_Channel6->CNDTR = BT816_RES_BUFFER_LEN;
+#endif  
+
+		
 		//打开DMA  
 		DMA_Cmd(DMA1_Channel6,ENABLE);  
 	}  

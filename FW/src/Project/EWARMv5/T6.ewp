@@ -146,7 +146,7 @@
         <debug>1</debug>
         <option>
           <name>CCDefines</name>
-          <state></state>
+          <state>DEBUG_VER</state>
         </option>
         <option>
           <name>CCPreprocFile</name>
@@ -1630,6 +1630,9 @@
   </group>
   <group>
     <name>Drivers</name>
+    <file>
+      <name>$PROJ_DIR$\..\..\Drivers\BT816.c</name>
+    </file>
     <file>
       <name>$PROJ_DIR$\..\..\Drivers\crc32.c</name>
     </file>

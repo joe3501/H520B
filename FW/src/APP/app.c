@@ -228,10 +228,16 @@ static inline void enter_into_BT_Mode(unsigned char child_state)
 #endif
 	if (child_state == 2)
 	{
+#if(BT_MODULE == USE_WBTDS01)
 		WBTD_Reset();
+#else
+		BT816_enter_pair_mode();
+#endif
 		hw_platform_beep_ctrl(300,3000);
 		hw_platform_start_led_blink(LED_BLUE,10);
+#if(BT_MODULE == USE_WBTDS01)
 		WBTD_set_autocon(0);
+#endif
 	}
 	else if (child_state == 0)
 	{
@@ -256,12 +262,18 @@ static inline void exit_from_BT_Mode(unsigned char child_state)
 #endif
 	if (child_state == 1)
 	{
+#if(BT_MODULE == USE_WBTDS01)
 		WBTD_set_autocon(1);
+#else
+		BT816_set_autocon(0);
+		BT816_hid_disconnect();
+#endif
 		//delay_ms(1);
 		hw_platform_beep_ctrl(300,3000);
 		hw_platform_led_ctrl(LED_BLUE,0);
-		WBTD_Reset();//主动断开与蓝牙主机的连接
-		
+#if(BT_MODULE == USE_WBTDS01)
+		WBTD_Reset();//主动断开与蓝牙主机的连接	
+#endif	
 	}
 	else
 	{
@@ -460,7 +472,11 @@ repost:
 			case EVENT_SCAN_KEY_DOUBLE_CLICK:
 				if (g_param.ios_softkeypad_enable)
 				{
+#if(BT_MODULE == USE_WBTDS01)
 					WBTD_set_ioskeypad(1);
+#else
+					BT816_toggle_ioskeypad();
+#endif
 				}
 				break;
 			case EVENT_SCAN_KEY_LONG_PRESS:
@@ -472,7 +488,11 @@ repost:
 				enter_into_Memory_Mode();
 				break;
 			case EVENT_ERASE_KEY_SINGLE_CLICK:
+#if(BT_MODULE == USE_WBTDS01)
 				//WBTD_hid_send_test();
+#else
+				BT816_hid_send_test();
+#endif
 				break;
 			case EVENT_ERASE_KEY_LONG_PRESS:
 				//进入配对模式
@@ -816,55 +836,90 @@ void Event_capture_thread(void *p)
 */
 void BT_Daemon_thread(void *p)
 {
+#if(BT_MODULE == USE_BT816)
+	static unsigned int last_status;
+#endif
 	int ret;
-        unsigned int len;
+    unsigned int len;
 	unsigned char	err;
 	unsigned char	*pbarcode;
 
+#if(BT_MODULE == USE_WBTDS01)
 	ret = WBTD_init();
+#else
+	ret = BT816_init();
+	last_status = BT_MODULE_STATUS_DISCONNECT;
+#endif
 	if (ret)
 	{
+#if(BT_MODULE == USE_WBTDS01)
 		WBTD_Reset();
 		ret = WBTD_init();
+#else
+		ret = BT816_init();
+#endif
 		assert(ret == 0);
 	}
 
 #ifdef DEBUG_VER
-	printf("WBTD init Success!\r\n");
+	printf("BT Module init Success!\r\n");
 #endif
 
 	while (1)
 	{
+#if(BT_MODULE == USE_WBTDS01)
 		ret = WBTD_got_notify_type();
-		if ((ret == 1) || (ret == 2))
+		if ((ret == BT_MODULE_STATUS_CONNECTED) || (ret == BT_MODULE_STATUS_DISCONNECT))
 		{
 #ifdef DEBUG_VER
-			printf("WBTD got notify = %s!\r\n",(ret==1)?"Connected":"Disconnect");
+			printf("BT Module Status = %s!\r\n",(ret==1)?"Connected":"Disconnect");
 #endif
-			OSQPost(pEvent_Queue,(void*)((ret == 1)?EVENT_BT_CONNECTED:EVENT_BT_DISCONNECTED));
+			OSQPost(pEvent_Queue,(void*)((ret == BT_MODULE_STATUS_CONNECTED)?EVENT_BT_CONNECTED:EVENT_BT_DISCONNECTED));
 		}
+#else
+		ret = BT816_hid_status();
+		if ((ret == BT_MODULE_STATUS_CONNECTED)||(ret == BT_MODULE_STATUS_DISCONNECT))
+		{
+			if (ret != last_status)
+			{
+				last_status = ret;
+
+#ifdef DEBUG_VER
+				printf("BT Module Status = %s!\r\n",(ret==BT_MODULE_STATUS_CONNECTED)?"Connected":"Disconnect");
+#endif
+				OSQPost(pEvent_Queue,(void*)((ret == BT_MODULE_STATUS_CONNECTED)?EVENT_BT_CONNECTED:EVENT_BT_DISCONNECTED));
+			}
+		}
+#endif
+
 
 		pbarcode = (unsigned char*)OSQPend(pBarcode_Queue,20,&err);
 		if (pbarcode)
 		{
 #ifdef DEBUG_VER
-			printf("WBTD got data(%s) to send!\r\n",pbarcode);
+			printf("BT Module got data(%s) to send!\r\n",pbarcode);
 #endif
+#if(BT_MODULE == USE_WBTDS01)
 			if (WBTD_hid_send(pbarcode,strlen((char const*)pbarcode),&len))
+#else
+			if (BT816_hid_send(pbarcode,strlen((char const*)pbarcode)))
+#endif
 			{
 				//发送失败应该怎么处理，什么都不做了么????!!!!
 				//@todo...
 #ifdef DEBUG_VER
-				printf("WBTD send data Fail!\r\n");
+				printf("BT Module send data Fail!\r\n");
 #endif
 			}
-
-			pull_barcode_from_cash(pbarcode);
-			//OSTimeDlyHMSM(0,0,0,50);
+			else
+			{
+				pull_barcode_from_cash(pbarcode);
+				//OSTimeDlyHMSM(0,0,0,50);
 
 #ifdef DEBUG_VER
-			printf("WBTD send data Success!\r\n");
+				printf("BT Module send data Success!\r\n");
 #endif
+			}
 		}
 	}
 }

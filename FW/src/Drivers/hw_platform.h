@@ -1,11 +1,23 @@
 #ifndef _HW_PLATFORM_H_
 #define _HW_PLATFORM_H_
 
+//蓝牙模块类型
+#define		USE_WBTDS01		1
+#define		USE_BT816		2
+
+//定义使用的蓝牙模块
+#define BT_MODULE		USE_BT816
+
 #include "keypad.h"
 #include "spi_flash.h"
 #include "HJ5000_scanner.h"
-#include "WBTDS01.h"
 #include "data_uart.h"
+#if(BT_MODULE == USE_WBTDS01)
+#include "WBTDS01.h"
+#else
+#include "BT816.h"
+#endif
+
 
 #define		LED_RED			0
 #define		LED_GREEN		1

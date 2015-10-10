@@ -83,6 +83,7 @@
     <ClInclude Include="..\..\..\App\record.h" />
     <ClInclude Include="..\..\..\App\record_m.h" />
     <ClInclude Include="..\..\..\App\record_mod.h" />
+    <ClInclude Include="..\..\..\Drivers\BT816.h" />
     <ClInclude Include="..\..\..\Drivers\crc32.h" />
     <ClInclude Include="..\..\..\Drivers\HJ5000_scanner.h" />
     <ClInclude Include="..\..\..\Drivers\hw_platform.h" />
@@ -175,6 +176,7 @@
     <ClCompile Include="..\..\..\App\record_m.c" />
     <ClCompile Include="..\..\..\App\record_mod.c" />
     <ClCompile Include="..\..\..\App\Terminal_Para_m.c" />
+    <ClCompile Include="..\..\..\Drivers\BT816.c" />
     <ClCompile Include="..\..\..\Drivers\crc32.c" />
     <ClCompile Include="..\..\..\Drivers\HJ5000_scanner.c" />
     <ClCompile Include="..\..\..\Drivers\hw_platform.c" />
