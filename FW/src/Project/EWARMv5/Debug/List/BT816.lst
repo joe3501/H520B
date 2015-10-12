@@ -1,6 +1,6 @@
 ###############################################################################
 #                                                                             #
-# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     10/Oct/2015  18:18:45 #
+# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     12/Oct/2015  17:48:14 #
 # Copyright 1999-2009 IAR Systems AB.                                         #
 #                                                                             #
 #    Cpu mode     =  thumb                                                    #
@@ -570,236 +570,277 @@ E:\H520B\FW\src\Drivers\BT816.c
     534          {
     535          	unsigned char	buffer[15];
     536          
-    537          	memcpy(buffer,"AT+BDMODE=0\x0d\x0a",13);
+    537          	memcpy(buffer,"AT+BDMODE=2\x0d\x0a",13);
     538          	return BT816_write_cmd((const unsigned char*)buffer,13,EXPECT_RES_FORMAT2_TYPE);
     539          }
     540          
     541          /*
-    542           * @brief 设置蓝牙模块的工作模式(profile = HID、SPP、BLE)
-    543           * @param[in]  unsigned char mode  蓝牙模块的工作模式     
+    542           * @brief 设置蓝牙模块的HID键值传输的模式
+    543           * @param[in]  unsigned char mode  蓝牙模块的HID键值传输模式     
     544           * @return 0: 设置成功		else：设置失败
     545          */
-    546          int BT816_set_profile(BT_PROFILE mode)
+    546          int BT816_set_hid_trans_mode(BT_HID_TRANS_MODE mode)
     547          {
     548          	unsigned char	buffer[15];
     549          
-    550          	memcpy(buffer,"AT+BDMODE=",10);
-    551          	if (mode == BT_PROFILE_HID)
+    550          	memcpy(buffer,"AT+BDTP=",8);
+    551          	if (mode == BT_HID_TRANS_MODE_AT)
     552          	{
-    553          		buffer[10] = '2';
+    553          		buffer[8] = '0';
     554          	}
-    555          	else if (mode == BT_PROFILE_SPP)
+    555          	else
     556          	{
-    557          		buffer[10] = '1';
+    557          		buffer[8] = '1';
     558          	}
-    559          	else
-    560          	{
-    561          		buffer[10] = '3';
-    562          	}
-    563          	buffer[11] = 0x0d;
-    564          	buffer[12] = 0x0a;
-    565          	//return  BT816_write_cmd((const unsigned char*)buffer,13,EXPECT_RES_FORMAT2_TYPE);
-    566          	return  BT816_write_cmd((const unsigned char*)buffer,13,EXPECT_RES_FORMAT1_TYPE);
-    567          	//实测时发现此命令的响应为:+BDMODE#0,属于format1的响应
-    568          }
-    569          
-    570          /*
-    571           * @brief 查询蓝牙模块HID当前的连接状态  	
-    572           * @return <0 ：发送失败	0: unkown 	1: connected    2： disconnect
-    573           * @note 
-    574          */
-    575          int BT816_hid_status(void)
-    576          {
-    577          	unsigned char	buffer[15];
-    578          	int		i,ret;
-    579          
-    580          	memcpy(buffer,"AT+HIDSTAT=?\x0d\x0a",14);
-    581          
-    582          	ret = BT816_write_cmd((const unsigned char*)buffer,14,EXPECT_RES_FORMAT2_TYPE);
-    583          	if (ret)
+    559          	buffer[9] = 0x0d;
+    560          	buffer[10] = 0x0a;
+    561          	//return  BT816_write_cmd((const unsigned char*)buffer,13,EXPECT_RES_FORMAT2_TYPE);
+    562          	return  BT816_write_cmd((const unsigned char*)buffer,11,EXPECT_RES_FORMAT1_TYPE);
+    563          	//实测时发现此命令的响应为:+BDMODE#0,属于format1的响应
+    564          }
+    565          /*
+    566           * @brief 设置蓝牙模块的工作模式(profile = HID、SPP、BLE)
+    567           * @param[in]  unsigned char mode  蓝牙模块的工作模式     
+    568           * @return 0: 设置成功		else：设置失败
+    569          */
+    570          int BT816_set_profile(BT_PROFILE mode)
+    571          {
+    572          	unsigned char	buffer[15];
+    573          
+    574          	memcpy(buffer,"AT+BDMODE=",10);
+    575          	if (mode == BT_PROFILE_HID)
+    576          	{
+    577          		buffer[10] = '2';
+    578          	}
+    579          	else if (mode == BT_PROFILE_SPP)
+    580          	{
+    581          		buffer[10] = '1';
+    582          	}
+    583          	else
     584          	{
-    585          		return ret;
+    585          		buffer[10] = '3';
     586          	}
-    587          
-    588          	if (memcmp(&BT816_res.DataBuffer[3],"HIDSTAT",7) == 0)
-    589          	{
-    590          		if (BT816_res.DataBuffer[11] == '3')
-    591          		{
-    592          			return BT_MODULE_STATUS_CONNECTED;
-    593          		}
-    594          		else
-    595          		{
-    596          			return BT_MODULE_STATUS_DISCONNECT;
-    597          		}
-    598          	}
-    599          
-    600          	return -2; 
-    601          }
-    602          
-    603          /*
-    604           * @brief 蓝牙模块试图连接最近一次连接过的主机
-    605           * @return 0: 命令响应成功		else：命令响应失败
-    606           * @note 由于此命令可能耗时比较长，所以此接口不等待连接的结果返回即退出
-    607           *       如果需要知道是否连接成功，可以他通过查询状态的接口去获取
-    608          */
-    609          int BT816_hid_connect_last_host(void)
-    610          {
-    611          	unsigned char	buffer[15];
-    612          
-    613          	memcpy(buffer,"AT+HIDCONN\x0d\x0a",12);
-    614          	return BT816_write_cmd((const unsigned char*)buffer,12,EXPECT_RES_FORMAT1_TYPE);
-    615          }
-    616          
-    617          /*
-    618           * @brief 蓝牙模块试图断开与当前主机的连接
-    619           * @return 0: 命令响应成功		else：命令响应失败
-    620           * @note 由于此命令可能耗时比较长，所以此接口不等待断开的结果返回即退出
-    621           *       如果需要知道是否断开成功，可以他通过查询状态的接口去获取
-    622          */
-    623          int BT816_hid_disconnect(void)
-    624          {
-    625          	unsigned char	buffer[15];
+    587          	buffer[11] = 0x0d;
+    588          	buffer[12] = 0x0a;
+    589          	//return  BT816_write_cmd((const unsigned char*)buffer,13,EXPECT_RES_FORMAT2_TYPE);
+    590          	return  BT816_write_cmd((const unsigned char*)buffer,13,EXPECT_RES_FORMAT1_TYPE);
+    591          	//实测时发现此命令的响应为:+BDMODE#0,属于format1的响应
+    592          }
+    593          
+    594          /*
+    595           * @brief 查询蓝牙模块HID当前的连接状态  	
+    596           * @return <0 ：发送失败	0: unkown 	1: connected    2： disconnect
+    597           * @note 
+    598          */
+    599          int BT816_hid_status(void)
+    600          {
+    601          	unsigned char	buffer[15];
+    602          	int		i,ret;
+    603          
+    604          	memcpy(buffer,"AT+HIDSTAT=?\x0d\x0a",14);
+    605          
+    606          	ret = BT816_write_cmd((const unsigned char*)buffer,14,EXPECT_RES_FORMAT2_TYPE);
+    607          	if (ret)
+    608          	{
+    609          		return ret;
+    610          	}
+    611          
+    612          	if (memcmp(&BT816_res.DataBuffer[3],"HIDSTAT",7) == 0)
+    613          	{
+    614          		if (BT816_res.DataBuffer[11] == '3')
+    615          		{
+    616          			return BT_MODULE_STATUS_CONNECTED;
+    617          		}
+    618          		else
+    619          		{
+    620          			return BT_MODULE_STATUS_DISCONNECT;
+    621          		}
+    622          	}
+    623          
+    624          	return -2; 
+    625          }
     626          
-    627          	memcpy(buffer,"AT+HIDDISC\x0d\x0a",12);
-    628          	return BT816_write_cmd((const unsigned char*)buffer,12,EXPECT_RES_FORMAT1_TYPE);
-    629          }
-    630          
-    631          /*
-    632           * @brief 设置蓝牙模块是否使能IOS soft keyboard
-    633           * @return 0: 设置成功		else：设置失败
-    634          */
-    635          int BT816_toggle_ioskeypad(void)
-    636          {
-    637          	unsigned char	buffer[15];
-    638          
-    639          	memcpy(buffer,"AT+HIDOSK\x0d\x0a",11);
-    640          	return BT816_write_cmd((const unsigned char*)buffer,11,EXPECT_RES_FORMAT2_TYPE);
-    641          }
-    642          
-    643          /*
-    644           * @brief 通过蓝牙模块的HID模式发送ASCII字符串
-    645           * @param[in]  unsigned char *str		需要发送的ASCII字符缓冲
-    646           * @param[in]  unsigned int  len	    待发送字符数
-    647           * @return 0: 发送成功		else：发送失败
-    648           * @note   如果要发送的字符串太长，就会被拆包，其实理论上一次可以发送500字节，但是考虑到栈可能会溢出的风险，所以被拆包成40字节短包发送
-    649           *         理论上可能会影响字符串的发送速度
-    650          */
-    651          int BT816_hid_send(unsigned char *str,unsigned int len)
-    652          {
-    653          	unsigned char	buffer[60];
-    654          	unsigned char	str_len;
-    655          	unsigned char	*p;
-    656          	int ret;
-    657          
-    658          	p = str;
-    659          	while (len > 40)
-    660          	{
-    661          		memcpy(buffer,"AT+HIDSEND=",11);
-    662          		hex_to_str(40,10,0,buffer+11);
-    663          		buffer[13]=',';
-    664          		memcpy(buffer+14,p,40);
-    665          		buffer[54]=0x0d;
-    666          		buffer[55]=0x0a;
-    667          		ret = BT816_write_cmd((const unsigned char*)buffer,56,EXPECT_RES_FORMAT1_TYPE);
-    668          		if (ret)
-    669          		{
-    670          			return ret;
-    671          		}
-    672          		len -= 40;
-    673          		p += 40;
-    674          	}
-    675          
-    676          	memcpy(buffer,"AT+HIDSEND=",11);
-    677          	str_len = hex_to_str(len+2,10,0,buffer+11);
-    678          	buffer[11+str_len]=',';
-    679          	memcpy(buffer+12+str_len,p,len);
-    680          	buffer[12+str_len+len]=0x0d;
-    681          	buffer[13+str_len+len]=0x0a;
-    682          
-    683          	buffer[14+str_len+len]=0x0d;
-    684          	buffer[15+str_len+len]=0x0a;
-    685          	ret = BT816_write_cmd((const unsigned char*)buffer,16+str_len+len,EXPECT_RES_FORMAT1_TYPE);
-    686          
-    687          
-    688          	return ret;
-    689          }
-    690          
-    691          
-    692          /*
-    693           * @brief 设置蓝牙模块是否使能自动连接特性
-    694           * @param[in]	0: DIABLE		1:ENABLE
-    695           * @return 0: 设置成功		else：设置失败
-    696          */
-    697          int BT816_set_autocon(unsigned int	enable)
-    698          {
-    699          	unsigned char	buffer[15];
-    700          
-    701          	memcpy(buffer,"AT+HIDACEN=",11);
-    702          	if (enable)
-    703          	{
-    704          		buffer[11] = '1';
-    705          	}
-    706          	else
-    707          	{
-    708          		buffer[11] = '0';
-    709          	}
-    710          	buffer[12] = 0x0d;
-    711          	buffer[13] = 0x0a;
-    712          	return  BT816_write_cmd((const unsigned char*)buffer,14,EXPECT_RES_FORMAT2_TYPE);
-    713          }
-    714          
-    715          /*
-    716           * @brief 蓝牙模块BT816的初始化
-    717          */
-    718          int BT816_init(void)
-    719          {
-    720          	unsigned char	str[21];
+    627          /*
+    628           * @brief 蓝牙模块试图连接最近一次连接过的主机
+    629           * @return 0: 命令响应成功		else：命令响应失败
+    630           * @note 由于此命令可能耗时比较长，所以此接口不等待连接的结果返回即退出
+    631           *       如果需要知道是否连接成功，可以他通过查询状态的接口去获取
+    632          */
+    633          int BT816_hid_connect_last_host(void)
+    634          {
+    635          	unsigned char	buffer[15];
+    636          
+    637          	memcpy(buffer,"AT+HIDCONN\x0d\x0a",12);
+    638          	return BT816_write_cmd((const unsigned char*)buffer,12,EXPECT_RES_FORMAT1_TYPE);
+    639          }
+    640          
+    641          /*
+    642           * @brief 蓝牙模块试图断开与当前主机的连接
+    643           * @return 0: 命令响应成功		else：命令响应失败
+    644           * @note 由于此命令可能耗时比较长，所以此接口不等待断开的结果返回即退出
+    645           *       如果需要知道是否断开成功，可以他通过查询状态的接口去获取
+    646          */
+    647          int BT816_hid_disconnect(void)
+    648          {
+    649          	unsigned char	buffer[15];
+    650          
+    651          	memcpy(buffer,"AT+HIDDISC\x0d\x0a",12);
+    652          	return BT816_write_cmd((const unsigned char*)buffer,12,EXPECT_RES_FORMAT1_TYPE);
+    653          }
+    654          
+    655          /*
+    656           * @brief 设置蓝牙模块是否使能IOS soft keyboard
+    657           * @return 0: 设置成功		else：设置失败
+    658          */
+    659          int BT816_toggle_ioskeypad(void)
+    660          {
+    661          	unsigned char	buffer[15];
+    662          
+    663          	memcpy(buffer,"AT+HIDOSK\x0d\x0a",11);
+    664          	return BT816_write_cmd((const unsigned char*)buffer,11,EXPECT_RES_FORMAT2_TYPE);
+    665          }
+    666          
+    667          
+    668          #define ENTER_KEY             0x82
+    669          #define ESCAPE_KEY            0x83
+    670          #define BACKSPACE_KEY         0x84
+    671          #define TAB_KEY               0x85
+    672          #define SPACE_KEY             0x86
+    673          #define CAPS_LOCK_KEY         0x87
+    674          
+    675          /*
+    676           * @brief 通过蓝牙模块的HID模式发送ASCII字符串
+    677           * @param[in]  unsigned char *str		需要发送的ASCII字符缓冲
+    678           * @param[in]  unsigned int  len	    待发送字符数
+    679           * @return 0: 发送成功		else：发送失败
+    680           * @note   如果要发送的字符串太长，就会被拆包，其实理论上一次可以发送500字节，但是考虑到栈可能会溢出的风险，所以被拆包成40字节短包发送
+    681           *         理论上可能会影响字符串的发送速度
+    682          */
+    683          int BT816_hid_send(unsigned char *str,unsigned int len)
+    684          {
+    685          	unsigned char	buffer[60];
+    686          	unsigned char	str_len;
+    687          	unsigned char	*p;
+    688          	int ret;
+    689          
+    690          	p = str;
+    691          	while (len > 40)
+    692          	{
+    693          		memcpy(buffer,"AT+HIDSEND=",11);
+    694          		hex_to_str(40,10,0,buffer+11);
+    695          		buffer[13]=',';
+    696          		memcpy(buffer+14,p,40);
+    697          		buffer[54]=0x0d;
+    698          		buffer[55]=0x0a;
+    699          		ret = BT816_write_cmd((const unsigned char*)buffer,56,EXPECT_RES_FORMAT1_TYPE);
+    700          		if (ret)
+    701          		{
+    702          			return ret;
+    703          		}
+    704          		len -= 40;
+    705          		p += 40;
+    706          	}
+    707          
+    708          	memcpy(buffer,"AT+HIDSEND=",11);
+    709          	str_len = hex_to_str(len+2,10,0,buffer+11);
+    710          	buffer[11+str_len]=',';
+    711          	memcpy(buffer+12+str_len,p,len);
+    712          	buffer[12+str_len+len]=ENTER_KEY;
+    713          
+    714          	buffer[13+str_len+len]=0x0d;
+    715          	buffer[14+str_len+len]=0x0a;
+    716          	ret = BT816_write_cmd((const unsigned char*)buffer,15+str_len+len,EXPECT_RES_FORMAT1_TYPE);
+    717          
+    718          
+    719          	return ret;
+    720          }
     721          
-    722          	BT816_res.DataBuffer = BT816_recbuffer;
-    723          	BT816_reset_resVar();
-    724          
-    725          	BT816_GPIO_config(115200);		//default波特率
-    726          	BT816_NVIC_config();
-    727          
-    728          	if(BT816_query_version(str))
-    729          	{
-    730          		return -1;
-    731          	}
-    732          
-    733          #ifdef DEBUG_VER
-    734          	printf("BlueTooth Module Ver:%s\r\n",str);
-    735          #endif
-    736          
-    737          	if (BT816_set_name("H520B"))
-    738          	//if (BT816_set_name("BT816S01"))
-    739          	{
-    740          		return -3;
-    741          	}
-    742          
-    743          	if (BT816_set_profile(BT_PROFILE_HID))
-    744          	{
-    745          		return -4;
-    746          	}
-    747          
-    748          	return 0;
-    749          }
-    750          
-    751          
-    752          /*
-    753           * @brief 蓝牙模块HID模式发送测试
-    754          */
-    755          int BT816_hid_send_test(void)
-    756          {
-    757          	unsigned int i;
-    758          	for (i = 0; i < 50;i++)
-    759          	{
-    760          		BT816_hid_send("12345678901234567890",20);
-    761          		delay_ms(150);
+    722          
+    723          /*
+    724           * @brief 设置蓝牙模块是否使能自动连接特性
+    725           * @param[in]	0: DIABLE		1:ENABLE
+    726           * @return 0: 设置成功		else：设置失败
+    727          */
+    728          int BT816_set_autocon(unsigned int	enable)
+    729          {
+    730          	unsigned char	buffer[15];
+    731          
+    732          	memcpy(buffer,"AT+HIDACEN=",11);
+    733          	if (enable)
+    734          	{
+    735          		buffer[11] = '1';
+    736          	}
+    737          	else
+    738          	{
+    739          		buffer[11] = '0';
+    740          	}
+    741          	buffer[12] = 0x0d;
+    742          	buffer[13] = 0x0a;
+    743          	return  BT816_write_cmd((const unsigned char*)buffer,14,EXPECT_RES_FORMAT1_TYPE);	//实测返回的是format1的response
+    744          }
+    745          
+    746          /*
+    747           * @brief 蓝牙模块BT816的初始化
+    748          */
+    749          int BT816_init(void)
+    750          {
+    751          	unsigned char	str[21];
+    752          
+    753          	BT816_res.DataBuffer = BT816_recbuffer;
+    754          	BT816_reset_resVar();
+    755          
+    756          	BT816_GPIO_config(115200);		//default波特率
+    757          	BT816_NVIC_config();
+    758          
+    759          	if(BT816_query_version(str))
+    760          	{
+    761          		return -1;
     762          	}
-    763                  
-    764                  return  0;
-    765          }
+    763          
+    764          #ifdef DEBUG_VER
+    765          	printf("BlueTooth Module Ver:%s\r\n",str);
     766          #endif
+    767          
+    768          	if (BT816_set_name("H520B Device"))
+    769          	//if (BT816_set_name("BT816S01"))
+    770          	{
+    771          		return -3;
+    772          	}
+    773          
+    774          	if (BT816_set_profile(BT_PROFILE_HID))
+    775          	{
+    776          		return -4;
+    777          	}
+    778          
+    779          	if (BT816_set_hid_trans_mode(BT_HID_TRANS_MODE_AT))
+    780          	{
+    781          		return -5;
+    782          	}
+    783          
+    784          	if (BT816_set_autocon(1))
+    785          	{
+    786          		return -6;
+    787          	}
+    788          	
+    789          	return 0;
+    790          }
+    791          
+    792          
+    793          /*
+    794           * @brief 蓝牙模块HID模式发送测试
+    795          */
+    796          int BT816_hid_send_test(void)
+    797          {
+    798          	unsigned int i;
+    799          	for (i = 0; i < 50;i++)
+    800          	{
+    801          		BT816_hid_send("12345678901234567890",20);
+    802          		delay_ms(150);
+    803          	}
+    804                  
+    805                  return  0;
+    806          }
+    807          #endif
 
    Maximum stack usage in bytes:
 
@@ -821,6 +862,7 @@ E:\H520B\FW\src\Drivers\BT816.c
      BT816_reset_resVar               0
      BT816_set_autocon               24
      BT816_set_baudrate              32
+     BT816_set_hid_trans_mode        24
      BT816_set_name                  48
      BT816_set_profile               24
      BT816_toggle_ioskeypad          24
@@ -849,14 +891,15 @@ E:\H520B\FW\src\Drivers\BT816.c
      BT816_set_name                              124
      BT816_set_baudrate                          244
      BT816_enter_pair_mode                        32
+     BT816_set_hid_trans_mode                     64
      BT816_set_profile                            80
      BT816_hid_status                             80
      BT816_hid_connect_last_host                  32
      BT816_hid_disconnect                         32
      BT816_toggle_ioskeypad                       32
-     BT816_hid_send                              212
+     BT816_hid_send                              200
      BT816_set_autocon                            64
-     BT816_init                                   96
+     BT816_init                                  128
      BT816_hid_send_test                          36
      ??DataTable15                                 4
      ??DataTable16                                 4
@@ -880,7 +923,8 @@ E:\H520B\FW\src\Drivers\BT816.c
      ?<Constant "43000">                           8
      ?<Constant "57600">                           8
      ?<Constant "115200">                          8
-     ?<Constant "AT+BDMODE=0\r\n">                16
+     ?<Constant "AT+BDMODE=2\r\n">                16
+     ?<Constant "AT+BDTP=">                       12
      ?<Constant "AT+BDMODE=">                     12
      ?<Constant "AT+HIDSTAT=?\r\n">               16
      ?<Constant "HIDSTAT">                         8
@@ -890,16 +934,16 @@ E:\H520B\FW\src\Drivers\BT816.c
      ?<Constant "AT+HIDSEND=">                    12
      ?<Constant "AT+HIDACEN=">                    12
      ?<Constant "BlueTooth Module Ver:...">       28
-     ?<Constant "H520B">                           8
+     ?<Constant "H520B Device">                   16
      ?<Constant "12345678901234567890">           24
 
  
    172 bytes in section .bss
-   360 bytes in section .rodata
- 2 360 bytes in section .text
+   380 bytes in section .rodata
+ 2 444 bytes in section .text
  
- 2 346 bytes of CODE  memory (+ 14 bytes shared)
-   360 bytes of CONST memory
+ 2 430 bytes of CODE  memory (+ 14 bytes shared)
+   380 bytes of CONST memory
    172 bytes of DATA  memory
 
 Errors: none

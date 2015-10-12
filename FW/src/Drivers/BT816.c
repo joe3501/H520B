@@ -534,10 +534,34 @@ int BT816_enter_pair_mode(void)
 {
 	unsigned char	buffer[15];
 
-	memcpy(buffer,"AT+BDMODE=0\x0d\x0a",13);
+	memcpy(buffer,"AT+BDMODE=2\x0d\x0a",13);
 	return BT816_write_cmd((const unsigned char*)buffer,13,EXPECT_RES_FORMAT2_TYPE);
 }
 
+/*
+ * @brief 设置蓝牙模块的HID键值传输的模式
+ * @param[in]  unsigned char mode  蓝牙模块的HID键值传输模式     
+ * @return 0: 设置成功		else：设置失败
+*/
+int BT816_set_hid_trans_mode(BT_HID_TRANS_MODE mode)
+{
+	unsigned char	buffer[15];
+
+	memcpy(buffer,"AT+BDTP=",8);
+	if (mode == BT_HID_TRANS_MODE_AT)
+	{
+		buffer[8] = '0';
+	}
+	else
+	{
+		buffer[8] = '1';
+	}
+	buffer[9] = 0x0d;
+	buffer[10] = 0x0a;
+	//return  BT816_write_cmd((const unsigned char*)buffer,13,EXPECT_RES_FORMAT2_TYPE);
+	return  BT816_write_cmd((const unsigned char*)buffer,11,EXPECT_RES_FORMAT1_TYPE);
+	//实测时发现此命令的响应为:+BDMODE#0,属于format1的响应
+}
 /*
  * @brief 设置蓝牙模块的工作模式(profile = HID、SPP、BLE)
  * @param[in]  unsigned char mode  蓝牙模块的工作模式     
@@ -640,6 +664,14 @@ int BT816_toggle_ioskeypad(void)
 	return BT816_write_cmd((const unsigned char*)buffer,11,EXPECT_RES_FORMAT2_TYPE);
 }
 
+
+#define ENTER_KEY             0x82
+#define ESCAPE_KEY            0x83
+#define BACKSPACE_KEY         0x84
+#define TAB_KEY               0x85
+#define SPACE_KEY             0x86
+#define CAPS_LOCK_KEY         0x87
+
 /*
  * @brief 通过蓝牙模块的HID模式发送ASCII字符串
  * @param[in]  unsigned char *str		需要发送的ASCII字符缓冲
@@ -677,12 +709,11 @@ int BT816_hid_send(unsigned char *str,unsigned int len)
 	str_len = hex_to_str(len+2,10,0,buffer+11);
 	buffer[11+str_len]=',';
 	memcpy(buffer+12+str_len,p,len);
-	buffer[12+str_len+len]=0x0d;
-	buffer[13+str_len+len]=0x0a;
+	buffer[12+str_len+len]=ENTER_KEY;
 
-	buffer[14+str_len+len]=0x0d;
-	buffer[15+str_len+len]=0x0a;
-	ret = BT816_write_cmd((const unsigned char*)buffer,16+str_len+len,EXPECT_RES_FORMAT1_TYPE);
+	buffer[13+str_len+len]=0x0d;
+	buffer[14+str_len+len]=0x0a;
+	ret = BT816_write_cmd((const unsigned char*)buffer,15+str_len+len,EXPECT_RES_FORMAT1_TYPE);
 
 
 	return ret;
@@ -709,7 +740,7 @@ int BT816_set_autocon(unsigned int	enable)
 	}
 	buffer[12] = 0x0d;
 	buffer[13] = 0x0a;
-	return  BT816_write_cmd((const unsigned char*)buffer,14,EXPECT_RES_FORMAT2_TYPE);
+	return  BT816_write_cmd((const unsigned char*)buffer,14,EXPECT_RES_FORMAT1_TYPE);	//实测返回的是format1的response
 }
 
 /*
@@ -734,7 +765,7 @@ int BT816_init(void)
 	printf("BlueTooth Module Ver:%s\r\n",str);
 #endif
 
-	if (BT816_set_name("H520B"))
+	if (BT816_set_name("H520B Device"))
 	//if (BT816_set_name("BT816S01"))
 	{
 		return -3;
@@ -745,6 +776,16 @@ int BT816_init(void)
 		return -4;
 	}
 
+	if (BT816_set_hid_trans_mode(BT_HID_TRANS_MODE_AT))
+	{
+		return -5;
+	}
+
+	if (BT816_set_autocon(1))
+	{
+		return -6;
+	}
+	
 	return 0;
 }
 

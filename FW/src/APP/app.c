@@ -265,7 +265,7 @@ static inline void exit_from_BT_Mode(unsigned char child_state)
 #if(BT_MODULE == USE_WBTDS01)
 		WBTD_set_autocon(1);
 #else
-		BT816_set_autocon(0);
+		//BT816_set_autocon(0);
 		BT816_hid_disconnect();
 #endif
 		//delay_ms(1);
@@ -360,8 +360,10 @@ void State_Machine_thread(void *p)
 				if (keypress_timeout == g_param.lower_power_timeout*4*60)
 				{
 					hw_platform_beep_ctrl(500,3000);
+#ifndef DEBUG_VER
 					EnterLowPowerMode();
 					ExitLowPowerMode();
+#endif	
 					hw_platform_beep_ctrl(500,3000);
 				}
 			}
@@ -863,6 +865,10 @@ void BT_Daemon_thread(void *p)
 
 #ifdef DEBUG_VER
 	printf("BT Module init Success!\r\n");
+#endif
+
+#if(BT_MODULE == USE_BT816)
+	//BT816_hid_connect_last_host();		//试图连接最近一次的蓝牙主机
 #endif
 
 	while (1)
