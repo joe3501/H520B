@@ -53,9 +53,11 @@ typedef struct {
 
 TBT816Res		BT816_res;
 
+#define SLEEP		1
+#define WAKEUP		2
 
 static unsigned char	BT816_send_buff[32];
-
+static unsigned char	BT816_power_state;
 unsigned char	BT816_recbuffer[BT816_RES_BUFFER_LEN];
 
 /*
@@ -75,12 +77,19 @@ static void BT816_GPIO_config(unsigned int baudrate)
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB | RCC_APB2Periph_AFIO, ENABLE);
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
 
-	//B-Reset  PB.1
-	GPIO_InitStructure.GPIO_Pin				= GPIO_Pin_1;
+	//B-Reset  PB.1		B-Sleep	PB.12
+	GPIO_InitStructure.GPIO_Pin				= GPIO_Pin_1 | GPIO_Pin_12;
     GPIO_InitStructure.GPIO_Speed			= GPIO_Speed_2MHz;
 	GPIO_InitStructure.GPIO_Mode			= GPIO_Mode_Out_PP;
 	GPIO_Init(GPIOB, &GPIO_InitStructure);
 	GPIO_SetBits(GPIOB, GPIO_Pin_1);
+	GPIO_SetBits(GPIOB, GPIO_Pin_12);
+
+	//B-State  PB.8
+	GPIO_InitStructure.GPIO_Pin				= GPIO_Pin_8;
+	GPIO_InitStructure.GPIO_Speed			= GPIO_Speed_2MHz;
+	GPIO_InitStructure.GPIO_Mode			= GPIO_Mode_IPD;
+	GPIO_Init(GPIOB, &GPIO_InitStructure);
 
 	// 使用UART2, PA2,PA3
 	/* Configure USART2 Tx (PA.2) as alternate function push-pull */
@@ -203,7 +212,7 @@ static void BT816_NVIC_config(void)
 * @param[in] unsigned char *pData 要发送的数据
 * @param[in] int length 要发送数据的长度
 */
-static void send_data_to_BT816S01(const unsigned char *pData, unsigned short length)
+static void send_data_to_BT816S01(const unsigned char *pData, unsigned int length)
 {
 	//while(length--)
 	//{
@@ -346,20 +355,95 @@ static int BT816_write_cmd(const unsigned char *pData, unsigned int length,unsig
 
 //const unsigned char	*query_version_cmd="AT+VER=?";
 //const unsigned char	*set_device_name_cmd="AT+DNAME=%s";
-
+static unsigned char	token[10],token_value[15];
 /*
  * @brief 蓝牙模块BT816S01的复位
 */
-void BT816_Reset(void)
+int BT816_Reset(void)
 {
+	unsigned int	wait_cnt,i,j;
+	unsigned char	stat;
+	int ret;
 	//拉低复位信号100ms
 	GPIO_ResetBits(GPIOB, GPIO_Pin_1);
 	OSTimeDlyHMSM(0,0,0,100);
 	GPIO_SetBits(GPIOB, GPIO_Pin_1);
 
 	BT816_reset_resVar();
+	wait_cnt = 200;
+	ret = 0;
+	while (wait_cnt)
+	{
+		if (BT816_res.status == BT816_RES_PAYLOAD)
+		{
+			USART_Cmd(USART2, DISABLE);
+			stat = 0;
+			for (i = 0; i < BT816_res.DataLength;i++)
+			{
+				if (BT816_res.DataBuffer[i] == '+')
+				{
+					stat = 1;
+					j = 0;
+					continue;
+				}
+				else if (BT816_res.DataBuffer[i] == '=')
+				{
+					stat = 2;
+					j = 0;
+					continue;
+				}
+				else if (BT816_res.DataBuffer[i] == 0x0d)
+				{
+					if (stat == 2)
+					{
+						if (memcmp(token,"BDTP",4)==0)
+						{
+							if (token_value[0] != '0')
+							{
+								ret |= 0x01;
+							}
+						}
+#ifdef DEBUG_VER
+						else if (memcmp(token,"BDVER",5)==0)
+						{
+							token_value[j]=0;
+							printf("BlueTooth Module Ver:%s\r\n",token_value);
+						}
+						else if (memcmp(token,"BDADDR",6)==0)
+						{
+							token_value[j]=0;
+							printf("BlueTooth Module Addr:%s\r\n",token_value);
+						}
+#endif
+						else if (memcmp(token,"BDMODE",6)==0)
+						{
+							if (token_value[0] != '2')
+							{
+								ret |= 0x02;
+							}
+						}
+					}
+					stat = 0;
+					continue;
+				}
 
-	OSTimeDlyHMSM(0,0,0,100);
+				if (stat == 1)
+				{
+					token[j] = BT816_res.DataBuffer[i];
+					j++;
+				}
+				else if (stat == 2)
+				{
+					token_value[j] = BT816_res.DataBuffer[i];
+					j++;
+				}
+			} 
+			USART_Cmd(USART2, ENABLE);
+			return ret;
+		}
+		OSTimeDlyHMSM(0,0,0,100);
+	}
+	return -1;
 }
 
 /*
@@ -598,6 +682,7 @@ int BT816_set_profile(BT_PROFILE mode)
 */
 int BT816_hid_status(void)
 {
+#if 0
 	unsigned char	buffer[15];
 	int		i,ret;
 
@@ -621,7 +706,25 @@ int BT816_hid_status(void)
 		}
 	}
 
-	return -2; 
+	return -2;
+#endif
+
+	unsigned int i;
+	if(GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_8))
+	{
+		for (i=0;i < 2000;i++);		//延时一小段时间，防止是因为抖动造成的
+		if(GPIO_ReadInputDataBit(GPIOB,GPIO_Pin_8))
+		{
+			return BT_MODULE_STATUS_CONNECTED;
+		}
+		else
+		{
+			return BT_MODULE_STATUS_DISCONNECT;
+		}
+	}
+	else
+		return BT_MODULE_STATUS_DISCONNECT;
+
 }
 
 /*
@@ -682,6 +785,7 @@ int BT816_toggle_ioskeypad(void)
 */
 int BT816_hid_send(unsigned char *str,unsigned int len)
 {
+#if 1		//AT命令模式下发送键值
 	unsigned char	buffer[60];
 	unsigned char	str_len;
 	unsigned char	*p;
@@ -714,9 +818,14 @@ int BT816_hid_send(unsigned char *str,unsigned int len)
 	buffer[13+str_len+len]=0x0d;
 	buffer[14+str_len+len]=0x0a;
 	ret = BT816_write_cmd((const unsigned char*)buffer,15+str_len+len,EXPECT_RES_FORMAT1_TYPE);
-
-
 	return ret;
+#endif
+
+#if 0		//透传模式下发送键值
+	send_data_to_BT816S01(str,len);
+	send_data_to_BT816S01("\x0d\x0a",2);
+	return 0;
+#endif
 }
 
 
@@ -743,49 +852,110 @@ int BT816_set_autocon(unsigned int	enable)
 	return  BT816_write_cmd((const unsigned char*)buffer,14,EXPECT_RES_FORMAT1_TYPE);	//实测返回的是format1的response
 }
 
+
+/*
+ * @brief 设置蓝牙模块的HID传输延时
+ * @param[in]	unsigned int	delay		单位ms
+ * @return 0: 设置成功		else：设置失败
+*/
+int BT816_hid_set_delay(unsigned int	delay)
+{
+	unsigned char	buffer[20];
+	int	len;
+
+	memcpy(buffer,"AT+HIDSDLY=",11);
+	len = hex_to_str(delay,10,0,buffer+11);
+	buffer[11+len] = 0x0d;
+	buffer[12+len] = 0x0a;
+	return  BT816_write_cmd((const unsigned char*)buffer,13+len,EXPECT_RES_FORMAT2_TYPE);	//实测返回的是format1的response
+}
+
+/*
+ * @brief 使蓝牙模块BT816进入睡眠模式
+*/
+void BT816_enter_sleep(void)
+{
+	GPIO_ResetBits(GPIOB,GPIO_Pin_12);
+	BT816_power_state = SLEEP;
+}
+
+/*
+ * @brief 唤醒蓝牙模块BT816
+*/
+void BT816_wakeup(void)
+{
+	if (BT816_power_state == SLEEP)
+	{
+		GPIO_SetBits(GPIOB,GPIO_Pin_12);
+		BT816_power_state = WAKEUP;
+		OSTimeDlyHMSM(0,0,0,100);
+	}
+}
+
 /*
  * @brief 蓝牙模块BT816的初始化
 */
 int BT816_init(void)
 {
 	unsigned char	str[21];
+	int ret;
 
 	BT816_res.DataBuffer = BT816_recbuffer;
 	BT816_reset_resVar();
 
 	BT816_GPIO_config(115200);		//default波特率
 	BT816_NVIC_config();
-
-	if(BT816_query_version(str))
+	ret = BT816_Reset();
+	if(ret < 0)
 	{
-		return -1;
+		ret = BT816_Reset();
+		if(ret < 0)
+		{
+			return -1;
+		}
 	}
 
-#ifdef DEBUG_VER
-	printf("BlueTooth Module Ver:%s\r\n",str);
-#endif
-
-	if (BT816_set_name("H520B Device"))
-	//if (BT816_set_name("BT816S01"))
+	if ((ret&0x02) == 0x02)
 	{
-		return -3;
+		if (BT816_set_profile(BT_PROFILE_HID))
+		{
+			return -2;
+		}
 	}
 
-	if (BT816_set_profile(BT_PROFILE_HID))
+	if ((ret & 0x01) == 1)
+	{
+		if (BT816_set_hid_trans_mode(BT_HID_TRANS_MODE_AT))
+		{ 
+			return -3;
+		}
+	}
+	
+	if (BT816_query_name(str))
 	{
 		return -4;
 	}
 
-	if (BT816_set_hid_trans_mode(BT_HID_TRANS_MODE_AT))
+	if (memcmp(str,"H520B",5) != 0)
 	{
-		return -5;
+		if (BT816_set_name("H520B Device"))
+		{
+			return -5;
+		}
 	}
-
+	
 	if (BT816_set_autocon(1))
 	{
 		return -6;
 	}
-	
+
+	if(BT816_hid_set_delay(8))
+	{
+		return -7;
+	}
+
+
+	BT816_power_state = WAKEUP;
 	return 0;
 }
 

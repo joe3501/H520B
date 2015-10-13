@@ -164,6 +164,9 @@ static inline void enter_into_Memory_Mode(void)
 #ifdef DEBUG_VER
 	printf("enter into Memory Mode\r\n");
 #endif
+#if(BT_MODULE == USE_BT816)
+	BT816_enter_sleep();
+#endif
 	g_param.last_state = 1;
 	SaveTerminalPara();
 }
@@ -186,6 +189,9 @@ static inline void enter_into_USB_HID_Mode(void)
 {
 #ifdef DEBUG_VER
 	printf("enter into USB HID Mode\r\n");
+#endif
+#if(BT_MODULE == USE_BT816)
+	BT816_enter_sleep();
 #endif
 	hw_platform_led_ctrl(LED_RED,1);
 	//hw_platform_beep_ctrl(100,1045);
@@ -225,6 +231,9 @@ static inline void enter_into_BT_Mode(unsigned char child_state)
 {
 #ifdef DEBUG_VER
 	printf("enter into BT Mode:%d\r\n",child_state);
+#endif
+#if(BT_MODULE == USE_BT816)
+	BT816_wakeup();
 #endif
 	if (child_state == 2)
 	{
@@ -1038,7 +1047,7 @@ void app_init_thread(void *p)
 	else
 	{
 		device_current_state = STATE_BT_Mode_Disconnect;	//蓝牙模式未连接状态
-		enter_into_BT_Mode(0);
+		hw_platform_start_led_blink(LED_BLUE,150);
 	}
 
 	scanner_mod_init();

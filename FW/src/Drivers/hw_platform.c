@@ -172,12 +172,12 @@ static void platform_misc_port_init(void)
 	GPIO_SetBits(GPIOA, GPIO_Pin_4 | GPIO_Pin_5 | GPIO_Pin_6);
 	GPIO_ResetBits(GPIOA, GPIO_Pin_7);
 
-	//Beep -- PB.5	LED-Blue -- PB.7  Trig -- PB.12
-	GPIO_InitStructure.GPIO_Pin	= GPIO_Pin_5 | GPIO_Pin_7 | GPIO_Pin_8 | GPIO_Pin_12;
+	//Beep -- PB.5	LED-Blue -- PB.7
+	GPIO_InitStructure.GPIO_Pin	= GPIO_Pin_5 | GPIO_Pin_7;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_10MHz;
 	GPIO_Init(GPIOB, &GPIO_InitStructure);
-	GPIO_SetBits(GPIOB,  GPIO_Pin_7 | GPIO_Pin_8 | GPIO_Pin_12);
+	GPIO_SetBits(GPIOB,  GPIO_Pin_7);
 	GPIO_ResetBits(GPIOB, GPIO_Pin_5);
 
 	//RFU-IO2 -- PB.8		

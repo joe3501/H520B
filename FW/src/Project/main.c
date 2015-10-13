@@ -211,7 +211,9 @@ static void GPIO_AllAinConfig(void)
 void EnterLowPowerMode(void)
 {
 	GPIO_InitTypeDef GPIO_InitStructure;
-
+#if(BT_MODULE == USE_BT816)
+	BT816_enter_sleep();
+#endif
 	stop_real_timer();
 	hw_platform_led_ctrl(LED_RED,0);
 	hw_platform_led_ctrl(LED_BLUE,0);
@@ -243,6 +245,9 @@ void ExitLowPowerMode(void)
 	//÷ÿ–¬≈‰÷√ ±÷”
 	RCC_Configuration();
 
+#if(BT_MODULE == USE_BT816)
+	BT816_wakeup();
+#endif
 	start_real_timer();
 	scanner_mod_init();
 }

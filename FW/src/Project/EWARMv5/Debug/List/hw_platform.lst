@@ -1,6 +1,6 @@
 ###############################################################################
 #                                                                             #
-# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     12/Oct/2015  15:17:25 #
+# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     13/Oct/2015  16:03:29 #
 # Copyright 1999-2009 IAR Systems AB.                                         #
 #                                                                             #
 #    Cpu mode     =  thumb                                                    #
@@ -209,12 +209,12 @@ E:\H520B\FW\src\Drivers\hw_platform.c
     172          	GPIO_SetBits(GPIOA, GPIO_Pin_4 | GPIO_Pin_5 | GPIO_Pin_6);
     173          	GPIO_ResetBits(GPIOA, GPIO_Pin_7);
     174          
-    175          	//Beep -- PB.5	LED-Blue -- PB.7  Trig -- PB.12
-    176          	GPIO_InitStructure.GPIO_Pin	= GPIO_Pin_5 | GPIO_Pin_7 | GPIO_Pin_8 | GPIO_Pin_12;
+    175          	//Beep -- PB.5	LED-Blue -- PB.7
+    176          	GPIO_InitStructure.GPIO_Pin	= GPIO_Pin_5 | GPIO_Pin_7;
     177          	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
     178          	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_10MHz;
     179          	GPIO_Init(GPIOB, &GPIO_InitStructure);
-    180          	GPIO_SetBits(GPIOB,  GPIO_Pin_7 | GPIO_Pin_8 | GPIO_Pin_12);
+    180          	GPIO_SetBits(GPIOB,  GPIO_Pin_7);
     181          	GPIO_ResetBits(GPIOB, GPIO_Pin_5);
     182          
     183          	//RFU-IO2 -- PB.8		
@@ -696,7 +696,7 @@ E:\H520B\FW\src\Drivers\hw_platform.c
      current_led_state                             1
      led_timer_h                                  16
      ADC_Module_Init                             154
-     platform_misc_port_init                     350
+     platform_misc_port_init                     346
      hw_platform_init                             20
      hw_platform_get_PowerClass                  118
      hw_platform_ChargeState_Detect               56
@@ -735,9 +735,9 @@ E:\H520B\FW\src\Drivers\hw_platform.c
  
     29 bytes in section .bss
    132 bytes in section .rodata
- 2 320 bytes in section .text
+ 2 316 bytes in section .text
  
- 2 320 bytes of CODE  memory
+ 2 316 bytes of CODE  memory
    132 bytes of CONST memory
     29 bytes of DATA  memory
 

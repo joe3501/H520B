@@ -1,6 +1,6 @@
 ###############################################################################
 #                                                                             #
-# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     12/Oct/2015  15:17:26 #
+# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     13/Oct/2015  16:03:30 #
 # Copyright 1999-2009 IAR Systems AB.                                         #
 #                                                                             #
 #    Cpu mode     =  thumb                                                    #
@@ -1189,7 +1189,7 @@ E:\H520B\FW\src\Project\stm32f10x_it.c
      SPI1_IRQHandler                         2
      SPI2_IRQHandler                         2
      USART1_IRQHandler                       2
-     USART2_IRQHandler                     116
+     USART2_IRQHandler                     120
      USART3_IRQHandler                      48
      EXTI15_10_IRQHandler                    2
      RTCAlarm_IRQHandler                     2
@@ -1229,9 +1229,9 @@ E:\H520B\FW\src\Project\stm32f10x_it.c
  
    1 byte  in section .bss
  180 bytes in section .rodata
- 768 bytes in section .text
+ 772 bytes in section .text
  
- 768 bytes of CODE  memory
+ 772 bytes of CODE  memory
  180 bytes of CONST memory
    1 byte  of DATA  memory
 
