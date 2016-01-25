@@ -96,6 +96,13 @@ int main(void)
 
 	hw_platform_init();
 
+	usb_device_init(USB_KEYBOARD);
+
+	hw_platform_beep_ctrl(300,3000);
+	hw_platform_beep_ctrl(300,2000);
+	hw_platform_beep_ctrl(300,1500);
+	hw_platform_beep_ctrl(300,4000);
+
 	app_startup();
 }
 
@@ -212,6 +219,7 @@ void EnterLowPowerMode(void)
 {
 	GPIO_InitTypeDef GPIO_InitStructure;
 #if(BT_MODULE == USE_BT816)
+	BT816_hid_disconnect();
 	BT816_enter_sleep();
 #endif
 	stop_real_timer();

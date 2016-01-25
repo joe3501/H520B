@@ -1,12 +1,12 @@
 ###############################################################################
 #                                                                             #
-# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     13/Oct/2015  16:03:29 #
+# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     23/Jan/2016  16:20:32 #
 # Copyright 1999-2009 IAR Systems AB.                                         #
 #                                                                             #
 #    Cpu mode     =  thumb                                                    #
 #    Endian       =  little                                                   #
 #    Source file  =  E:\H520B\FW\src\App\record_m.c                           #
-#    Command line =  E:\H520B\FW\src\App\record_m.c -D DEBUG_VER -lcN         #
+#    Command line =  E:\H520B\FW\src\App\record_m.c -lcN                      #
 #                    E:\H520B\FW\src\Project\EWARMv5\Debug\List\ -o           #
 #                    E:\H520B\FW\src\Project\EWARMv5\Debug\Obj\ --no_cse      #
 #                    --no_unroll --no_inline --no_code_motion --no_tbaa       #

@@ -3,7 +3,19 @@
 
 #define		BT816_RES_BUFFER_LEN			256		//从BT816S01的数据手册上看，没有超过256字节的响应数据
 
+#define SPP_BUFFER_LEN		256
+
+#define HID_MODE
+//#define SPP_MODE
+
+
 extern unsigned char	BT816_recbuffer[BT816_RES_BUFFER_LEN];
+#ifdef SPP_MODE
+extern unsigned char	spp_rec_buffer[SPP_BUFFER_LEN];
+extern unsigned int	spp_buffer_head;
+extern unsigned int	spp_buffer_tail;
+#endif
+
 //定义蓝牙模块支持的波特率
 //@note  未经验证，模块资料也没有给出其支持的波特率列表
 typedef enum
@@ -45,6 +57,7 @@ int BT816_enter_pair_mode(void);
 int BT816_set_hid_trans_mode(BT_HID_TRANS_MODE mode);
 int BT816_set_profile(BT_PROFILE mode);
 int BT816_hid_status(void);
+int BT816_spp_status(void);
 int BT816_hid_set_delay(unsigned int	delay);
 int BT816_hid_connect_last_host(void);
 int BT816_hid_disconnect(void);

@@ -1,0 +1,181 @@
+﻿生成启动时间为 2016/1/19 11:59:18。
+     1>项目“E:\H520B\FW\src\VCEdit\T6\T6\T6.vcxproj”在节点 2 上(build 个目标)。
+     1>PrepareForBuild:
+         正在创建目录“E:\H520B\FW\src\VCEdit\T6\Debug\”。
+       InitializeBuildStatus:
+         正在创建“Debug\T6.unsuccessfulbuild”，因为已指定“AlwaysCreate”。
+       ClCompile:
+         C:\Program Files\Microsoft Visual Studio 10.0\VC\bin\CL.exe /c /ZI /nologo /W3 /WX- /Od /Oy- /D _MBCS /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Debug\\" /Fd"Debug\vc100.pdb" /Gd /TC /analyze- /errorReport:prompt ..\..\..\App\basic_fun.c ..\..\..\App\hash.c ..\..\..\App\record.c ..\..\..\App\record_m.c ..\..\..\App\record_mod.c ..\..\..\App\Terminal_Para_m.c ..\..\..\Drivers\BT816.c ..\..\..\Drivers\crc32.c ..\..\..\Drivers\HJ5000_scanner.c ..\..\..\Drivers\hw_platform.c ..\..\..\Drivers\WBTDS01.c ..\..\..\Lib\src\stm32f10x_adc.c ..\..\..\Lib\src\stm32f10x_bkp.c ..\..\..\Lib\src\stm32f10x_can.c ..\..\..\Lib\src\stm32f10x_crc.c ..\..\..\Lib\src\stm32f10x_dac.c ..\..\..\Lib\src\stm32f10x_dbgmcu.c ..\..\..\Lib\src\stm32f10x_dma.c ..\..\..\Lib\src\stm32f10x_exti.c ..\..\..\Lib\src\stm32f10x_flash.c ..\..\..\Lib\src\stm32f10x_fsmc.c ..\..\..\Lib\src\stm32f10x_gpio.c ..\..\..\Lib\src\stm32f10x_i2c.c ..\..\..\Lib\src\stm32f10x_iwdg.c ..\..\..\Lib\src\stm32f10x_lib.c ..\..\..\Lib\src\stm32f10x_nvic.c ..\..\..\Lib\src\stm32f10x_pwr.c ..\..\..\Lib\src\stm32f10x_rcc.c ..\..\..\Lib\src\stm32f10x_rtc.c ..\..\..\Lib\src\stm32f10x_sdio.c ..\..\..\Lib\src\stm32f10x_spi.c ..\..\..\Lib\src\stm32f10x_systick.c ..\..\..\Lib\src\stm32f10x_tim.c ..\..\..\Lib\src\stm32f10x_usart.c ..\..\..\Lib\src\stm32f10x_wwdg.c ..\..\..\usb_lib\hw_config.c ..\..\..\usb_lib\mass_mal.c ..\..\..\usb_lib\memory.c ..\..\..\usb_lib\scsi_data.c ..\..\..\usb_lib\usb_bot.c ..\..\..\usb_lib\usb_core.c ..\..\..\usb_lib\usb_desc.c ..\..\..\usb_lib\usb_endp.c ..\..\..\usb_lib\usb_init.c ..\..\..\usb_lib\usb_int.c ..\..\..\usb_lib\usb_istr.c ..\..\..\usb_lib\usb_mem.c ..\..\..\usb_lib\usb_prop.c ..\..\..\usb_lib\usb_pwr.c ..\..\..\usb_lib\usb_regs.c ..\..\..\usb_lib\usb_scsi.c ..\..\..\usb_lib\usb_sil.c ..\..\..\Drivers\data_uart.c ..\..\..\Drivers\keypad.c ..\..\..\Drivers\spi_flash.c ..\..\..\Drivers\TimeBase.c ..\..\..\App\app.c ..\..\..\App\JMemory.c ..\..\..\App\PCUsart.c ..\..\..\App\Terminal_Para.c "..\..\..\uCOS\uC-CPU\cpu_c.c" "..\..\..\uCOS\uC-LIB\lib_ascii.c" "..\..\..\uCOS\uC-LIB\lib_mem.c" "..\..\..\uCOS\uC-LIB\lib_str.c" "..\..\..\uCOS\uCOS-II\Source\os_core.c" "..\..\..\uCOS\uCOS-II\Ports\os_cpu_c.c" "..\..\..\uCOS\uCOS-II\Ports\os_dbg.c" "..\..\..\uCOS\uCOS-II\Source\os_flag.c" "..\..\..\uCOS\uCOS-II\Source\os_mbox.c" "..\..\..\uCOS\uCOS-II\Source\os_mem.c" "..\..\..\uCOS\uCOS-II\Source\os_mutex.c" "..\..\..\uCOS\uCOS-II\Source\os_q.c" "..\..\..\uCOS\uCOS-II\Source\os_sem.c" "..\..\..\uCOS\uCOS-II\Source\os_task.c" "..\..\..\uCOS\uCOS-II\Source\os_time.c" "..\..\..\uCOS\uCOS-II\Source\os_tmr.c" ..\..\..\FatFs\diskio.c ..\..\..\FatFs\ff.c ..\..\..\Project\main.c ..\..\..\Project\stm32f10x_it.c ..\..\..\Project\EWARMv5\stm32f10x_vector.c
+         stm32f10x_vector.c
+     1>e:\h520b\fw\src\project\ewarmv5\stm32f10x_vector.c(25): fatal error C1083: 无法打开包括文件:“stm32f10x_lib.h”: No such file or directory
+         stm32f10x_it.c
+     1>e:\h520b\fw\src\project\stm32f10x_it.h(21): fatal error C1083: 无法打开包括文件:“stm32f10x_lib.h”: No such file or directory
+         main.c
+     1>e:\h520b\fw\src\project\main.c(20): fatal error C1083: 无法打开包括文件:“stm32f10x_lib.h”: No such file or directory
+         ff.c
+         diskio.c
+     1>e:\h520b\fw\src\fatfs\diskio.c(9): fatal error C1083: 无法打开包括文件:“stm32f10x_lib.h”: No such file or directory
+         os_tmr.c
+     1>e:\h520b\fw\src\ucos\ucos-ii\source\os_tmr.c(25): fatal error C1083: 无法打开包括文件:“ucos_ii.h”: No such file or directory
+         os_time.c
+     1>e:\h520b\fw\src\ucos\ucos-ii\source\os_time.c(25): fatal error C1083: 无法打开包括文件:“ucos_ii.h”: No such file or directory
+         os_task.c
+     1>e:\h520b\fw\src\ucos\ucos-ii\source\os_task.c(25): fatal error C1083: 无法打开包括文件:“ucos_ii.h”: No such file or directory
+         os_sem.c
+     1>e:\h520b\fw\src\ucos\ucos-ii\source\os_sem.c(25): fatal error C1083: 无法打开包括文件:“ucos_ii.h”: No such file or directory
+         os_q.c
+     1>e:\h520b\fw\src\ucos\ucos-ii\source\os_q.c(25): fatal error C1083: 无法打开包括文件:“ucos_ii.h”: No such file or directory
+         os_mutex.c
+     1>e:\h520b\fw\src\ucos\ucos-ii\source\os_mutex.c(25): fatal error C1083: 无法打开包括文件:“ucos_ii.h”: No such file or directory
+         os_mem.c
+     1>e:\h520b\fw\src\ucos\ucos-ii\source\os_mem.c(25): fatal error C1083: 无法打开包括文件:“ucos_ii.h”: No such file or directory
+         os_mbox.c
+     1>e:\h520b\fw\src\ucos\ucos-ii\source\os_mbox.c(25): fatal error C1083: 无法打开包括文件:“ucos_ii.h”: No such file or directory
+         os_flag.c
+     1>e:\h520b\fw\src\ucos\ucos-ii\source\os_flag.c(25): fatal error C1083: 无法打开包括文件:“ucos_ii.h”: No such file or directory
+         os_dbg.c
+     1>e:\h520b\fw\src\ucos\ucos-ii\ports\os_dbg.c(22): fatal error C1083: 无法打开包括文件:“ucos_ii.h”: No such file or directory
+         os_cpu_c.c
+     1>e:\h520b\fw\src\ucos\ucos-ii\ports\os_cpu_c.c(24): fatal error C1083: 无法打开包括文件:“ucos_ii.h”: No such file or directory
+         os_core.c
+     1>e:\h520b\fw\src\ucos\ucos-ii\source\os_core.c(26): fatal error C1083: 无法打开包括文件:“ucos_ii.h”: No such file or directory
+         lib_str.c
+     1>e:\h520b\fw\src\ucos\uc-lib\lib_str.c(71): fatal error C1083: 无法打开包括文件:“lib_str.h”: No such file or directory
+         lib_mem.c
+     1>e:\h520b\fw\src\ucos\uc-lib\lib_mem.c(59): fatal error C1083: 无法打开包括文件:“lib_mem.h”: No such file or directory
+         lib_ascii.c
+     1>e:\h520b\fw\src\ucos\uc-lib\lib_ascii.c(83): fatal error C1083: 无法打开包括文件:“lib_ascii.h”: No such file or directory
+         正在生成代码...
+         正在编译...
+         cpu_c.c
+     1>e:\h520b\fw\src\ucos\uc-cpu\cpu_c.c(45): fatal error C1083: 无法打开包括文件:“cpu.h”: No such file or directory
+         Terminal_Para.c
+     1>c1 : fatal error C1083: 无法打开源文件:“..\..\..\App\Terminal_Para.c”: No such file or directory
+         PCUsart.c
+     1>e:\h520b\fw\src\app\pcusart.c(22): fatal error C1083: 无法打开包括文件:“ucos_ii.h”: No such file or directory
+         JMemory.c
+     1>e:\h520b\fw\src\app\jmemory.c(27): warning C4013: “memset”未定义；假设外部返回 int
+         app.c
+     1>e:\h520b\fw\src\app\app.c(16): fatal error C1083: 无法打开包括文件:“ucos_ii.h”: No such file or directory
+         TimeBase.c
+     1>e:\h520b\fw\src\drivers\timebase.c(9): fatal error C1083: 无法打开包括文件:“stm32f10x_lib.h”: No such file or directory
+         spi_flash.c
+     1>e:\h520b\fw\src\drivers\spi_flash.h(25): fatal error C1083: 无法打开包括文件:“stm32f10x_lib.h”: No such file or directory
+         keypad.c
+     1>e:\h520b\fw\src\drivers\keypad.c(16): fatal error C1083: 无法打开包括文件:“stm32f10x_lib.h”: No such file or directory
+         data_uart.c
+     1>e:\h520b\fw\src\drivers\data_uart.c(18): fatal error C1083: 无法打开包括文件:“stm32f10x_lib.h”: No such file or directory
+         usb_sil.c
+     1>e:\h520b\fw\src\usb_lib\usb_type.h(22): fatal error C1083: 无法打开包括文件:“stm32f10x_type.h”: No such file or directory
+         usb_scsi.c
+     1>e:\h520b\fw\src\usb_lib\usb_type.h(22): fatal error C1083: 无法打开包括文件:“stm32f10x_type.h”: No such file or directory
+         usb_regs.c
+     1>e:\h520b\fw\src\usb_lib\usb_type.h(22): fatal error C1083: 无法打开包括文件:“stm32f10x_type.h”: No such file or directory
+         usb_pwr.c
+     1>e:\h520b\fw\src\usb_lib\usb_pwr.c(17): fatal error C1083: 无法打开包括文件:“stm32f10x_lib.h”: No such file or directory
+         usb_prop.c
+     1>e:\h520b\fw\src\usb_lib\usb_type.h(22): fatal error C1083: 无法打开包括文件:“stm32f10x_type.h”: No such file or directory
+         usb_mem.c
+     1>e:\h520b\fw\src\usb_lib\usb_type.h(22): fatal error C1083: 无法打开包括文件:“stm32f10x_type.h”: No such file or directory
+         usb_istr.c
+     1>e:\h520b\fw\src\usb_lib\usb_type.h(22): fatal error C1083: 无法打开包括文件:“stm32f10x_type.h”: No such file or directory
+         usb_int.c
+     1>e:\h520b\fw\src\usb_lib\usb_type.h(22): fatal error C1083: 无法打开包括文件:“stm32f10x_type.h”: No such file or directory
+         usb_init.c
+     1>e:\h520b\fw\src\usb_lib\usb_type.h(22): fatal error C1083: 无法打开包括文件:“stm32f10x_type.h”: No such file or directory
+         usb_endp.c
+     1>e:\h520b\fw\src\usb_lib\usb_type.h(22): fatal error C1083: 无法打开包括文件:“stm32f10x_type.h”: No such file or directory
+         usb_desc.c
+     1>e:\h520b\fw\src\usb_lib\usb_type.h(22): fatal error C1083: 无法打开包括文件:“stm32f10x_type.h”: No such file or directory
+         正在生成代码...
+         正在编译...
+         usb_core.c
+     1>e:\h520b\fw\src\usb_lib\usb_type.h(22): fatal error C1083: 无法打开包括文件:“stm32f10x_type.h”: No such file or directory
+         usb_bot.c
+     1>e:\h520b\fw\src\usb_lib\usb_scsi.h(21): fatal error C1083: 无法打开包括文件:“stm32f10x_lib.h”: No such file or directory
+         scsi_data.c
+     1>e:\h520b\fw\src\usb_lib\usb_scsi.h(21): fatal error C1083: 无法打开包括文件:“stm32f10x_lib.h”: No such file or directory
+         memory.c
+     1>e:\h520b\fw\src\usb_lib\memory.h(21): fatal error C1083: 无法打开包括文件:“stm32f10x_type.h”: No such file or directory
+         mass_mal.c
+     1>e:\h520b\fw\src\usb_lib\mass_mal.h(21): fatal error C1083: 无法打开包括文件:“stm32f10x_type.h”: No such file or directory
+         hw_config.c
+     1>e:\h520b\fw\src\usb_lib\hw_config.c(17): fatal error C1083: 无法打开包括文件:“stm32f10x_lib.h”: No such file or directory
+         stm32f10x_wwdg.c
+     1>e:\h520b\fw\src\lib\src\stm32f10x_wwdg.c(17): fatal error C1083: 无法打开包括文件:“stm32f10x_wwdg.h”: No such file or directory
+         stm32f10x_usart.c
+     1>e:\h520b\fw\src\lib\src\stm32f10x_usart.c(17): fatal error C1083: 无法打开包括文件:“stm32f10x_usart.h”: No such file or directory
+         stm32f10x_tim.c
+     1>e:\h520b\fw\src\lib\src\stm32f10x_tim.c(17): fatal error C1083: 无法打开包括文件:“stm32f10x_tim.h”: No such file or directory
+         stm32f10x_systick.c
+     1>e:\h520b\fw\src\lib\src\stm32f10x_systick.c(17): fatal error C1083: 无法打开包括文件:“stm32f10x_systick.h”: No such file or directory
+         stm32f10x_spi.c
+     1>e:\h520b\fw\src\lib\src\stm32f10x_spi.c(17): fatal error C1083: 无法打开包括文件:“stm32f10x_spi.h”: No such file or directory
+         stm32f10x_sdio.c
+     1>e:\h520b\fw\src\lib\src\stm32f10x_sdio.c(17): fatal error C1083: 无法打开包括文件:“stm32f10x_sdio.h”: No such file or directory
+         stm32f10x_rtc.c
+     1>e:\h520b\fw\src\lib\src\stm32f10x_rtc.c(17): fatal error C1083: 无法打开包括文件:“stm32f10x_rtc.h”: No such file or directory
+         stm32f10x_rcc.c
+     1>e:\h520b\fw\src\lib\src\stm32f10x_rcc.c(17): fatal error C1083: 无法打开包括文件:“stm32f10x_rcc.h”: No such file or directory
+         stm32f10x_pwr.c
+     1>e:\h520b\fw\src\lib\src\stm32f10x_pwr.c(17): fatal error C1083: 无法打开包括文件:“stm32f10x_pwr.h”: No such file or directory
+         stm32f10x_nvic.c
+     1>e:\h520b\fw\src\lib\src\stm32f10x_nvic.c(17): fatal error C1083: 无法打开包括文件:“stm32f10x_nvic.h”: No such file or directory
+         stm32f10x_lib.c
+     1>e:\h520b\fw\src\lib\src\stm32f10x_lib.c(19): fatal error C1083: 无法打开包括文件:“stm32f10x_lib.h”: No such file or directory
+         stm32f10x_iwdg.c
+     1>e:\h520b\fw\src\lib\src\stm32f10x_iwdg.c(17): fatal error C1083: 无法打开包括文件:“stm32f10x_iwdg.h”: No such file or directory
+         stm32f10x_i2c.c
+     1>e:\h520b\fw\src\lib\src\stm32f10x_i2c.c(17): fatal error C1083: 无法打开包括文件:“stm32f10x_i2c.h”: No such file or directory
+         stm32f10x_gpio.c
+     1>e:\h520b\fw\src\lib\src\stm32f10x_gpio.c(17): fatal error C1083: 无法打开包括文件:“stm32f10x_gpio.h”: No such file or directory
+         正在生成代码...
+         正在编译...
+         stm32f10x_fsmc.c
+     1>e:\h520b\fw\src\lib\src\stm32f10x_fsmc.c(17): fatal error C1083: 无法打开包括文件:“stm32f10x_fsmc.h”: No such file or directory
+         stm32f10x_flash.c
+     1>e:\h520b\fw\src\lib\src\stm32f10x_flash.c(17): fatal error C1083: 无法打开包括文件:“stm32f10x_flash.h”: No such file or directory
+         stm32f10x_exti.c
+     1>e:\h520b\fw\src\lib\src\stm32f10x_exti.c(17): fatal error C1083: 无法打开包括文件:“stm32f10x_exti.h”: No such file or directory
+         stm32f10x_dma.c
+     1>e:\h520b\fw\src\lib\src\stm32f10x_dma.c(17): fatal error C1083: 无法打开包括文件:“stm32f10x_dma.h”: No such file or directory
+         stm32f10x_dbgmcu.c
+     1>e:\h520b\fw\src\lib\src\stm32f10x_dbgmcu.c(17): fatal error C1083: 无法打开包括文件:“stm32f10x_dbgmcu.h”: No such file or directory
+         stm32f10x_dac.c
+     1>e:\h520b\fw\src\lib\src\stm32f10x_dac.c(17): fatal error C1083: 无法打开包括文件:“stm32f10x_dac.h”: No such file or directory
+         stm32f10x_crc.c
+     1>e:\h520b\fw\src\lib\src\stm32f10x_crc.c(17): fatal error C1083: 无法打开包括文件:“stm32f10x_crc.h”: No such file or directory
+         stm32f10x_can.c
+     1>e:\h520b\fw\src\lib\src\stm32f10x_can.c(17): fatal error C1083: 无法打开包括文件:“stm32f10x_can.h”: No such file or directory
+         stm32f10x_bkp.c
+     1>e:\h520b\fw\src\lib\src\stm32f10x_bkp.c(17): fatal error C1083: 无法打开包括文件:“stm32f10x_bkp.h”: No such file or directory
+         stm32f10x_adc.c
+     1>e:\h520b\fw\src\lib\src\stm32f10x_adc.c(17): fatal error C1083: 无法打开包括文件:“stm32f10x_adc.h”: No such file or directory
+         WBTDS01.c
+     1>e:\h520b\fw\src\drivers\spi_flash.h(25): fatal error C1083: 无法打开包括文件:“stm32f10x_lib.h”: No such file or directory
+         hw_platform.c
+     1>e:\h520b\fw\src\drivers\spi_flash.h(25): fatal error C1083: 无法打开包括文件:“stm32f10x_lib.h”: No such file or directory
+         HJ5000_scanner.c
+     1>e:\h520b\fw\src\drivers\hj5000_scanner.c(11): fatal error C1083: 无法打开包括文件:“stm32f10x_lib.h”: No such file or directory
+         crc32.c
+         BT816.c
+     1>e:\h520b\fw\src\drivers\spi_flash.h(25): fatal error C1083: 无法打开包括文件:“stm32f10x_lib.h”: No such file or directory
+         Terminal_Para_m.c
+     1>e:\h520b\fw\src\app\terminal_para_m.c(12): fatal error C1083: 无法打开包括文件:“crc32.h”: No such file or directory
+         record_mod.c
+     1>e:\h520b\fw\src\app\record_mod.c(50): fatal error C1083: 无法打开包括文件:“spi_flash.h”: No such file or directory
+         record_m.c
+     1>e:\h520b\fw\src\app\record_m.c(20): fatal error C1083: 无法打开包括文件:“hw_platform.h”: No such file or directory
+         record.c
+     1>c1 : fatal error C1083: 无法打开源文件:“..\..\..\App\record.c”: No such file or directory
+         hash.c
+     1>e:\h520b\fw\src\app\hash.c(15): fatal error C1083: 无法打开包括文件:“crc32.h”: No such file or directory
+         正在生成代码...
+         正在编译...
+         basic_fun.c
+         正在生成代码...
+     1>已完成生成项目“E:\H520B\FW\src\VCEdit\T6\T6\T6.vcxproj”(build 个目标)的操作 - 失败。
+
+生成失败。
+
+已用时间 00:00:04.69

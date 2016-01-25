@@ -203,11 +203,11 @@ void hw_platform_init(void)
 * @param[in]  none
 * @param[out] none
 * @return     0:电池电量低		1：还有电
-* @note     暂定2级，当测定的电压低于3.15V时，表示系统的电压低了
-*			电池的工作电压范围是: 3.0 -- 4.0
+*@note 由于电池电压经过一个MOS管Q5之后，再50%分压进入AD，而MOS管实测大概有0.375V的压降，所以当电池处于低电压阀值2.0（每节1.00V）时，实际
+*		AD点的的阀值电压为1.625V/2 = 0.8125V ==>对应的AD值阀值为：1008
 */
 
-#define  LOW_POWER_TH	1960		//	
+#define  LOW_POWER_TH	1008		//	
 unsigned int hw_platform_get_PowerClass(void)
 { 
 #if 1

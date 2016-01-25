@@ -1616,14 +1616,17 @@
       <name>$PROJ_DIR$\..\..\App\PCUsart.c</name>
     </file>
     <file>
-      <name>$PROJ_DIR$\..\..\App\record.c</name>
+      <name>$PROJ_DIR$\..\..\App\record_m.c</name>
     </file>
     <file>
-      <name>$PROJ_DIR$\..\..\App\Terminal_Para.c</name>
+      <name>$PROJ_DIR$\..\..\App\Terminal_Para_m.c</name>
     </file>
   </group>
   <group>
     <name>Drivers</name>
+    <file>
+      <name>$PROJ_DIR$\..\..\Drivers\BT816.c</name>
+    </file>
     <file>
       <name>$PROJ_DIR$\..\..\Drivers\crc32.c</name>
     </file>
@@ -1640,13 +1643,16 @@
       <name>$PROJ_DIR$\..\..\Drivers\keypad.c</name>
     </file>
     <file>
+      <name>$PROJ_DIR$\..\..\App\rec_ecc.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\..\..\App\record_mod.c</name>
+    </file>
+    <file>
       <name>$PROJ_DIR$\..\..\Drivers\spi_flash.c</name>
     </file>
     <file>
       <name>$PROJ_DIR$\..\..\Drivers\TimeBase.c</name>
-    </file>
-    <file>
-      <name>$PROJ_DIR$\..\..\Drivers\WBTDS01.c</name>
     </file>
   </group>
   <group>
@@ -1674,6 +1680,9 @@
     </file>
     <file>
       <name>$PROJ_DIR$\..\..\Lib\src\stm32f10x_dbgmcu.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\..\..\Lib\src\stm32f10x_dma.c</name>
     </file>
     <file>
       <name>$PROJ_DIR$\..\..\Lib\src\stm32f10x_exti.c</name>

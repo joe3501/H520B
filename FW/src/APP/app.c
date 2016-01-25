@@ -502,7 +502,7 @@ repost:
 #if(BT_MODULE == USE_WBTDS01)
 				//WBTD_hid_send_test();
 #else
-				BT816_hid_send_test();
+				//BT816_hid_send_test();
 #endif
 				break;
 			case EVENT_ERASE_KEY_LONG_PRESS:
@@ -880,6 +880,26 @@ void BT_Daemon_thread(void *p)
 	//BT816_hid_connect_last_host();		//试图连接最近一次的蓝牙主机
 #endif
 
+
+	//for test SPP mode
+	//while(1)
+	//{
+	//	if (spp_buffer_head)
+	//	{
+	//		printf("spp reclen=%d\r\n",spp_buffer_head);
+
+	//		for (len = 0; len < spp_buffer_head;len++)
+	//		{
+	//			printf("0x%x,",spp_rec_buffer[len]);
+	//		}
+	//		printf("\r\n");
+
+	//		spp_buffer_head = 0;
+	//	}
+
+	//	OSTimeDlyHMSM(0,0,0,50);
+	//}
+
 	while (1)
 	{
 #if(BT_MODULE == USE_WBTDS01)
@@ -903,6 +923,15 @@ void BT_Daemon_thread(void *p)
 				printf("BT Module Status = %s!\r\n",(ret==BT_MODULE_STATUS_CONNECTED)?"Connected":"Disconnect");
 #endif
 				OSQPost(pEvent_Queue,(void*)((ret == BT_MODULE_STATUS_CONNECTED)?EVENT_BT_CONNECTED:EVENT_BT_DISCONNECTED));
+			}
+			else
+			{
+				if ((ret == BT_MODULE_STATUS_DISCONNECT)&&(device_current_state != STATE_BT_Mode_WaitPair))
+				{
+					//发送一个键值，试图重连蓝牙主机
+					//BT816_hid_send("1",1);
+					BT816_hid_connect_last_host();
+				}
 			}
 		}
 #endif
@@ -1052,7 +1081,7 @@ void app_init_thread(void *p)
 
 	scanner_mod_init();
 
-	usb_device_init(USB_KEYBOARD);
+	//usb_device_init(USB_KEYBOARD);
 
 	OSTaskCreateExt(State_Machine_thread,
 		(void *)0,

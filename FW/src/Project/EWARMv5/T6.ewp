@@ -146,7 +146,7 @@
         <debug>1</debug>
         <option>
           <name>CCDefines</name>
-          <state>DEBUG_VER</state>
+          <state></state>
         </option>
         <option>
           <name>CCPreprocFile</name>
@@ -1616,13 +1616,7 @@
       <name>$PROJ_DIR$\..\..\App\PCUsart.c</name>
     </file>
     <file>
-      <name>$PROJ_DIR$\..\..\App\rec_ecc.c</name>
-    </file>
-    <file>
       <name>$PROJ_DIR$\..\..\App\record_m.c</name>
-    </file>
-    <file>
-      <name>$PROJ_DIR$\..\..\App\record_mod.c</name>
     </file>
     <file>
       <name>$PROJ_DIR$\..\..\App\Terminal_Para_m.c</name>
@@ -1649,13 +1643,25 @@
       <name>$PROJ_DIR$\..\..\Drivers\keypad.c</name>
     </file>
     <file>
+      <name>$PROJ_DIR$\..\..\App\rec_ecc.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\..\..\App\record_mod.c</name>
+    </file>
+    <file>
       <name>$PROJ_DIR$\..\..\Drivers\spi_flash.c</name>
     </file>
     <file>
       <name>$PROJ_DIR$\..\..\Drivers\TimeBase.c</name>
     </file>
+  </group>
+  <group>
+    <name>FatFs</name>
     <file>
-      <name>$PROJ_DIR$\..\..\Drivers\WBTDS01.c</name>
+      <name>$PROJ_DIR$\..\..\FatFs\diskio.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\..\..\FatFs\ff.c</name>
     </file>
   </group>
   <group>
