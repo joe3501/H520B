@@ -29,6 +29,9 @@
 //低电压
 #define EVENT_LOW_POWER							(EVENT_BT_DISCONNECTED+1)
 
+//串口中断获取到扫描条码，由于扫描引擎利用硬件IO直接驱动，串口中断接收返回条码，所以扫描引擎获取到条码也当作一个异步事件
+#define EVENT_SCAN_GOT_BARCODE							(EVENT_LOW_POWER+1)
+#define EVENT_ERASE_GOT_BARCODE							(EVENT_SCAN_GOT_BARCODE+1)
 
 void app_startup(void);
 

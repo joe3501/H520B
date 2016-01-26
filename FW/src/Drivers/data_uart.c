@@ -43,9 +43,9 @@ void data_uart_init(void)
 	GPIO_Init(GPIOA, &GPIO_InitStructure);
 	
 	/* Configure USART1 Rx (PA.10) as input floating */
-	GPIO_InitStructure.GPIO_Pin				= GPIO_Pin_10;
-	GPIO_InitStructure.GPIO_Mode			= GPIO_Mode_IN_FLOATING;
-	GPIO_Init(GPIOA, &GPIO_InitStructure);
+	//GPIO_InitStructure.GPIO_Pin				= GPIO_Pin_10;
+	//GPIO_InitStructure.GPIO_Mode			= GPIO_Mode_IN_FLOATING;
+	//GPIO_Init(GPIOA, &GPIO_InitStructure);
 	
 	/* 设置串口参数								*/
 	USART_InitStructure.USART_BaudRate		= 115200;

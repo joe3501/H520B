@@ -1,6 +1,6 @@
 ###############################################################################
 #                                                                             #
-# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     23/Jan/2016  16:20:26 #
+# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     26/Jan/2016  15:31:54 #
 # Copyright 1999-2009 IAR Systems AB.                                         #
 #                                                                             #
 #    Cpu mode     =  thumb                                                    #
@@ -79,9 +79,9 @@ E:\H520B\FW\src\Drivers\data_uart.c
      43          	GPIO_Init(GPIOA, &GPIO_InitStructure);
      44          	
      45          	/* Configure USART1 Rx (PA.10) as input floating */
-     46          	GPIO_InitStructure.GPIO_Pin				= GPIO_Pin_10;
-     47          	GPIO_InitStructure.GPIO_Mode			= GPIO_Mode_IN_FLOATING;
-     48          	GPIO_Init(GPIOA, &GPIO_InitStructure);
+     46          	//GPIO_InitStructure.GPIO_Pin				= GPIO_Pin_10;
+     47          	//GPIO_InitStructure.GPIO_Mode			= GPIO_Mode_IN_FLOATING;
+     48          	//GPIO_Init(GPIOA, &GPIO_InitStructure);
      49          	
      50          	/* 设置串口参数								*/
      51          	USART_InitStructure.USART_BaudRate		= 115200;
@@ -151,16 +151,16 @@ E:\H520B\FW\src\Drivers\data_uart.c
 
      Function/Label     Bytes
      --------------     -----
-     data_uart_init      124
+     data_uart_init      104
      data_uart_sendbyte   16
      uart_rec_byte        52
      fputc                32
      ??DataTable6          4
 
  
- 228 bytes in section .text
+ 208 bytes in section .text
  
- 228 bytes of CODE memory
+ 208 bytes of CODE memory
 
 Errors: none
 Warnings: none

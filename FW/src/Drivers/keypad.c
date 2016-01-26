@@ -21,11 +21,14 @@
 #include "app.h"
 #include "TimeBase.h"
 #include "hw_platform.h"
+#include "HJ5000_scanner.h"
 
 static  unsigned char		current_press_key;
 static  unsigned int		press_cnt;
 static  unsigned int		release_cnt; 
 static  unsigned char		keypad_state;
+
+unsigned char	scan_key_trig;
 
 
 extern	unsigned int	device_current_state;		//设备主状态机
@@ -72,6 +75,7 @@ static void Keypad_Initport(void)
 	EXTI_InitStructure.EXTI_LineCmd = ENABLE;
 	EXTI_Init(&EXTI_InitStructure);
 	EXTI_GenerateSWInterrupt(EXTI_Line0 | EXTI_Line3);
+	scan_key_trig = 0;
 }
 
 /**
@@ -208,6 +212,10 @@ void Keypad_EXTI_ISRHandler(unsigned char	exti_line)
 
 	if (exti_line == SCAN_KEY_EXTI_INT)
 	{
+		reset_resVar();
+		SCANNER_TRIG_ON();
+                hw_platform_start_led_blink(LED_GREEN,3);
+		scan_key_trig = 1;
 		current_press_key = SCAN_KEY;
 	}
 	else if (exti_line == ERASE_KEY_EXTI_INT)
@@ -263,7 +271,7 @@ reread:
 
 //按住超过2个按键低电平判断周期即认为至少是一次按键单击事件的发生，以20ms周期为例，就是只要按住超过40ms即认为至少发生了有效的按键单击事件
 #define SINGLE_CLICK_TH			2		
-#define LONG_PRESS_TH			150		//按住超过250个按键低电平判断周期即认为是一次按键长按事件的发生，按住超过5S即认为按键长按
+#define LONG_PRESS_TH			250		//按住超过250个按键低电平判断周期即认为是一次按键长按事件的发生，按住超过5S即认为按键长按
 #define DOUBLE_CLICK_INTERVAL	4		//双击，连续两次按键之间的时间不超过80ms即认为是双击
 //定义一个回调函数指针，以供中断处理函数在获取到按键键值时post给其余模块使用时，可以提供不同的方法
 //typedef void (* post_key_method)(unsigned char key_value);
@@ -288,17 +296,17 @@ void Keypad_Timer_ISRHandler(void)
 			{
 				keypress_timeout = 0;
 				keypad_state = KEYPAD_STATE_AT_LEAST_CLICK;
-				if (current_press_key == SCAN_KEY)
-				{
-					hw_platform_start_led_blink(LED_GREEN,3);
-					if (device_current_state == STATE_HID_Mode)
-					{
-						OSQPost(pEvent_Queue,(void*)EVENT_SCAN_KEY_SINGLE_CLICK);
-						//keypad_state = KEYPAD_STATE_INIT;
-						Keypad_Timer_Disable();
-						Keypad_Int_Enable();
-					}
-				}
+				//if (current_press_key == SCAN_KEY)
+				//{
+				//	hw_platform_start_led_blink(LED_GREEN,3);
+				//	if (device_current_state == STATE_HID_Mode)
+				//	{
+				//		OSQPost(pEvent_Queue,(void*)EVENT_SCAN_KEY_SINGLE_CLICK);
+				//		//keypad_state = KEYPAD_STATE_INIT;
+				//		Keypad_Timer_Disable();
+				//		Keypad_Int_Enable();
+				//	}
+				//}
 			}
 		}
 		else if (keypad_state == KEYPAD_STATE_AT_LEAST_CLICK)
@@ -316,8 +324,8 @@ void Keypad_Timer_ISRHandler(void)
 				}
 				
 				//keypad_state = KEYPAD_STATE_INIT;
-				Keypad_Timer_Disable();
-				Keypad_Int_Enable();
+				//Keypad_Timer_Disable();
+				//Keypad_Int_Enable();
 			}
 		}
 		else if (keypad_state == KEYPAD_STATE_FIRST_CLICK_RELEASE)
@@ -331,13 +339,20 @@ void Keypad_Timer_ISRHandler(void)
 			if (press_cnt == LONG_PRESS_TH)
 			{
 				OSQPost(pEvent_Queue,(void*)EVENT_SCAN_KEY_LONG_PRESS);
-				Keypad_Timer_Disable();
-				Keypad_Int_Enable();
+				//Keypad_Timer_Disable();
+				//Keypad_Int_Enable();
 			}
 		}
 	}
 	else
 	{
+		if(current_press_key == SCAN_KEY)
+		{
+			SCANNER_TRIG_OFF();
+			scan_key_trig = 0;
+			hw_platform_stop_led_blink(LED_GREEN);
+		}
+
 		if (keypad_state == KEYPAD_STATE_INIT)
 		{
 			//keypad_state = KEYPAD_STATE_INIT;
@@ -358,8 +373,8 @@ void Keypad_Timer_ISRHandler(void)
 				else
 				{
 					//其余状态下没有必要检测SCAN键的双击行为
-					hw_platform_start_led_blink(LED_GREEN,3);
-					OSQPost(pEvent_Queue,(void*)EVENT_SCAN_KEY_SINGLE_CLICK);
+				//	hw_platform_start_led_blink(LED_GREEN,3);
+				//	OSQPost(pEvent_Queue,(void*)EVENT_SCAN_KEY_SINGLE_CLICK);
 					Keypad_Timer_Disable();
 					Keypad_Int_Enable();
 				}
@@ -379,9 +394,8 @@ void Keypad_Timer_ISRHandler(void)
 			if (release_cnt == DOUBLE_CLICK_INTERVAL)
 			{
 				//单击后，在双击间隔时间内没有再次按下按键，及可以确认单击事件的发生
-				hw_platform_start_led_blink(LED_GREEN,3);
-				OSQPost(pEvent_Queue,(void*)EVENT_SCAN_KEY_SINGLE_CLICK);
-				//keypad_state = KEYPAD_STATE_INIT;
+				//hw_platform_start_led_blink(LED_GREEN,3);
+				//OSQPost(pEvent_Queue,(void*)EVENT_SCAN_KEY_SINGLE_CLICK);
 				Keypad_Timer_Disable();
 				Keypad_Int_Enable();
 			}

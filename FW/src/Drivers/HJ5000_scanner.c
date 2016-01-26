@@ -8,13 +8,14 @@
 * 
 */
 #include <string.h>
-#include "stm32f10x_lib.h"
 #include "ucos_ii.h"
 #include "HJ5000_scanner.h"
 #include "TimeBase.h"
 #include "keypad.h"
 #include "PCUsart.h"
-
+#include "hw_platform.h"
+#include "app.h"
+#include "record_m.h"
 #define HJ5000_FRAME_MAX_LEN		257
 
 #define USART_RX_DMA_MODE		1
@@ -276,7 +277,9 @@ THJ5000Command	g_resCmd;		//scan decoder -> host
 unsigned char	*g_pReqCmd;		//host -> scan decoder
 static	unsigned int	wait_time_out;			//get_barcode命令的等待超时设置
 
-
+extern unsigned char	scan_key_trig;
+extern	OS_EVENT		*pEvent_Queue;			//事件消息队列
+extern unsigned char	barcode[MAX_BARCODE_LEN+1];
 
 #define G_SEND_BUF_LENGTH     32
 #define G_RECEIV_BUF_LENGTH   128
@@ -298,7 +301,7 @@ static void HJ5000_GPIO_config(void)
 	GPIO_InitTypeDef				GPIO_InitStructure;
 	USART_InitTypeDef				USART_InitStructure;
 
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB |
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB | RCC_APB2Periph_GPIOA |
 		RCC_APB2Periph_AFIO, ENABLE);
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART3, ENABLE);
 
@@ -314,12 +317,21 @@ static void HJ5000_GPIO_config(void)
 	//GPIO_Init(GPIOA, &GPIO_InitStructure);
 	//GPIO_SetBits(GPIOA, GPIO_Pin_6 | GPIO_Pin_7);
 
+	//trig io
+	GPIO_InitStructure.GPIO_Pin				= GPIO_Pin_10;
+	GPIO_InitStructure.GPIO_Speed			= GPIO_Speed_10MHz;
+	GPIO_InitStructure.GPIO_Mode			= GPIO_Mode_Out_PP;
+	GPIO_Init(GPIOA, &GPIO_InitStructure);
+	GPIO_SetBits(GPIOA,GPIO_Pin_10);
+
+
 	// 使用UART3, PB10,PB11
 	/* Configure USART3 Tx (PB.10) as alternate function push-pull */
 	GPIO_InitStructure.GPIO_Pin				= GPIO_Pin_10;
 	GPIO_InitStructure.GPIO_Speed			= GPIO_Speed_50MHz;
 	GPIO_InitStructure.GPIO_Mode			= GPIO_Mode_AF_PP;
 	GPIO_Init(GPIOB, &GPIO_InitStructure);
+	//GPIO_SetBits(GPIOB,GPIO_Pin_10);
 
 	/* Configure USART3 Rx (PB.11) as input floating				*/
 	GPIO_InitStructure.GPIO_Pin				= GPIO_Pin_11;
@@ -393,7 +405,7 @@ static void HJ5000_GPIO_config(void)
 	USART_InitStructure.USART_StopBits = USART_StopBits_1;    
 	USART_InitStructure.USART_Parity = USART_Parity_No;    
 	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;    
-	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;      
+	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;         
 	USART_InitStructure.USART_BaudRate = 9600;   
 	//初始化串口   
 	USART_Init(USART3,&USART_InitStructure); 
@@ -452,12 +464,13 @@ static void HJ5000_NVIC_config(void)
 #endif
 }
 
-static void reset_resVar(void)
+void reset_resVar(void)
 {
 	g_resCmd.CmdPos = 0;
 	g_resCmd.DataLength = 0;
 	g_resCmd.status	 = 0;
 }
+
 
 /**
 * @brief  发数据给条形码扫描仪
@@ -585,7 +598,21 @@ void scanner_mod_reset(void)
 	g_resCmd.DataLength = 0;
 	g_resCmd.status	 = 0;
 }
+/*
+* @breif:  恢复出厂
+*/
+void HJ5000_set_default(void)
+{
+	int ret;
 
+	ret = pack_ctrl_command(HJ5000_SET_ALL_DEFAULT);
+	if(ret)
+	{
+		ret = write_cmd_to_scanner(g_pReqCmd, ret);
+	}
+
+	return;
+}
 /*
 * @brief: 模块初始化
 */
@@ -601,8 +628,12 @@ void scanner_mod_init(void)
 	reset_resVar();
 	//初始化串口配置
 	//Comm_SetReceiveProc(COMM3, (CommIsrInByte)HJ5000_RxISRHandler);						//设置串口回调函数
-
+	//HJ5000_set_default();
+#ifdef SCANNER_TRIG_HW
+	ret = pack_set_command(ScanMode,0x00);
+#else
 	ret = pack_set_command(ScanMode,0x0a);
+#endif
 	write_cmd_to_scanner(g_pReqCmd, ret);
 	OSTimeDlyHMSM(0, 0, 0, 100);
 	ret = pack_set_command(RSTerminator,0x02);
@@ -622,7 +653,7 @@ void scanner_mod_init(void)
 int HJ5000_RxISRHandler(unsigned char c)
 {
 	//unsigned short checksum = 0;
-
+	unsigned int i;
 	if(g_resCmd.status == 0)
 	{
 		g_resCmd.CmdBuffer[g_resCmd.CmdPos++] = c;
@@ -645,6 +676,17 @@ int HJ5000_RxISRHandler(unsigned char c)
 	if (g_resCmd.CmdBuffer[g_resCmd.CmdPos-1] == 0x0d)
 	{
 		g_resCmd.status = RESPONSE_SUCCESS;
+		SCANNER_TRIG_OFF();
+		hw_platform_stop_led_blink(LED_GREEN);
+
+		if (scan_key_trig)
+		{
+			scan_key_trig = 0;
+			OSQPost(pEvent_Queue,(void*)EVENT_SCAN_GOT_BARCODE);
+			i = (((g_resCmd.CmdPos-1) > MAX_BARCODE_LEN)?MAX_BARCODE_LEN:(g_resCmd.CmdPos-1));
+			memcpy(barcode, &g_resCmd.CmdBuffer[0], i);
+			barcode[i] = 0;
+		}
 	}
 
 	if (g_resCmd.CmdPos >= G_RECEIV_BUF_LENGTH)
@@ -667,18 +709,20 @@ void HJ5000_start_stop_decode(unsigned char ctrl_type)
 	int ret;
 	if (ctrl_type == HJ5000_START_DECODE)
 	{
-		ret = pack_ctrl_command(HJ5000_START_DECODE);
+		//ret = pack_ctrl_command(HJ5000_START_DECODE);
+		SCANNER_TRIG_ON();
 	}
 	else
 	{
-		ret = pack_ctrl_command(HJ5000_STOP_DECODE);
+		//ret = pack_ctrl_command(HJ5000_STOP_DECODE);
+		SCANNER_TRIG_OFF();
 	}
-	if(ret)
-	{
-		//g_ack_enable = 0;
-		ret = write_cmd_to_scanner(g_pReqCmd, ret);
-		//g_ack_enable = 1;
-	}
+	//if(ret)
+	//{
+	//	//g_ack_enable = 0;
+	//	ret = write_cmd_to_scanner(g_pReqCmd, ret);
+	//	//g_ack_enable = 1;
+	//}
 
 	return;
 }

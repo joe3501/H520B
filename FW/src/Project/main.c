@@ -84,10 +84,12 @@ int main(void)
 	*(vu32 *) SCB_SysCtrl &= ~SysCtrl_SLEEPDEEP_Set;
 
 	Unconfigure_All();
+	
+
+#ifdef DEBUG_VER
 	// 数据串口(调试口)初始化
 	data_uart_init();
 
-#ifdef DEBUG_VER
 	printf("H520B startup...\r\n");
 #endif
 

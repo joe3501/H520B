@@ -77,7 +77,7 @@ static OS_EVENT *pIOSem;				//IO信号量
 unsigned int	device_current_state;		//设备主状态机
 
 unsigned int	keypress_timeout;
-
+unsigned char	barcode[MAX_BARCODE_LEN+1];
 
 void u_disk_proc(void);
 int lowpower_tip(void);
@@ -345,7 +345,6 @@ void State_Machine_thread(void *p)
 {
 	unsigned int	i,cnt,event;
 	unsigned char	err;
-	unsigned char	barcode[MAX_BARCODE_LEN+1];
 	unsigned char   codetype[20];
 	unsigned int    codelen;
 	int				ret,index;
@@ -386,15 +385,13 @@ void State_Machine_thread(void *p)
 		{
 			switch(event)
 			{
-			case EVENT_SCAN_KEY_SINGLE_CLICK:
-			case EVENT_SCAN_KEY_DOUBLE_CLICK:
-				ret = scanner_get_barcode(barcode,MAX_BARCODE_LEN,codetype,&codelen);	//扫描条码
-				hw_platform_stop_led_blink(LED_GREEN);
-				if (ret == 0)
-				{
-					scan_barcode_ok_tip();
-				}
-
+			//case EVENT_SCAN_KEY_SINGLE_CLICK:
+			//case EVENT_SCAN_KEY_DOUBLE_CLICK:
+			//	ret = scanner_get_barcode(barcode,MAX_BARCODE_LEN,codetype,&codelen);	//扫描条码
+			//	hw_platform_stop_led_blink(LED_GREEN);
+			//	if (ret == 0)
+			case EVENT_SCAN_GOT_BARCODE:
+				scan_barcode_ok_tip();
 				if (lowpower_state)
 				{
 					lowpower_tip();
@@ -447,15 +444,15 @@ void State_Machine_thread(void *p)
 		{
 			switch(event)
 			{
-			case EVENT_SCAN_KEY_SINGLE_CLICK:
+			//case EVENT_SCAN_KEY_SINGLE_CLICK:
 				//扫描条码
-				ret = scanner_get_barcode(barcode,MAX_BARCODE_LEN,codetype,&codelen);
-				hw_platform_stop_led_blink(LED_GREEN);
-				if (ret != 0)
-				{
-					break;
-				}
-
+			//	ret = scanner_get_barcode(barcode,MAX_BARCODE_LEN,codetype,&codelen);
+			//	hw_platform_stop_led_blink(LED_GREEN);
+			//	if (ret != 0)
+			//	{
+			//		break;
+			//	}
+			case EVENT_SCAN_GOT_BARCODE:
 				scan_barcode_ok_tip();
 				if (lowpower_state)
 				{
@@ -542,14 +539,15 @@ repost:
 		{
 			switch(event)
 			{
-			case EVENT_SCAN_KEY_SINGLE_CLICK:
-			case EVENT_SCAN_KEY_DOUBLE_CLICK:
-				ret = scanner_get_barcode(barcode,MAX_BARCODE_LEN,codetype,&codelen);	//扫描条码
-				hw_platform_stop_led_blink(LED_GREEN);
-				if (ret == 0)
-				{
-					scan_barcode_ok_tip();
-				}
+			//case EVENT_SCAN_KEY_SINGLE_CLICK:
+			//case EVENT_SCAN_KEY_DOUBLE_CLICK:
+			//	ret = scanner_get_barcode(barcode,MAX_BARCODE_LEN,codetype,&codelen);	//扫描条码
+			//	hw_platform_stop_led_blink(LED_GREEN);
+			//	if (ret == 0)
+			case EVENT_SCAN_GOT_BARCODE:
+				
+				scan_barcode_ok_tip();
+				
 				if (lowpower_state)
 				{
 					lowpower_tip();
@@ -600,15 +598,15 @@ repost:
 		{
 			switch(event)
 			{
-			case EVENT_SCAN_KEY_SINGLE_CLICK:
+			//case EVENT_SCAN_KEY_SINGLE_CLICK:
 				//扫描条码
-				ret = scanner_get_barcode(barcode,MAX_BARCODE_LEN,codetype,&codelen);
-				hw_platform_stop_led_blink(LED_GREEN);
-				if (ret != 0)
-				{
-					break;
-				}
-
+			//	ret = scanner_get_barcode(barcode,MAX_BARCODE_LEN,codetype,&codelen);
+			//	hw_platform_stop_led_blink(LED_GREEN);
+			//	if (ret != 0)
+			//	{
+			//		break;
+			//	}
+			case EVENT_SCAN_GOT_BARCODE:
 				scan_barcode_ok_tip();
 				if (lowpower_state)
 				{
@@ -695,14 +693,14 @@ repost:
 		{
 			switch(event)
 			{
-			case EVENT_SCAN_KEY_SINGLE_CLICK:
-				ret = scanner_get_barcode(barcode,MAX_BARCODE_LEN,codetype,&codelen);
-				hw_platform_stop_led_blink(LED_GREEN);
-				if(ret !=0)	//扫描条码
-				{
-					break;
-				}
-
+			//case EVENT_SCAN_KEY_SINGLE_CLICK:
+			//	ret = scanner_get_barcode(barcode,MAX_BARCODE_LEN,codetype,&codelen);
+			//	hw_platform_stop_led_blink(LED_GREEN);
+			//	if(ret !=0)	//扫描条码
+			//	{
+			//		break;
+			//	}
+			case EVENT_SCAN_GOT_BARCODE:
 				scan_barcode_ok_tip();
 				//将扫描到的条码通过HID 接口发送出去
 				barcode_hid_send(barcode);
