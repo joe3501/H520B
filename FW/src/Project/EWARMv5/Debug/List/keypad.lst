@@ -1,6 +1,6 @@
 ###############################################################################
 #                                                                             #
-# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     26/Jan/2016  15:31:56 #
+# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     29/Jan/2016  14:28:04 #
 # Copyright 1999-2009 IAR Systems AB.                                         #
 #                                                                             #
 #    Cpu mode     =  thumb                                                    #
@@ -250,203 +250,214 @@ E:\H520B\FW\src\Drivers\keypad.c
     214          	{
     215          		reset_resVar();
     216          		SCANNER_TRIG_ON();
-    217                          hw_platform_start_led_blink(LED_GREEN,3);
+    217                  hw_platform_start_led_blink(LED_GREEN,3);
     218          		scan_key_trig = 1;
     219          		current_press_key = SCAN_KEY;
-    220          	}
-    221          	else if (exti_line == ERASE_KEY_EXTI_INT)
-    222          	{
-    223          		current_press_key = ERASE_KEY;
+    220          		if(device_current_state ==  STATE_BT_Mode_WaitPair)
+    221          		{
+    222          			OSQPost(pEvent_Queue,(void*)EVENT_SCAN_KEY_SINGLE_CLICK);
+    223          		}
     224          	}
-    225          	press_cnt = 0;
-    226          	keypad_state = KEYPAD_STATE_INIT;
-    227          }
-    228          
-    229          
-    230          /**
-    231           * @brief 读取keypad IO，返回IO状态
-    232           * @param[in] unsigned char key		需要读取的是哪个Key对应的IO
-    233           * @return  0: low  else: high  
-    234          */
-    235          static unsigned char Keypad_ReadIO(unsigned char key)
-    236          {
-    237          	unsigned char h1=0,h2=0;
-    238          	unsigned int	i;
-    239          reread:
-    240          	if (key == SCAN_KEY)
-    241          	{
-    242          		h1 = GPIO_ReadInputDataBit(GPIOA,GPIO_Pin_0);
-    243          	}
-    244          	else if (key == ERASE_KEY)
-    245          	{
-    246          		h1 = GPIO_ReadInputDataBit(GPIOB,GPIO_Pin_3);
-    247          	}
-    248          
-    249          	//hw_platform_trip_io();
-    250          	for(i=0;i < 10000;i++);	//约1ms(在72M频率下，实测972us)
-    251          	//hw_platform_trip_io();
-    252          
-    253          	if (key == SCAN_KEY)
-    254          	{
-    255          		h2 = GPIO_ReadInputDataBit(GPIOA,GPIO_Pin_0);
-    256          	}
-    257          	else if (key == ERASE_KEY)
-    258          	{
-    259          		h2 = GPIO_ReadInputDataBit(GPIOB,GPIO_Pin_3);
-    260          	}
-    261          
-    262          	if(h1 == h2)
-    263          	{
-    264          		return h1;
-    265          	}
-    266          	else
-    267          	{
-    268          		goto  reread;
-    269          	}
-    270          }
-    271          
-    272          //按住超过2个按键低电平判断周期即认为至少是一次按键单击事件的发生，以20ms周期为例，就是只要按住超过40ms即认为至少发生了有效的按键单击事件
-    273          #define SINGLE_CLICK_TH			2		
-    274          #define LONG_PRESS_TH			250		//按住超过250个按键低电平判断周期即认为是一次按键长按事件的发生，按住超过5S即认为按键长按
-    275          #define DOUBLE_CLICK_INTERVAL	4		//双击，连续两次按键之间的时间不超过80ms即认为是双击
-    276          //定义一个回调函数指针，以供中断处理函数在获取到按键键值时post给其余模块使用时，可以提供不同的方法
-    277          //typedef void (* post_key_method)(unsigned char key_value);
-    278          
-    279          //static void post_key(unsigned char key)
-    280          //{
-    281          //	OSQPost(pEvent_Queue,(void*)key);
-    282          //}
-    283          
-    284          /**
-    285           * @brief 定时器中断处理程序
-    286           * @note 真正判断按键是在20ms定时器中断处理程序完成的
-    287          */
-    288          void Keypad_Timer_ISRHandler(void)
-    289          {
-    290          	if (Keypad_ReadIO(current_press_key) == 0)
-    291          	{
-    292          		if (keypad_state == KEYPAD_STATE_INIT)
-    293          		{
-    294          			press_cnt++;
-    295          			if (press_cnt == SINGLE_CLICK_TH)
-    296          			{
-    297          				keypress_timeout = 0;
-    298          				keypad_state = KEYPAD_STATE_AT_LEAST_CLICK;
-    299          				//if (current_press_key == SCAN_KEY)
-    300          				//{
-    301          				//	hw_platform_start_led_blink(LED_GREEN,3);
-    302          				//	if (device_current_state == STATE_HID_Mode)
-    303          				//	{
-    304          				//		OSQPost(pEvent_Queue,(void*)EVENT_SCAN_KEY_SINGLE_CLICK);
-    305          				//		//keypad_state = KEYPAD_STATE_INIT;
-    306          				//		Keypad_Timer_Disable();
-    307          				//		Keypad_Int_Enable();
-    308          				//	}
-    309          				//}
-    310          			}
-    311          		}
-    312          		else if (keypad_state == KEYPAD_STATE_AT_LEAST_CLICK)
-    313          		{
-    314          			press_cnt++;
-    315          			if (press_cnt == LONG_PRESS_TH)
-    316          			{
-    317          				if (current_press_key == SCAN_KEY)
-    318          				{
-    319          					OSQPost(pEvent_Queue,(void*)EVENT_SCAN_KEY_LONG_PRESS);
-    320          				}
-    321          				else if (current_press_key == ERASE_KEY)
-    322          				{
-    323          					OSQPost(pEvent_Queue,(void*)EVENT_ERASE_KEY_LONG_PRESS);
-    324          				}
-    325          				
-    326          				//keypad_state = KEYPAD_STATE_INIT;
-    327          				//Keypad_Timer_Disable();
-    328          				//Keypad_Int_Enable();
-    329          			}
-    330          		}
-    331          		else if (keypad_state == KEYPAD_STATE_FIRST_CLICK_RELEASE)
-    332          		{
-    333          			keypad_state = KEYPAD_STATE_SECOND_CLICK;
-    334          			press_cnt = 0;
-    335          		}
-    336          		else if (keypad_state == KEYPAD_STATE_SECOND_CLICK)
-    337          		{
-    338          			press_cnt++;
-    339          			if (press_cnt == LONG_PRESS_TH)
-    340          			{
-    341          				OSQPost(pEvent_Queue,(void*)EVENT_SCAN_KEY_LONG_PRESS);
-    342          				//Keypad_Timer_Disable();
-    343          				//Keypad_Int_Enable();
-    344          			}
-    345          		}
-    346          	}
-    347          	else
-    348          	{
-    349          		if(current_press_key == SCAN_KEY)
-    350          		{
-    351          			SCANNER_TRIG_OFF();
-    352          			scan_key_trig = 0;
-    353          			hw_platform_stop_led_blink(LED_GREEN);
-    354          		}
-    355          
-    356          		if (keypad_state == KEYPAD_STATE_INIT)
-    357          		{
-    358          			//keypad_state = KEYPAD_STATE_INIT;
-    359          			Keypad_Timer_Disable();
-    360          			Keypad_Int_Enable();
-    361          		}
-    362          		else if (keypad_state == KEYPAD_STATE_AT_LEAST_CLICK)
-    363          		{
-    364          			if (current_press_key == SCAN_KEY)
-    365          			{
-    366          				//OSQPost(pEvent_Queue,(void*)EVENT_SCAN_KEY_SINGLE_CLICK);
-    367          				if (device_current_state == STATE_BT_Mode_Connect)
-    368          				{
-    369          					//只有在蓝牙连接状态下，才需要检测SCAN键的双击行为
-    370          					keypad_state = 	KEYPAD_STATE_FIRST_CLICK_RELEASE;
-    371          					release_cnt = 0;
-    372          				}
-    373          				else
-    374          				{
-    375          					//其余状态下没有必要检测SCAN键的双击行为
-    376          				//	hw_platform_start_led_blink(LED_GREEN,3);
-    377          				//	OSQPost(pEvent_Queue,(void*)EVENT_SCAN_KEY_SINGLE_CLICK);
-    378          					Keypad_Timer_Disable();
-    379          					Keypad_Int_Enable();
-    380          				}
-    381          				
-    382          			}
-    383          			else if (current_press_key == ERASE_KEY)
-    384          			{
-    385          				OSQPost(pEvent_Queue,(void*)EVENT_ERASE_KEY_SINGLE_CLICK);
-    386          				//keypad_state = KEYPAD_STATE_INIT;
-    387          				Keypad_Timer_Disable();
-    388          				Keypad_Int_Enable();
-    389          			}
-    390          		}
-    391          		else if (keypad_state == KEYPAD_STATE_FIRST_CLICK_RELEASE)
-    392          		{
-    393          			release_cnt++;
-    394          			if (release_cnt == DOUBLE_CLICK_INTERVAL)
+    225          	else if (exti_line == ERASE_KEY_EXTI_INT)
+    226          	{
+    227          		if (device_current_state == STATE_Memory_Mode)
+    228          		{
+    229          			reset_resVar();
+    230          			SCANNER_TRIG_ON();
+    231          			hw_platform_start_led_blink(LED_GREEN,3);
+    232          			scan_key_trig = 2;
+    233          		}
+    234          		current_press_key = ERASE_KEY;
+    235          	}
+    236          	press_cnt = 0;
+    237          	keypad_state = KEYPAD_STATE_INIT;
+    238          }
+    239          
+    240          
+    241          /**
+    242           * @brief 读取keypad IO，返回IO状态
+    243           * @param[in] unsigned char key		需要读取的是哪个Key对应的IO
+    244           * @return  0: low  else: high  
+    245          */
+    246          static unsigned char Keypad_ReadIO(unsigned char key)
+    247          {
+    248          	unsigned char h1=0,h2=0;
+    249          	unsigned int	i;
+    250          reread:
+    251          	if (key == SCAN_KEY)
+    252          	{
+    253          		h1 = GPIO_ReadInputDataBit(GPIOA,GPIO_Pin_0);
+    254          	}
+    255          	else if (key == ERASE_KEY)
+    256          	{
+    257          		h1 = GPIO_ReadInputDataBit(GPIOB,GPIO_Pin_3);
+    258          	}
+    259          
+    260          	//hw_platform_trip_io();
+    261          	for(i=0;i < 10000;i++);	//约1ms(在72M频率下，实测972us)
+    262          	//hw_platform_trip_io();
+    263          
+    264          	if (key == SCAN_KEY)
+    265          	{
+    266          		h2 = GPIO_ReadInputDataBit(GPIOA,GPIO_Pin_0);
+    267          	}
+    268          	else if (key == ERASE_KEY)
+    269          	{
+    270          		h2 = GPIO_ReadInputDataBit(GPIOB,GPIO_Pin_3);
+    271          	}
+    272          
+    273          	if(h1 == h2)
+    274          	{
+    275          		return h1;
+    276          	}
+    277          	else
+    278          	{
+    279          		goto  reread;
+    280          	}
+    281          }
+    282          
+    283          //按住超过2个按键低电平判断周期即认为至少是一次按键单击事件的发生，以20ms周期为例，就是只要按住超过40ms即认为至少发生了有效的按键单击事件
+    284          #define SINGLE_CLICK_TH			2		
+    285          #define LONG_PRESS_TH			300		//按住超过250个按键低电平判断周期即认为是一次按键长按事件的发生，按住超过5S即认为按键长按
+    286          #define DOUBLE_CLICK_INTERVAL	4		//双击，连续两次按键之间的时间不超过80ms即认为是双击
+    287          //定义一个回调函数指针，以供中断处理函数在获取到按键键值时post给其余模块使用时，可以提供不同的方法
+    288          //typedef void (* post_key_method)(unsigned char key_value);
+    289          
+    290          //static void post_key(unsigned char key)
+    291          //{
+    292          //	OSQPost(pEvent_Queue,(void*)key);
+    293          //}
+    294          
+    295          /**
+    296           * @brief 定时器中断处理程序
+    297           * @note 真正判断按键是在20ms定时器中断处理程序完成的
+    298          */
+    299          void Keypad_Timer_ISRHandler(void)
+    300          {
+    301          	if (Keypad_ReadIO(current_press_key) == 0)
+    302          	{
+    303          		if (keypad_state == KEYPAD_STATE_INIT)
+    304          		{
+    305          			press_cnt++;
+    306          			if (press_cnt == SINGLE_CLICK_TH)
+    307          			{
+    308          				keypress_timeout = 0;
+    309          				keypad_state = KEYPAD_STATE_AT_LEAST_CLICK;
+    310          				//if (current_press_key == SCAN_KEY)
+    311          				//{
+    312          				//	hw_platform_start_led_blink(LED_GREEN,3);
+    313          				//	if (device_current_state == STATE_HID_Mode)
+    314          				//	{
+    315          				//		OSQPost(pEvent_Queue,(void*)EVENT_SCAN_KEY_SINGLE_CLICK);
+    316          				//		//keypad_state = KEYPAD_STATE_INIT;
+    317          				//		Keypad_Timer_Disable();
+    318          				//		Keypad_Int_Enable();
+    319          				//	}
+    320          				//}
+    321          			}
+    322          		}
+    323          		else if (keypad_state == KEYPAD_STATE_AT_LEAST_CLICK)
+    324          		{
+    325          			press_cnt++;
+    326          			if (press_cnt == LONG_PRESS_TH)
+    327          			{
+    328          				if (current_press_key == SCAN_KEY)
+    329          				{
+    330          					OSQPost(pEvent_Queue,(void*)EVENT_SCAN_KEY_LONG_PRESS);
+    331          				}
+    332          				else if (current_press_key == ERASE_KEY)
+    333          				{
+    334          					OSQPost(pEvent_Queue,(void*)EVENT_ERASE_KEY_LONG_PRESS);
+    335          				}
+    336          				
+    337          				//keypad_state = KEYPAD_STATE_INIT;
+    338          				//Keypad_Timer_Disable();
+    339          				//Keypad_Int_Enable();
+    340          			}
+    341          		}
+    342          		else if (keypad_state == KEYPAD_STATE_FIRST_CLICK_RELEASE)
+    343          		{
+    344          			keypad_state = KEYPAD_STATE_SECOND_CLICK;
+    345          			press_cnt = 0;
+    346          		}
+    347          		else if (keypad_state == KEYPAD_STATE_SECOND_CLICK)
+    348          		{
+    349          			press_cnt++;
+    350          			if (press_cnt == LONG_PRESS_TH)
+    351          			{
+    352          				OSQPost(pEvent_Queue,(void*)EVENT_SCAN_KEY_LONG_PRESS);
+    353          				//Keypad_Timer_Disable();
+    354          				//Keypad_Int_Enable();
+    355          			}
+    356          		}
+    357          	}
+    358          	else
+    359          	{
+    360          		if((current_press_key == SCAN_KEY)||((current_press_key == ERASE_KEY)&&(device_current_state == STATE_Memory_Mode)))
+    361          		{
+    362          			SCANNER_TRIG_OFF();
+    363          			scan_key_trig = 0;
+    364          			hw_platform_stop_led_blink(LED_GREEN);
+    365          		}
+    366          
+    367          		if (keypad_state == KEYPAD_STATE_INIT)
+    368          		{
+    369          			//keypad_state = KEYPAD_STATE_INIT;
+    370          			Keypad_Timer_Disable();
+    371          			Keypad_Int_Enable();
+    372          		}
+    373          		else if (keypad_state == KEYPAD_STATE_AT_LEAST_CLICK)
+    374          		{
+    375          			if (current_press_key == SCAN_KEY)
+    376          			{
+    377          				//OSQPost(pEvent_Queue,(void*)EVENT_SCAN_KEY_SINGLE_CLICK);
+    378          				if (device_current_state == STATE_BT_Mode_Connect)
+    379          				{
+    380          					//只有在蓝牙连接状态下，才需要检测SCAN键的双击行为
+    381          					keypad_state = 	KEYPAD_STATE_FIRST_CLICK_RELEASE;
+    382          					release_cnt = 0;
+    383          				}
+    384          				else
+    385          				{
+    386          					//其余状态下没有必要检测SCAN键的双击行为
+    387          				//	hw_platform_start_led_blink(LED_GREEN,3);
+    388          				//	OSQPost(pEvent_Queue,(void*)EVENT_SCAN_KEY_SINGLE_CLICK);
+    389          					Keypad_Timer_Disable();
+    390          					Keypad_Int_Enable();
+    391          				}
+    392          				
+    393          			}
+    394          			else if (current_press_key == ERASE_KEY)
     395          			{
-    396          				//单击后，在双击间隔时间内没有再次按下按键，及可以确认单击事件的发生
-    397          				//hw_platform_start_led_blink(LED_GREEN,3);
-    398          				//OSQPost(pEvent_Queue,(void*)EVENT_SCAN_KEY_SINGLE_CLICK);
-    399          				Keypad_Timer_Disable();
-    400          				Keypad_Int_Enable();
-    401          			}
-    402          		}
-    403          		else if (keypad_state == KEYPAD_STATE_SECOND_CLICK)
-    404          		{
-    405          			OSQPost(pEvent_Queue,(void*)EVENT_SCAN_KEY_DOUBLE_CLICK);
-    406          			//keypad_state = KEYPAD_STATE_INIT;
-    407          			Keypad_Timer_Disable();
-    408          			Keypad_Int_Enable();
-    409          			hw_platform_stop_led_blink(LED_GREEN);
-    410          		}
-    411          	}
-    412          }
-    413          
+    396          				OSQPost(pEvent_Queue,(void*)EVENT_ERASE_KEY_SINGLE_CLICK);
+    397          				//keypad_state = KEYPAD_STATE_INIT;
+    398          				Keypad_Timer_Disable();
+    399          				Keypad_Int_Enable();
+    400          			}
+    401          		}
+    402          		else if (keypad_state == KEYPAD_STATE_FIRST_CLICK_RELEASE)
+    403          		{
+    404          			release_cnt++;
+    405          			if (release_cnt == DOUBLE_CLICK_INTERVAL)
+    406          			{
+    407          				//单击后，在双击间隔时间内没有再次按下按键，及可以确认单击事件的发生
+    408          				//hw_platform_start_led_blink(LED_GREEN,3);
+    409          				//OSQPost(pEvent_Queue,(void*)EVENT_SCAN_KEY_SINGLE_CLICK);
+    410          				Keypad_Timer_Disable();
+    411          				Keypad_Int_Enable();
+    412          			}
+    413          		}
+    414          		else if (keypad_state == KEYPAD_STATE_SECOND_CLICK)
+    415          		{
+    416          			OSQPost(pEvent_Queue,(void*)EVENT_SCAN_KEY_DOUBLE_CLICK);
+    417          			//keypad_state = KEYPAD_STATE_INIT;
+    418          			Keypad_Timer_Disable();
+    419          			Keypad_Int_Enable();
+    420          			hw_platform_stop_led_blink(LED_GREEN);
+    421          		}
+    422          	}
+    423          }
+    424          
 
    Maximum stack usage in bytes:
 
@@ -480,22 +491,24 @@ E:\H520B\FW\src\Drivers\keypad.c
      Keypad_Timer_Enable       20
      Keypad_Timer_Disable      12
      Keypad_Init               16
-     Keypad_EXTI_ISRHandler    80
+     Keypad_EXTI_ISRHandler   134
      Keypad_ReadIO            106
-     Keypad_Timer_ISRHandler  392
+     Keypad_Timer_ISRHandler  404
      ??DataTable9               4
-     ??DataTable19              4
-     ??DataTable38              4
-     ??DataTable40              4
-     ??DataTable41              4
-     ??DataTable46              4
-     ??DataTable48              4
+     ??DataTable24              4
+     ??DataTable45              4
+     ??DataTable50              4
+     ??DataTable51              4
+     ??DataTable55              4
+     ??DataTable57              4
+     ??DataTable60              4
+     ??DataTable61              4
 
  
     11 bytes in section .bss
- 1 042 bytes in section .text
+ 1 116 bytes in section .text
  
- 1 042 bytes of CODE memory
+ 1 116 bytes of CODE memory
     11 bytes of DATA memory
 
 Errors: none

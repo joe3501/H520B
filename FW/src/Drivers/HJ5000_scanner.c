@@ -681,11 +681,12 @@ int HJ5000_RxISRHandler(unsigned char c)
 
 		if (scan_key_trig)
 		{
-			scan_key_trig = 0;
-			OSQPost(pEvent_Queue,(void*)EVENT_SCAN_GOT_BARCODE);
+			
+			OSQPost(pEvent_Queue,(scan_key_trig == 1)?(void*)EVENT_SCAN_GOT_BARCODE:(void*)EVENT_ERASE_GOT_BARCODE);
 			i = (((g_resCmd.CmdPos-1) > MAX_BARCODE_LEN)?MAX_BARCODE_LEN:(g_resCmd.CmdPos-1));
 			memcpy(barcode, &g_resCmd.CmdBuffer[0], i);
 			barcode[i] = 0;
+                        scan_key_trig = 0;
 		}
 	}
 

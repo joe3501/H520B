@@ -214,12 +214,23 @@ void Keypad_EXTI_ISRHandler(unsigned char	exti_line)
 	{
 		reset_resVar();
 		SCANNER_TRIG_ON();
-                hw_platform_start_led_blink(LED_GREEN,3);
+        hw_platform_start_led_blink(LED_GREEN,3);
 		scan_key_trig = 1;
 		current_press_key = SCAN_KEY;
+		if(device_current_state ==  STATE_BT_Mode_WaitPair)
+		{
+			OSQPost(pEvent_Queue,(void*)EVENT_SCAN_KEY_SINGLE_CLICK);
+		}
 	}
 	else if (exti_line == ERASE_KEY_EXTI_INT)
 	{
+		if (device_current_state == STATE_Memory_Mode)
+		{
+			reset_resVar();
+			SCANNER_TRIG_ON();
+			hw_platform_start_led_blink(LED_GREEN,3);
+			scan_key_trig = 2;
+		}
 		current_press_key = ERASE_KEY;
 	}
 	press_cnt = 0;
@@ -271,7 +282,7 @@ reread:
 
 //按住超过2个按键低电平判断周期即认为至少是一次按键单击事件的发生，以20ms周期为例，就是只要按住超过40ms即认为至少发生了有效的按键单击事件
 #define SINGLE_CLICK_TH			2		
-#define LONG_PRESS_TH			250		//按住超过250个按键低电平判断周期即认为是一次按键长按事件的发生，按住超过5S即认为按键长按
+#define LONG_PRESS_TH			300		//按住超过250个按键低电平判断周期即认为是一次按键长按事件的发生，按住超过5S即认为按键长按
 #define DOUBLE_CLICK_INTERVAL	4		//双击，连续两次按键之间的时间不超过80ms即认为是双击
 //定义一个回调函数指针，以供中断处理函数在获取到按键键值时post给其余模块使用时，可以提供不同的方法
 //typedef void (* post_key_method)(unsigned char key_value);
@@ -346,7 +357,7 @@ void Keypad_Timer_ISRHandler(void)
 	}
 	else
 	{
-		if(current_press_key == SCAN_KEY)
+		if((current_press_key == SCAN_KEY)||((current_press_key == ERASE_KEY)&&(device_current_state == STATE_Memory_Mode)))
 		{
 			SCANNER_TRIG_OFF();
 			scan_key_trig = 0;

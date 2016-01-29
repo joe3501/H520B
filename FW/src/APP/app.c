@@ -250,10 +250,12 @@ static inline void enter_into_BT_Mode(unsigned char child_state)
 	}
 	else if (child_state == 0)
 	{
+		hw_platform_beep_ctrl(300,3000);
 		hw_platform_start_led_blink(LED_BLUE,150);
 	}
 	else
 	{
+		hw_platform_beep_ctrl(300,3000);
 		hw_platform_led_ctrl(LED_BLUE,1);
 	}
 	g_param.last_state = 0;
@@ -400,7 +402,7 @@ void State_Machine_thread(void *p)
 				break;
 			case EVENT_SCAN_KEY_LONG_PRESS:
 				//切换到Memory Mode
-				hw_platform_stop_led_blink(LED_GREEN);
+				//hw_platform_stop_led_blink(LED_GREEN);
 				exit_from_BT_Mode(0);
 				device_current_state = STATE_Memory_Mode;
 				hw_platform_beep_ctrl(300,3000);
@@ -488,7 +490,7 @@ repost:
 				}
 				break;
 			case EVENT_SCAN_KEY_LONG_PRESS:
-				hw_platform_stop_led_blink(LED_GREEN);
+				//hw_platform_stop_led_blink(LED_GREEN);
 				//切换到Memory mode
 				exit_from_BT_Mode(1);
 				device_current_state = STATE_Memory_Mode;
@@ -539,7 +541,11 @@ repost:
 		{
 			switch(event)
 			{
-			//case EVENT_SCAN_KEY_SINGLE_CLICK:
+			case EVENT_SCAN_KEY_SINGLE_CLICK:
+				exit_from_BT_Mode(2);
+				device_current_state = STATE_BT_Mode_Disconnect;
+				//hw_platform_beep_ctrl(300,3000);
+				enter_into_BT_Mode(0);
 			//case EVENT_SCAN_KEY_DOUBLE_CLICK:
 			//	ret = scanner_get_barcode(barcode,MAX_BARCODE_LEN,codetype,&codelen);	//扫描条码
 			//	hw_platform_stop_led_blink(LED_GREEN);
@@ -555,7 +561,7 @@ repost:
 				//只是扫描到条码而已，什么都不做
 				break;
 			case EVENT_SCAN_KEY_LONG_PRESS:
-				hw_platform_stop_led_blink(LED_GREEN);
+				//hw_platform_stop_led_blink(LED_GREEN);
 				//切换到Memory Mode
 				exit_from_BT_Mode(2);
 				device_current_state = STATE_Memory_Mode;
@@ -563,6 +569,10 @@ repost:
 				enter_into_Memory_Mode();
 				break;
 			case EVENT_ERASE_KEY_SINGLE_CLICK:
+				//exit_from_BT_Mode(2);
+				//device_current_state = STATE_BT_Mode_Disconnect;
+				//hw_platform_beep_ctrl(300,3000);
+				//enter_into_BT_Mode(0);
 				break;
 			case EVENT_ERASE_KEY_LONG_PRESS:
 				//已经是配对模式，什么都不做
@@ -625,19 +635,20 @@ repost:
 				}
 				break;
 			case EVENT_SCAN_KEY_LONG_PRESS:
-				hw_platform_stop_led_blink(LED_GREEN);
+				//hw_platform_stop_led_blink(LED_GREEN);
 				//切换至蓝牙模式
 				exit_from_Memory_Mode();
 				device_current_state = STATE_BT_Mode_Disconnect;
 				enter_into_BT_Mode(0);
 				break;
-			case EVENT_ERASE_KEY_SINGLE_CLICK:
-				//删除扫到的条码对应的最后一笔资料
-				ret = scanner_get_barcode(barcode,MAX_BARCODE_LEN,codetype,&codelen);
-				if (ret != 0)
-				{
-					break;
-				}
+			//case EVENT_ERASE_KEY_SINGLE_CLICK:
+			//	//删除扫到的条码对应的最后一笔资料
+			//	ret = scanner_get_barcode(barcode,MAX_BARCODE_LEN,codetype,&codelen);
+			//	if (ret != 0)
+			//	{
+			//		break;
+			//	}
+			case EVENT_ERASE_GOT_BARCODE:
 				scan_barcode_ok_tip();
 				if (lowpower_state)
 				{
@@ -706,7 +717,7 @@ repost:
 				barcode_hid_send(barcode);
 				break;
 			case EVENT_SCAN_KEY_LONG_PRESS:
-				hw_platform_stop_led_blink(LED_GREEN);
+				//hw_platform_stop_led_blink(LED_GREEN);
 				break;
 			case EVENT_ERASE_KEY_SINGLE_CLICK:
 				break;
@@ -802,27 +813,45 @@ void Event_capture_thread(void *p)
 		}
 		else
 		{
-			//判断电池电量低
-			if (hw_platform_get_PowerClass() == 0)
+			if(hw_platform_USBcable_Insert_Detect())
 			{
-				lowpower_cnt++;
-				if (lowpower_cnt>10)
+				//正在充电
+				if (hw_platform_ChargeState_Detect())
 				{
-#ifdef DEBUG_VER
-					printf("low power detected!\r\n");
-#endif
-					if (lowpower_state == 0)
-					{
-						OSQPost(pEvent_Queue,(void*)EVENT_LOW_POWER);
-						lowpower_state = 1;
-					}
-					
+					//充电完成
+					hw_platform_led_ctrl(LED_RED,0);
+				}
+				else
+				{
+					hw_platform_led_ctrl(LED_RED,1);
 				}
 			}
 			else
 			{
-				lowpower_cnt = 0;
+				hw_platform_led_ctrl(LED_RED,0);
+				//判断电池电量低
+				if (hw_platform_get_PowerClass() == 0)
+				{
+					lowpower_cnt++;
+					if (lowpower_cnt>10)
+					{
+#ifdef DEBUG_VER
+						printf("low power detected!\r\n");
+#endif
+						if (lowpower_state == 0)
+						{
+							OSQPost(pEvent_Queue,(void*)EVENT_LOW_POWER);
+							lowpower_state = 1;
+						}
+
+					}
+				}
+				else
+				{
+					lowpower_cnt = 0;
+				}
 			}
+			
 
 			if (bDeviceState == CONFIGURED)
 			{
@@ -924,7 +953,7 @@ void BT_Daemon_thread(void *p)
 			}
 			else
 			{
-				if ((ret == BT_MODULE_STATUS_DISCONNECT)&&(device_current_state != STATE_BT_Mode_WaitPair))
+				if ((ret == BT_MODULE_STATUS_DISCONNECT)&&(device_current_state == STATE_BT_Mode_Disconnect))
 				{
 					//发送一个键值，试图重连蓝牙主机
 					//BT816_hid_send("1",1);

@@ -1,6 +1,6 @@
 ###############################################################################
 #                                                                             #
-# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     26/Jan/2016  15:31:53 #
+# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     27/Jan/2016  10:53:45 #
 # Copyright 1999-2009 IAR Systems AB.                                         #
 #                                                                             #
 #    Cpu mode     =  thumb                                                    #
@@ -719,108 +719,109 @@ E:\H520B\FW\src\Drivers\HJ5000_scanner.c
     681          
     682          		if (scan_key_trig)
     683          		{
-    684          			scan_key_trig = 0;
-    685          			OSQPost(pEvent_Queue,(void*)EVENT_SCAN_GOT_BARCODE);
+    684          			
+    685          			OSQPost(pEvent_Queue,(scan_key_trig == 1)?(void*)EVENT_SCAN_GOT_BARCODE:(void*)EVENT_ERASE_GOT_BARCODE);
     686          			i = (((g_resCmd.CmdPos-1) > MAX_BARCODE_LEN)?MAX_BARCODE_LEN:(g_resCmd.CmdPos-1));
     687          			memcpy(barcode, &g_resCmd.CmdBuffer[0], i);
     688          			barcode[i] = 0;
-    689          		}
-    690          	}
-    691          
-    692          	if (g_resCmd.CmdPos >= G_RECEIV_BUF_LENGTH)
-    693          	{
-    694          		reset_resVar();
-    695          		g_resCmd.status = RES_UNKOWN_MSG;
-    696          		return -1;
-    697          	}
-    698          
-    699          	return 0;
-    700          }
-    701          
+    689                                  scan_key_trig = 0;
+    690          		}
+    691          	}
+    692          
+    693          	if (g_resCmd.CmdPos >= G_RECEIV_BUF_LENGTH)
+    694          	{
+    695          		reset_resVar();
+    696          		g_resCmd.status = RES_UNKOWN_MSG;
+    697          		return -1;
+    698          	}
+    699          
+    700          	return 0;
+    701          }
     702          
-    703          /*
-    704          * @breif:  开始 或 停止扫描条码
-    705          * @param[in]: ctrl_type: UE988_START_DECODE  UE988_STOP_DECODE
-    706          */
-    707          void HJ5000_start_stop_decode(unsigned char ctrl_type)
-    708          {
-    709          	int ret;
-    710          	if (ctrl_type == HJ5000_START_DECODE)
-    711          	{
-    712          		//ret = pack_ctrl_command(HJ5000_START_DECODE);
-    713          		SCANNER_TRIG_ON();
-    714          	}
-    715          	else
-    716          	{
-    717          		//ret = pack_ctrl_command(HJ5000_STOP_DECODE);
-    718          		SCANNER_TRIG_OFF();
-    719          	}
-    720          	//if(ret)
-    721          	//{
-    722          	//	//g_ack_enable = 0;
-    723          	//	ret = write_cmd_to_scanner(g_pReqCmd, ret);
-    724          	//	//g_ack_enable = 1;
-    725          	//}
-    726          
-    727          	return;
-    728          }
-    729          
-    730          /*
-    731          * @breif:  获取条形码
-    732          * @param[out]: unsigned char *code_type: 条形码类型		10个字节
-    733          * @param[out]: unsigned char *code_buf: 存储条形码的缓存, code Type + decode data
-    734          * @param[in]:  unsigned char inbuf_size: 传进来用来存放decode_data的buf大小
-    735          * @param[out]  unsigned char *code_len:	 实际获取的条形码的长度，如果实际获取的长度比传进来的buf大，那么只返回传进来的buf大小的数据
-    736          */
-    737          int scanner_get_barcode(unsigned char *barcode,unsigned int max_num,unsigned char *barcode_type,unsigned int *barcode_len)
-    738          {
-    739          	int		i = 0;
-    740          
-    741          	//start decode
-    742          	HJ5000_start_stop_decode(HJ5000_START_DECODE);
-    743          	reset_resVar();
-    744              for(i = 0; i < wait_time_out; i++)   //新扫描头的超时只有3S左右
-    745          	{
-    746          		if (g_resCmd.status == RESPONSE_SUCCESS) //成功收到响应
-    747          		{
-    748          			HJ5000_start_stop_decode(HJ5000_STOP_DECODE);
-    749          			*barcode_len	= g_resCmd.CmdPos-1;
-    750          			i = ((*barcode_len > max_num)?max_num:*barcode_len);
-    751          			memcpy(barcode, &g_resCmd.CmdBuffer[0], i);
-    752          			barcode[i] = 0;
-    753          			strcpy((char*)barcode_type, "");
-    754          			//Beep(400);
-    755          			return 0;
-    756          		}//成功收到响应
-    757          		//else if (g_resCmd.status == RESPONSE_NAK)	//响应失败
-    758          		//{
-    759          		//	lineccd_start_stop_decode(LINECCD_STOP_DECODE);
-    760          		//	return -1;
-    761          		//}
-    762          		//else if (g_resCmd.status == RES_CHECKFAILURE)
-    763          		//{
-    764          		//	send_nak_to_sanner(RES_CHECKFAILURE);	
-    765          		//	lineccd_start_stop_decode(LINECCD_STOP_DECODE);
-    766          		//	return -1;
-    767          		//}
-    768          		else if (g_resCmd.status == RES_UNKOWN_MSG)
-    769          		{
-    770          			HJ5000_start_stop_decode(HJ5000_STOP_DECODE);
-    771          			return -1;
-    772          		}
-    773          
-    774          		OSTimeDlyHMSM(0, 0, 0, 100);
-    775          	}//延时
-    776          
-    777          	HJ5000_start_stop_decode(HJ5000_STOP_DECODE);
-    778          	return -1;
-    779          }
-    780          
+    703          
+    704          /*
+    705          * @breif:  开始 或 停止扫描条码
+    706          * @param[in]: ctrl_type: UE988_START_DECODE  UE988_STOP_DECODE
+    707          */
+    708          void HJ5000_start_stop_decode(unsigned char ctrl_type)
+    709          {
+    710          	int ret;
+    711          	if (ctrl_type == HJ5000_START_DECODE)
+    712          	{
+    713          		//ret = pack_ctrl_command(HJ5000_START_DECODE);
+    714          		SCANNER_TRIG_ON();
+    715          	}
+    716          	else
+    717          	{
+    718          		//ret = pack_ctrl_command(HJ5000_STOP_DECODE);
+    719          		SCANNER_TRIG_OFF();
+    720          	}
+    721          	//if(ret)
+    722          	//{
+    723          	//	//g_ack_enable = 0;
+    724          	//	ret = write_cmd_to_scanner(g_pReqCmd, ret);
+    725          	//	//g_ack_enable = 1;
+    726          	//}
+    727          
+    728          	return;
+    729          }
+    730          
+    731          /*
+    732          * @breif:  获取条形码
+    733          * @param[out]: unsigned char *code_type: 条形码类型		10个字节
+    734          * @param[out]: unsigned char *code_buf: 存储条形码的缓存, code Type + decode data
+    735          * @param[in]:  unsigned char inbuf_size: 传进来用来存放decode_data的buf大小
+    736          * @param[out]  unsigned char *code_len:	 实际获取的条形码的长度，如果实际获取的长度比传进来的buf大，那么只返回传进来的buf大小的数据
+    737          */
+    738          int scanner_get_barcode(unsigned char *barcode,unsigned int max_num,unsigned char *barcode_type,unsigned int *barcode_len)
+    739          {
+    740          	int		i = 0;
+    741          
+    742          	//start decode
+    743          	HJ5000_start_stop_decode(HJ5000_START_DECODE);
+    744          	reset_resVar();
+    745              for(i = 0; i < wait_time_out; i++)   //新扫描头的超时只有3S左右
+    746          	{
+    747          		if (g_resCmd.status == RESPONSE_SUCCESS) //成功收到响应
+    748          		{
+    749          			HJ5000_start_stop_decode(HJ5000_STOP_DECODE);
+    750          			*barcode_len	= g_resCmd.CmdPos-1;
+    751          			i = ((*barcode_len > max_num)?max_num:*barcode_len);
+    752          			memcpy(barcode, &g_resCmd.CmdBuffer[0], i);
+    753          			barcode[i] = 0;
+    754          			strcpy((char*)barcode_type, "");
+    755          			//Beep(400);
+    756          			return 0;
+    757          		}//成功收到响应
+    758          		//else if (g_resCmd.status == RESPONSE_NAK)	//响应失败
+    759          		//{
+    760          		//	lineccd_start_stop_decode(LINECCD_STOP_DECODE);
+    761          		//	return -1;
+    762          		//}
+    763          		//else if (g_resCmd.status == RES_CHECKFAILURE)
+    764          		//{
+    765          		//	send_nak_to_sanner(RES_CHECKFAILURE);	
+    766          		//	lineccd_start_stop_decode(LINECCD_STOP_DECODE);
+    767          		//	return -1;
+    768          		//}
+    769          		else if (g_resCmd.status == RES_UNKOWN_MSG)
+    770          		{
+    771          			HJ5000_start_stop_decode(HJ5000_STOP_DECODE);
+    772          			return -1;
+    773          		}
+    774          
+    775          		OSTimeDlyHMSM(0, 0, 0, 100);
+    776          	}//延时
+    777          
+    778          	HJ5000_start_stop_decode(HJ5000_STOP_DECODE);
+    779          	return -1;
+    780          }
     781          
-    782          void scanner_power_off(void)
-    783          {
-    784          	//GPIO_SetBits(SCANNER_POWER_EN_GPIO_PORT,SCANNER_POWER_EN_PIN);
-    785          }
+    782          
+    783          void scanner_power_off(void)
+    784          {
+    785          	//GPIO_SetBits(SCANNER_POWER_EN_GPIO_PORT,SCANNER_POWER_EN_PIN);
+    786          }
 
    Maximum stack usage in bytes:
 
@@ -865,7 +866,7 @@ E:\H520B\FW\src\Drivers\HJ5000_scanner.c
      scanner_mod_reset          20
      HJ5000_set_default         26
      scanner_mod_init          108
-     HJ5000_RxISRHandler       172
+     HJ5000_RxISRHandler       184
      HJ5000_start_stop_decode   32
      scanner_get_barcode       152
      scanner_power_off           2
@@ -879,9 +880,9 @@ E:\H520B\FW\src\Drivers\HJ5000_scanner.c
  
    180 bytes in section .bss
      1 byte  in section .rodata
- 1 116 bytes in section .text
+ 1 128 bytes in section .text
  
- 1 082 bytes of CODE  memory (+ 34 bytes shared)
+ 1 094 bytes of CODE  memory (+ 34 bytes shared)
      1 byte  of CONST memory
    180 bytes of DATA  memory
 

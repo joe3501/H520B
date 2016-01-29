@@ -125,7 +125,7 @@ static void platform_misc_port_init(void)
 	EXTI_ClearITPendingBit(EXTI_Line1);
 	EXTI_InitStructure.EXTI_Line = EXTI_Line1;
 	EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Falling;
+	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
 	EXTI_InitStructure.EXTI_LineCmd = ENABLE;
 	EXTI_Init(&EXTI_InitStructure); 
 	EXTI_GenerateSWInterrupt(EXTI_Line1);
@@ -549,34 +549,46 @@ void hw_platform_stop_led_blink(unsigned int led)
 	if (led == LED_RED)
 	{
 		hw_platform_led_ctrl(LED_RED,0);
-		current_led_state &= ~LED_RED_MASK;
-		current_led_state &= ~LED_RED_ON_MASK;
-		ret = stop_timer(led_timer_h[0]);
-		assert(ret == 0);
+		if (current_led_state & LED_RED_ON_MASK)
+		{
+			current_led_state &= ~LED_RED_MASK;
+			current_led_state &= ~LED_RED_ON_MASK;
+			ret = stop_timer(led_timer_h[0]);
+			assert(ret == 0);
+		}
 	}
 	else if (led == LED_BLUE)
 	{
 		hw_platform_led_ctrl(LED_BLUE,0);
-		current_led_state &= ~LED_BLUE_MASK;
-		current_led_state &= ~LED_BLUE_ON_MASK;
-		ret = stop_timer(led_timer_h[1]);
-		assert(ret == 0);
+		if (current_led_state & LED_BLUE_ON_MASK)
+		{
+			current_led_state &= ~LED_BLUE_MASK;
+			current_led_state &= ~LED_BLUE_ON_MASK;
+			ret = stop_timer(led_timer_h[1]);
+			assert(ret == 0);
+		}
 	}
 	else if (led == LED_GREEN)
 	{
 		hw_platform_led_ctrl(LED_GREEN,0);
-		current_led_state &= ~LED_GREEN_MASK;
-		current_led_state &= ~LED_GREEN_ON_MASK;
-		ret = stop_timer(led_timer_h[2]);
-		assert(ret == 0);
+		if (current_led_state & LED_GREEN_ON_MASK)
+		{
+			current_led_state &= ~LED_GREEN_MASK;
+			current_led_state &= ~LED_GREEN_ON_MASK;
+			ret = stop_timer(led_timer_h[2]);
+			assert(ret == 0);
+		}
 	}
 	else
 	{
 		hw_platform_led_ctrl(LED_YELLOW,0);
-		current_led_state &= ~LED_YELLOW_MASK;
-		current_led_state &= ~LED_YELLOW_ON_MASK;
-		ret = stop_timer(led_timer_h[3]);
-		assert(ret == 0);
+		if (current_led_state & LED_YELLOW_ON_MASK)
+		{
+			current_led_state &= ~LED_YELLOW_MASK;
+			current_led_state &= ~LED_YELLOW_ON_MASK;
+			ret = stop_timer(led_timer_h[3]);
+			assert(ret == 0);
+		}
 	}
 }
 

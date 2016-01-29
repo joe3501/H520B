@@ -1,6 +1,6 @@
 ###############################################################################
 #                                                                             #
-# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     26/Jan/2016  15:31:53 #
+# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     29/Jan/2016  11:09:22 #
 # Copyright 1999-2009 IAR Systems AB.                                         #
 #                                                                             #
 #    Cpu mode     =  thumb                                                    #
@@ -169,7 +169,7 @@ E:\H520B\FW\src\App\Terminal_Para_m.c
     131          	//构造默认的终端参数
     132          	g_param.beep_volume = 3;		
     133          	//g_param.power_save_mode = 1;		//默认支持节能模式
-    134          	g_param.lower_power_timeout = 0;	//默认1分钟进入低功耗模式
+    134          	g_param.lower_power_timeout = 1;	//默认1分钟进入低功耗模式
     135          	g_param.motor_enable = 1;
     136          	
     137          	return SaveTerminalPara();

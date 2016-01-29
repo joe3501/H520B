@@ -1,6 +1,6 @@
 ###############################################################################
 #                                                                             #
-# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     26/Jan/2016  15:31:56 #
+# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     29/Jan/2016  16:04:07 #
 # Copyright 1999-2009 IAR Systems AB.                                         #
 #                                                                             #
 #    Cpu mode     =  thumb                                                    #
@@ -162,7 +162,7 @@ E:\H520B\FW\src\Drivers\hw_platform.c
     125          	EXTI_ClearITPendingBit(EXTI_Line1);
     126          	EXTI_InitStructure.EXTI_Line = EXTI_Line1;
     127          	EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-    128          	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Falling;
+    128          	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
     129          	EXTI_InitStructure.EXTI_LineCmd = ENABLE;
     130          	EXTI_Init(&EXTI_InitStructure); 
     131          	EXTI_GenerateSWInterrupt(EXTI_Line1);
@@ -586,79 +586,91 @@ E:\H520B\FW\src\Drivers\hw_platform.c
     549          	if (led == LED_RED)
     550          	{
     551          		hw_platform_led_ctrl(LED_RED,0);
-    552          		current_led_state &= ~LED_RED_MASK;
-    553          		current_led_state &= ~LED_RED_ON_MASK;
-    554          		ret = stop_timer(led_timer_h[0]);
-    555          		assert(ret == 0);
-    556          	}
-    557          	else if (led == LED_BLUE)
-    558          	{
-    559          		hw_platform_led_ctrl(LED_BLUE,0);
-    560          		current_led_state &= ~LED_BLUE_MASK;
-    561          		current_led_state &= ~LED_BLUE_ON_MASK;
-    562          		ret = stop_timer(led_timer_h[1]);
-    563          		assert(ret == 0);
-    564          	}
-    565          	else if (led == LED_GREEN)
-    566          	{
-    567          		hw_platform_led_ctrl(LED_GREEN,0);
-    568          		current_led_state &= ~LED_GREEN_MASK;
-    569          		current_led_state &= ~LED_GREEN_ON_MASK;
-    570          		ret = stop_timer(led_timer_h[2]);
-    571          		assert(ret == 0);
-    572          	}
-    573          	else
-    574          	{
-    575          		hw_platform_led_ctrl(LED_YELLOW,0);
-    576          		current_led_state &= ~LED_YELLOW_MASK;
-    577          		current_led_state &= ~LED_YELLOW_ON_MASK;
-    578          		ret = stop_timer(led_timer_h[3]);
-    579          		assert(ret == 0);
-    580          	}
-    581          }
-    582          
-    583          /**
-    584           * @brief 调试IO
-    585          */
-    586          void hw_platform_trip_io(void)
-    587          {
-    588          	GPIO_ResetBits(GPIOB, GPIO_Pin_8);
-    589          	GPIO_SetBits(GPIOB, GPIO_Pin_8);
-    590          }
-    591          
-    592          
-    593          //测试LED的闪烁接口
-    594          void hw_platform_led_blink_test(void)
-    595          {
-    596          	hw_platform_start_led_blink(LED_RED,6);
-    597          	OSTimeDlyHMSM(0,0,10,0);
-    598          	hw_platform_start_led_blink(LED_BLUE,20);
-    599          	OSTimeDlyHMSM(0,0,10,0);
-    600          	hw_platform_start_led_blink(LED_GREEN,50);
-    601          	OSTimeDlyHMSM(0,0,10,0);
-    602          	hw_platform_start_led_blink(LED_YELLOW,300);
+    552          		if (current_led_state & LED_RED_ON_MASK)
+    553          		{
+    554          			current_led_state &= ~LED_RED_MASK;
+    555          			current_led_state &= ~LED_RED_ON_MASK;
+    556          			ret = stop_timer(led_timer_h[0]);
+    557          			assert(ret == 0);
+    558          		}
+    559          	}
+    560          	else if (led == LED_BLUE)
+    561          	{
+    562          		hw_platform_led_ctrl(LED_BLUE,0);
+    563          		if (current_led_state & LED_BLUE_ON_MASK)
+    564          		{
+    565          			current_led_state &= ~LED_BLUE_MASK;
+    566          			current_led_state &= ~LED_BLUE_ON_MASK;
+    567          			ret = stop_timer(led_timer_h[1]);
+    568          			assert(ret == 0);
+    569          		}
+    570          	}
+    571          	else if (led == LED_GREEN)
+    572          	{
+    573          		hw_platform_led_ctrl(LED_GREEN,0);
+    574          		if (current_led_state & LED_GREEN_ON_MASK)
+    575          		{
+    576          			current_led_state &= ~LED_GREEN_MASK;
+    577          			current_led_state &= ~LED_GREEN_ON_MASK;
+    578          			ret = stop_timer(led_timer_h[2]);
+    579          			assert(ret == 0);
+    580          		}
+    581          	}
+    582          	else
+    583          	{
+    584          		hw_platform_led_ctrl(LED_YELLOW,0);
+    585          		if (current_led_state & LED_YELLOW_ON_MASK)
+    586          		{
+    587          			current_led_state &= ~LED_YELLOW_MASK;
+    588          			current_led_state &= ~LED_YELLOW_ON_MASK;
+    589          			ret = stop_timer(led_timer_h[3]);
+    590          			assert(ret == 0);
+    591          		}
+    592          	}
+    593          }
+    594          
+    595          /**
+    596           * @brief 调试IO
+    597          */
+    598          void hw_platform_trip_io(void)
+    599          {
+    600          	GPIO_ResetBits(GPIOB, GPIO_Pin_8);
+    601          	GPIO_SetBits(GPIOB, GPIO_Pin_8);
+    602          }
     603          
-    604          	OSTimeDlyHMSM(0,0,10,0);
-    605          
-    606          	hw_platform_stop_led_blink(LED_RED);
-    607          
-    608          	OSTimeDlyHMSM(0,0,10,0);
-    609          
-    610          	hw_platform_stop_led_blink(LED_BLUE);
-    611          
-    612          	OSTimeDlyHMSM(0,0,10,0);
-    613          
-    614          	hw_platform_stop_led_blink(LED_GREEN);
+    604          
+    605          //测试LED的闪烁接口
+    606          void hw_platform_led_blink_test(void)
+    607          {
+    608          	hw_platform_start_led_blink(LED_RED,6);
+    609          	OSTimeDlyHMSM(0,0,10,0);
+    610          	hw_platform_start_led_blink(LED_BLUE,20);
+    611          	OSTimeDlyHMSM(0,0,10,0);
+    612          	hw_platform_start_led_blink(LED_GREEN,50);
+    613          	OSTimeDlyHMSM(0,0,10,0);
+    614          	hw_platform_start_led_blink(LED_YELLOW,300);
     615          
     616          	OSTimeDlyHMSM(0,0,10,0);
     617          
-    618          	StartDelay(5000);
+    618          	hw_platform_stop_led_blink(LED_RED);
     619          
-    620          	while (DelayIsEnd()==0);
+    620          	OSTimeDlyHMSM(0,0,10,0);
     621          
-    622          	hw_platform_stop_led_blink(LED_YELLOW);
+    622          	hw_platform_stop_led_blink(LED_BLUE);
     623          
-    624          }
+    624          	OSTimeDlyHMSM(0,0,10,0);
+    625          
+    626          	hw_platform_stop_led_blink(LED_GREEN);
+    627          
+    628          	OSTimeDlyHMSM(0,0,10,0);
+    629          
+    630          	StartDelay(5000);
+    631          
+    632          	while (DelayIsEnd()==0);
+    633          
+    634          	hw_platform_stop_led_blink(LED_YELLOW);
+    635          
+    636          }
 
    Maximum stack usage in bytes:
 
@@ -711,8 +723,8 @@ E:\H520B\FW\src\Drivers\hw_platform.c
      led_blue_blink_timer_hook                    36
      led_green_blink_timer_hook                   36
      led_yellow_blink_timer_hook                  36
-     hw_platform_start_led_blink                 552
-     hw_platform_stop_led_blink                  262
+     hw_platform_start_led_blink                 560
+     hw_platform_stop_led_blink                  302
      hw_platform_trip_io                          24
      hw_platform_led_blink_test                  162
      ??DataTable20                                 4
@@ -720,11 +732,11 @@ E:\H520B\FW\src\Drivers\hw_platform.c
      ??DataTable24                                 4
      ??DataTable47                                 4
      ??DataTable48                                 4
-     ??DataTable129                                4
-     ??DataTable130                                4
-     ??DataTable131                                4
-     ??DataTable132                                4
+     ??DataTable133                                4
      ??DataTable134                                4
+     ??DataTable135                                4
+     ??DataTable136                                4
+     ??DataTable138                                4
      ?<Constant "ret == 0">                       12
      ?<Constant "E:\\H520B\\FW\\src\\Drive...">   40
      ?<Constant "led_timer_h[0] != 0">            20
@@ -735,9 +747,9 @@ E:\H520B\FW\src\Drivers\hw_platform.c
  
     29 bytes in section .bss
    132 bytes in section .rodata
- 2 316 bytes in section .text
+ 2 364 bytes in section .text
  
- 2 316 bytes of CODE  memory
+ 2 364 bytes of CODE  memory
    132 bytes of CONST memory
     29 bytes of DATA  memory
 

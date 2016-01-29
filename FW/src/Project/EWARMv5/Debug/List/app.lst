@@ -1,6 +1,6 @@
 ###############################################################################
 #                                                                             #
-# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     26/Jan/2016  15:31:50 #
+# IAR ANSI C/C++ Compiler V5.30.0.51174/W32 for ARM     29/Jan/2016  14:15:44 #
 # Copyright 1999-2009 IAR Systems AB.                                         #
 #                                                                             #
 #    Cpu mode     =  thumb                                                    #
@@ -286,900 +286,929 @@ E:\H520B\FW\src\App\app.c
     250          	}
     251          	else if (child_state == 0)
     252          	{
-    253          		hw_platform_start_led_blink(LED_BLUE,150);
-    254          	}
-    255          	else
-    256          	{
-    257          		hw_platform_led_ctrl(LED_BLUE,1);
-    258          	}
-    259          	g_param.last_state = 0;
-    260          	SaveTerminalPara();
-    261          }
-    262          
-    263          /**
-    264          * @brief	退出BT模式时，需要进行的一些设置
-    265          * @param[in] unsigned char	child_state		0: disconnect  1：connected  2：:waitpair
-    266          */
-    267          static inline void exit_from_BT_Mode(unsigned char child_state)
-    268          {
-    269          #ifdef DEBUG_VER
-    270          	printf("exit from BT Mode:%d\r\n",child_state);
-    271          #endif
-    272          	if (child_state == 1)
-    273          	{
-    274          #if(BT_MODULE == USE_WBTDS01)
-    275          		WBTD_set_autocon(1);
-    276          #else
-    277          		//BT816_set_autocon(0);
-    278          		BT816_hid_disconnect();
-    279          #endif
-    280          		//delay_ms(1);
-    281          		hw_platform_beep_ctrl(300,3000);
-    282          		hw_platform_led_ctrl(LED_BLUE,0);
-    283          #if(BT_MODULE == USE_WBTDS01)
-    284          		WBTD_Reset();//主动断开与蓝牙主机的连接	
-    285          #endif	
-    286          	}
-    287          	else
-    288          	{
-    289          		hw_platform_stop_led_blink(LED_BLUE);
-    290          	}
-    291          }
-    292          
-    293          
-    294          /**
-    295          * @brief	通过USB HID发送条码
-    296          */
-    297          static void barcode_hid_send(unsigned char* barcode)
-    298          {
-    299          	unsigned int	i,code_len;
-    300          	unsigned char key_value_report[8];
-    301          
-    302              code_len = strlen((char const*)barcode);
-    303          	OSSchedLock();
-    304          	for (i = 0; i < code_len; i++)
-    305          	{
-    306          		ascii_to_keyreport(barcode[i],key_value_report);
-    307          
-    308          		SendData_To_PC(key_value_report, 3);
-    309          		SendData_To_PC("\x00\x00\x00", 3);
-    310          	}
-    311          
-    312          	memcpy(key_value_report,"\x00\x00\x28",3);	//换行
+    253          		hw_platform_beep_ctrl(300,3000);
+    254          		hw_platform_start_led_blink(LED_BLUE,150);
+    255          	}
+    256          	else
+    257          	{
+    258          		hw_platform_beep_ctrl(300,3000);
+    259          		hw_platform_led_ctrl(LED_BLUE,1);
+    260          	}
+    261          	g_param.last_state = 0;
+    262          	SaveTerminalPara();
+    263          }
+    264          
+    265          /**
+    266          * @brief	退出BT模式时，需要进行的一些设置
+    267          * @param[in] unsigned char	child_state		0: disconnect  1：connected  2：:waitpair
+    268          */
+    269          static inline void exit_from_BT_Mode(unsigned char child_state)
+    270          {
+    271          #ifdef DEBUG_VER
+    272          	printf("exit from BT Mode:%d\r\n",child_state);
+    273          #endif
+    274          	if (child_state == 1)
+    275          	{
+    276          #if(BT_MODULE == USE_WBTDS01)
+    277          		WBTD_set_autocon(1);
+    278          #else
+    279          		//BT816_set_autocon(0);
+    280          		BT816_hid_disconnect();
+    281          #endif
+    282          		//delay_ms(1);
+    283          		hw_platform_beep_ctrl(300,3000);
+    284          		hw_platform_led_ctrl(LED_BLUE,0);
+    285          #if(BT_MODULE == USE_WBTDS01)
+    286          		WBTD_Reset();//主动断开与蓝牙主机的连接	
+    287          #endif	
+    288          	}
+    289          	else
+    290          	{
+    291          		hw_platform_stop_led_blink(LED_BLUE);
+    292          	}
+    293          }
+    294          
+    295          
+    296          /**
+    297          * @brief	通过USB HID发送条码
+    298          */
+    299          static void barcode_hid_send(unsigned char* barcode)
+    300          {
+    301          	unsigned int	i,code_len;
+    302          	unsigned char key_value_report[8];
+    303          
+    304              code_len = strlen((char const*)barcode);
+    305          	OSSchedLock();
+    306          	for (i = 0; i < code_len; i++)
+    307          	{
+    308          		ascii_to_keyreport(barcode[i],key_value_report);
+    309          
+    310          		SendData_To_PC(key_value_report, 3);
+    311          		SendData_To_PC("\x00\x00\x00", 3);
+    312          	}
     313          
-    314          	SendData_To_PC(key_value_report, 3);
-    315          	SendData_To_PC("\x00\x00\x00", 3);	//弹起
-    316          	OSSchedUnlock();
-    317          }
-    318          
-    319          /**
-    320          * @brief	应用的初始化
-    321          */
-    322          void app_init(void)
-    323          {
-    324          	//创建一个消息队列，用于将事件捕获线程和蓝牙模块线程获取的异步事件通知给主状态机线程
-    325          	pEvent_Queue = OSQCreate((void**)&event_pool,EVENT_CASH_NUM);
-    326          	assert(pEvent_Queue != (OS_EVENT*)0);
-    327          
-    328          	//创建一个消息队列，用于将主状态机线程获取的条码传送到蓝牙模块线程.
-    329          	pBarcode_Queue =OSQCreate((void**)&barcode_pool,BARCODE_CASH_NUM);
-    330          	assert(pBarcode_Queue != (OS_EVENT*)0);
-    331          	memset(barcode_cash,0,BARCODE_CASH_NUM*(MAX_BARCODE_LEN+2));
-    332          
-    333          	//创建一个信号量，用于IO中断通知事件捕获线程，有外部IO产生，需要事件捕获线程开始采取捕获事件的动作
-    334          	pIOSem = OSSemCreate(0);
-    335          	assert(pIOSem != (OS_EVENT*)0);
-    336          
-    337          	lowpower_state = 0;
-    338          	lowpower_cnt = 0;
-    339          }
-    340          
-    341          /**
-    342          * @brief	维护主状态机的线程
-    343          */
-    344          void State_Machine_thread(void *p)
-    345          {
-    346          	unsigned int	i,cnt,event;
-    347          	unsigned char	err;
-    348          	unsigned char   codetype[20];
-    349          	unsigned int    codelen;
-    350          	int				ret,index;
-    351          	unsigned int	last_state;
-    352          	unsigned char	*rec;
-    353          
-    354          	Jfree(p_init_thread_stk);	//退出初始化线程时，释放自己的任务栈
+    314          	memcpy(key_value_report,"\x00\x00\x28",3);	//换行
+    315          
+    316          	SendData_To_PC(key_value_report, 3);
+    317          	SendData_To_PC("\x00\x00\x00", 3);	//弹起
+    318          	OSSchedUnlock();
+    319          }
+    320          
+    321          /**
+    322          * @brief	应用的初始化
+    323          */
+    324          void app_init(void)
+    325          {
+    326          	//创建一个消息队列，用于将事件捕获线程和蓝牙模块线程获取的异步事件通知给主状态机线程
+    327          	pEvent_Queue = OSQCreate((void**)&event_pool,EVENT_CASH_NUM);
+    328          	assert(pEvent_Queue != (OS_EVENT*)0);
+    329          
+    330          	//创建一个消息队列，用于将主状态机线程获取的条码传送到蓝牙模块线程.
+    331          	pBarcode_Queue =OSQCreate((void**)&barcode_pool,BARCODE_CASH_NUM);
+    332          	assert(pBarcode_Queue != (OS_EVENT*)0);
+    333          	memset(barcode_cash,0,BARCODE_CASH_NUM*(MAX_BARCODE_LEN+2));
+    334          
+    335          	//创建一个信号量，用于IO中断通知事件捕获线程，有外部IO产生，需要事件捕获线程开始采取捕获事件的动作
+    336          	pIOSem = OSSemCreate(0);
+    337          	assert(pIOSem != (OS_EVENT*)0);
+    338          
+    339          	lowpower_state = 0;
+    340          	lowpower_cnt = 0;
+    341          }
+    342          
+    343          /**
+    344          * @brief	维护主状态机的线程
+    345          */
+    346          void State_Machine_thread(void *p)
+    347          {
+    348          	unsigned int	i,cnt,event;
+    349          	unsigned char	err;
+    350          	unsigned char   codetype[20];
+    351          	unsigned int    codelen;
+    352          	int				ret,index;
+    353          	unsigned int	last_state;
+    354          	unsigned char	*rec;
     355          
-    356          	//hw_platform_led_blink_test();		//for test
-    357          	//lowpower_tip();					//for test
-    358          	//record_m_test();					//for test
-    359          	
-    360          	while(1)
-    361          	{
-    362          		event = (unsigned int)OSQPend(pEvent_Queue,25,&err);
-    363          		if (event == 0)
-    364          		{
-    365          			if ((g_param.lower_power_timeout)&&(device_current_state != STATE_HID_Mode))
-    366          			{
-    367          				keypress_timeout++;
-    368          				if (keypress_timeout == g_param.lower_power_timeout*4*60)
-    369          				{
-    370          					hw_platform_beep_ctrl(500,3000);
-    371          #ifndef DEBUG_VER
-    372          					EnterLowPowerMode();
-    373          					ExitLowPowerMode();
-    374          #endif	
-    375          					hw_platform_beep_ctrl(500,3000);
-    376          				}
-    377          			}
-    378          			continue;
-    379          		}
-    380          #ifdef DEBUG_VER
-    381          		printf("current state:%d\r\n",device_current_state);
-    382          		printf("event:%d\r\n",event);
-    383          #endif
-    384          		if(device_current_state ==  STATE_BT_Mode_Disconnect)
-    385          		{
-    386          			switch(event)
-    387          			{
-    388          			//case EVENT_SCAN_KEY_SINGLE_CLICK:
-    389          			//case EVENT_SCAN_KEY_DOUBLE_CLICK:
-    390          			//	ret = scanner_get_barcode(barcode,MAX_BARCODE_LEN,codetype,&codelen);	//扫描条码
-    391          			//	hw_platform_stop_led_blink(LED_GREEN);
-    392          			//	if (ret == 0)
-    393          			case EVENT_SCAN_GOT_BARCODE:
-    394          				scan_barcode_ok_tip();
-    395          				if (lowpower_state)
-    396          				{
-    397          					lowpower_tip();
-    398          				}
-    399          				//只是扫描到条码而已，什么都不做
-    400          				break;
-    401          			case EVENT_SCAN_KEY_LONG_PRESS:
-    402          				//切换到Memory Mode
-    403          				hw_platform_stop_led_blink(LED_GREEN);
-    404          				exit_from_BT_Mode(0);
-    405          				device_current_state = STATE_Memory_Mode;
-    406          				hw_platform_beep_ctrl(300,3000);
-    407          				enter_into_Memory_Mode();
-    408          				break;
-    409          			case EVENT_ERASE_KEY_SINGLE_CLICK:
+    356          	Jfree(p_init_thread_stk);	//退出初始化线程时，释放自己的任务栈
+    357          
+    358          	//hw_platform_led_blink_test();		//for test
+    359          	//lowpower_tip();					//for test
+    360          	//record_m_test();					//for test
+    361          	
+    362          	while(1)
+    363          	{
+    364          		event = (unsigned int)OSQPend(pEvent_Queue,25,&err);
+    365          		if (event == 0)
+    366          		{
+    367          			if ((g_param.lower_power_timeout)&&(device_current_state != STATE_HID_Mode))
+    368          			{
+    369          				keypress_timeout++;
+    370          				if (keypress_timeout == g_param.lower_power_timeout*4*60)
+    371          				{
+    372          					hw_platform_beep_ctrl(500,3000);
+    373          #ifndef DEBUG_VER
+    374          					EnterLowPowerMode();
+    375          					ExitLowPowerMode();
+    376          #endif	
+    377          					hw_platform_beep_ctrl(500,3000);
+    378          				}
+    379          			}
+    380          			continue;
+    381          		}
+    382          #ifdef DEBUG_VER
+    383          		printf("current state:%d\r\n",device_current_state);
+    384          		printf("event:%d\r\n",event);
+    385          #endif
+    386          		if(device_current_state ==  STATE_BT_Mode_Disconnect)
+    387          		{
+    388          			switch(event)
+    389          			{
+    390          			//case EVENT_SCAN_KEY_SINGLE_CLICK:
+    391          			//case EVENT_SCAN_KEY_DOUBLE_CLICK:
+    392          			//	ret = scanner_get_barcode(barcode,MAX_BARCODE_LEN,codetype,&codelen);	//扫描条码
+    393          			//	hw_platform_stop_led_blink(LED_GREEN);
+    394          			//	if (ret == 0)
+    395          			case EVENT_SCAN_GOT_BARCODE:
+    396          				scan_barcode_ok_tip();
+    397          				if (lowpower_state)
+    398          				{
+    399          					lowpower_tip();
+    400          				}
+    401          				//只是扫描到条码而已，什么都不做
+    402          				break;
+    403          			case EVENT_SCAN_KEY_LONG_PRESS:
+    404          				//切换到Memory Mode
+    405          				//hw_platform_stop_led_blink(LED_GREEN);
+    406          				exit_from_BT_Mode(0);
+    407          				device_current_state = STATE_Memory_Mode;
+    408          				hw_platform_beep_ctrl(300,3000);
+    409          				enter_into_Memory_Mode();
     410          				break;
-    411          			case EVENT_ERASE_KEY_LONG_PRESS:
-    412          				//切换到配对模式
-    413          				exit_from_BT_Mode(0);
-    414          				device_current_state = STATE_BT_Mode_WaitPair;
-    415          				enter_into_BT_Mode(2);
-    416          				break;
-    417          			case EVENT_RESET_KEY_PRESS:
+    411          			case EVENT_ERASE_KEY_SINGLE_CLICK:
+    412          				break;
+    413          			case EVENT_ERASE_KEY_LONG_PRESS:
+    414          				//切换到配对模式
+    415          				exit_from_BT_Mode(0);
+    416          				device_current_state = STATE_BT_Mode_WaitPair;
+    417          				enter_into_BT_Mode(2);
     418          				break;
-    419          			case EVENT_BT_CONNECTED:
-    420          				//切换到蓝牙连接模式
-    421          				exit_from_BT_Mode(0);
-    422          				device_current_state = STATE_BT_Mode_Connect;
-    423          				enter_into_BT_Mode(1);
-    424          				break;
-    425          			case EVENT_BT_DISCONNECTED:
+    419          			case EVENT_RESET_KEY_PRESS:
+    420          				break;
+    421          			case EVENT_BT_CONNECTED:
+    422          				//切换到蓝牙连接模式
+    423          				exit_from_BT_Mode(0);
+    424          				device_current_state = STATE_BT_Mode_Connect;
+    425          				enter_into_BT_Mode(1);
     426          				break;
-    427          			case EVENT_USB_CABLE_INSERT:
-    428          				//切换到USB HID模式
-    429          				exit_from_BT_Mode(0);
-    430          				last_state = STATE_BT_Mode_Disconnect;
-    431          				device_current_state = STATE_HID_Mode;
-    432          				enter_into_USB_HID_Mode();
-    433          				break;
-    434          			case EVENT_USB_CABLE_REMOVE:
+    427          			case EVENT_BT_DISCONNECTED:
+    428          				break;
+    429          			case EVENT_USB_CABLE_INSERT:
+    430          				//切换到USB HID模式
+    431          				exit_from_BT_Mode(0);
+    432          				last_state = STATE_BT_Mode_Disconnect;
+    433          				device_current_state = STATE_HID_Mode;
+    434          				enter_into_USB_HID_Mode();
     435          				break;
-    436          			case EVENT_LOW_POWER:
-    437          				lowpower_tip();
-    438          				break;
-    439          			default:
+    436          			case EVENT_USB_CABLE_REMOVE:
+    437          				break;
+    438          			case EVENT_LOW_POWER:
+    439          				lowpower_tip();
     440          				break;
-    441          			}
-    442          		}
-    443          		else if(device_current_state ==  STATE_BT_Mode_Connect)
-    444          		{
-    445          			switch(event)
-    446          			{
-    447          			//case EVENT_SCAN_KEY_SINGLE_CLICK:
-    448          				//扫描条码
-    449          			//	ret = scanner_get_barcode(barcode,MAX_BARCODE_LEN,codetype,&codelen);
-    450          			//	hw_platform_stop_led_blink(LED_GREEN);
-    451          			//	if (ret != 0)
-    452          			//	{
-    453          			//		break;
-    454          			//	}
-    455          			case EVENT_SCAN_GOT_BARCODE:
-    456          				scan_barcode_ok_tip();
-    457          				if (lowpower_state)
-    458          				{
-    459          					lowpower_tip();
-    460          				}
-    461          				//扫描到条码了
-    462          				//将获取到的条码先push到cash缓存起来，然后Post到系统的
-    463          				//Queue，由蓝牙模块线程负责去发送到主机
-    464          repost:
-    465          				ret = OSQPost(pBarcode_Queue,(void*)push_barcode_into_cash((unsigned char*)barcode));
-    466          				if(ret != OS_ERR_NONE)
-    467          				{
-    468          					if(ret == OS_ERR_Q_FULL || ret == OS_ERR_PEVENT_NULL)
-    469          					{
-    470          						//如果队列满了或者空事件时，那么需要延时重试
-    471          						OSTimeDlyHMSM(0,0,0,100);
-    472          						goto repost;
-    473          					}
-    474          					else
-    475          					{
-    476          						assert(0);	//系统错误
-    477          					}
-    478          				}
-    479          				break;
-    480          			case EVENT_SCAN_KEY_DOUBLE_CLICK:
-    481          				if (g_param.ios_softkeypad_enable)
-    482          				{
-    483          #if(BT_MODULE == USE_WBTDS01)
-    484          					WBTD_set_ioskeypad(1);
-    485          #else
-    486          					BT816_toggle_ioskeypad();
-    487          #endif
-    488          				}
-    489          				break;
-    490          			case EVENT_SCAN_KEY_LONG_PRESS:
-    491          				hw_platform_stop_led_blink(LED_GREEN);
-    492          				//切换到Memory mode
-    493          				exit_from_BT_Mode(1);
-    494          				device_current_state = STATE_Memory_Mode;
-    495          				hw_platform_beep_ctrl(300,3000);
-    496          				enter_into_Memory_Mode();
-    497          				break;
-    498          			case EVENT_ERASE_KEY_SINGLE_CLICK:
-    499          #if(BT_MODULE == USE_WBTDS01)
-    500          				//WBTD_hid_send_test();
-    501          #else
-    502          				//BT816_hid_send_test();
-    503          #endif
-    504          				break;
-    505          			case EVENT_ERASE_KEY_LONG_PRESS:
-    506          				//进入配对模式
-    507          				exit_from_BT_Mode(1);
-    508          				device_current_state = STATE_BT_Mode_WaitPair;
-    509          				enter_into_BT_Mode(2);
-    510          				break;
-    511          			case EVENT_RESET_KEY_PRESS:
-    512          				//@todo...
-    513          				break;
-    514          			case EVENT_BT_CONNECTED:
+    441          			default:
+    442          				break;
+    443          			}
+    444          		}
+    445          		else if(device_current_state ==  STATE_BT_Mode_Connect)
+    446          		{
+    447          			switch(event)
+    448          			{
+    449          			//case EVENT_SCAN_KEY_SINGLE_CLICK:
+    450          				//扫描条码
+    451          			//	ret = scanner_get_barcode(barcode,MAX_BARCODE_LEN,codetype,&codelen);
+    452          			//	hw_platform_stop_led_blink(LED_GREEN);
+    453          			//	if (ret != 0)
+    454          			//	{
+    455          			//		break;
+    456          			//	}
+    457          			case EVENT_SCAN_GOT_BARCODE:
+    458          				scan_barcode_ok_tip();
+    459          				if (lowpower_state)
+    460          				{
+    461          					lowpower_tip();
+    462          				}
+    463          				//扫描到条码了
+    464          				//将获取到的条码先push到cash缓存起来，然后Post到系统的
+    465          				//Queue，由蓝牙模块线程负责去发送到主机
+    466          repost:
+    467          				ret = OSQPost(pBarcode_Queue,(void*)push_barcode_into_cash((unsigned char*)barcode));
+    468          				if(ret != OS_ERR_NONE)
+    469          				{
+    470          					if(ret == OS_ERR_Q_FULL || ret == OS_ERR_PEVENT_NULL)
+    471          					{
+    472          						//如果队列满了或者空事件时，那么需要延时重试
+    473          						OSTimeDlyHMSM(0,0,0,100);
+    474          						goto repost;
+    475          					}
+    476          					else
+    477          					{
+    478          						assert(0);	//系统错误
+    479          					}
+    480          				}
+    481          				break;
+    482          			case EVENT_SCAN_KEY_DOUBLE_CLICK:
+    483          				if (g_param.ios_softkeypad_enable)
+    484          				{
+    485          #if(BT_MODULE == USE_WBTDS01)
+    486          					WBTD_set_ioskeypad(1);
+    487          #else
+    488          					BT816_toggle_ioskeypad();
+    489          #endif
+    490          				}
+    491          				break;
+    492          			case EVENT_SCAN_KEY_LONG_PRESS:
+    493          				//hw_platform_stop_led_blink(LED_GREEN);
+    494          				//切换到Memory mode
+    495          				exit_from_BT_Mode(1);
+    496          				device_current_state = STATE_Memory_Mode;
+    497          				hw_platform_beep_ctrl(300,3000);
+    498          				enter_into_Memory_Mode();
+    499          				break;
+    500          			case EVENT_ERASE_KEY_SINGLE_CLICK:
+    501          #if(BT_MODULE == USE_WBTDS01)
+    502          				//WBTD_hid_send_test();
+    503          #else
+    504          				//BT816_hid_send_test();
+    505          #endif
+    506          				break;
+    507          			case EVENT_ERASE_KEY_LONG_PRESS:
+    508          				//进入配对模式
+    509          				exit_from_BT_Mode(1);
+    510          				device_current_state = STATE_BT_Mode_WaitPair;
+    511          				enter_into_BT_Mode(2);
+    512          				break;
+    513          			case EVENT_RESET_KEY_PRESS:
+    514          				//@todo...
     515          				break;
-    516          			case EVENT_BT_DISCONNECTED:
-    517          				//切换到蓝牙断开状态
-    518          				exit_from_BT_Mode(1);
-    519          				device_current_state = STATE_BT_Mode_Disconnect;
-    520          				enter_into_BT_Mode(0);
-    521          				break;
-    522          			case EVENT_USB_CABLE_INSERT:
-    523          				//切换到USB HID模式
-    524          				exit_from_BT_Mode(1);
-    525          				last_state = STATE_BT_Mode_Disconnect;
-    526          				device_current_state = STATE_HID_Mode;
-    527          				enter_into_USB_HID_Mode();
-    528          				break;
-    529          			case EVENT_USB_CABLE_REMOVE:
+    516          			case EVENT_BT_CONNECTED:
+    517          				break;
+    518          			case EVENT_BT_DISCONNECTED:
+    519          				//切换到蓝牙断开状态
+    520          				exit_from_BT_Mode(1);
+    521          				device_current_state = STATE_BT_Mode_Disconnect;
+    522          				enter_into_BT_Mode(0);
+    523          				break;
+    524          			case EVENT_USB_CABLE_INSERT:
+    525          				//切换到USB HID模式
+    526          				exit_from_BT_Mode(1);
+    527          				last_state = STATE_BT_Mode_Disconnect;
+    528          				device_current_state = STATE_HID_Mode;
+    529          				enter_into_USB_HID_Mode();
     530          				break;
-    531          			case EVENT_LOW_POWER:
-    532          				lowpower_tip();
-    533          				break;
-    534          			default:
+    531          			case EVENT_USB_CABLE_REMOVE:
+    532          				break;
+    533          			case EVENT_LOW_POWER:
+    534          				lowpower_tip();
     535          				break;
-    536          			}
-    537          		}
-    538          		else if(device_current_state ==  STATE_BT_Mode_WaitPair)
-    539          		{
-    540          			switch(event)
-    541          			{
-    542          			//case EVENT_SCAN_KEY_SINGLE_CLICK:
-    543          			//case EVENT_SCAN_KEY_DOUBLE_CLICK:
-    544          			//	ret = scanner_get_barcode(barcode,MAX_BARCODE_LEN,codetype,&codelen);	//扫描条码
-    545          			//	hw_platform_stop_led_blink(LED_GREEN);
-    546          			//	if (ret == 0)
-    547          			case EVENT_SCAN_GOT_BARCODE:
-    548          				
-    549          				scan_barcode_ok_tip();
-    550          				
-    551          				if (lowpower_state)
-    552          				{
-    553          					lowpower_tip();
-    554          				}
-    555          				//只是扫描到条码而已，什么都不做
-    556          				break;
-    557          			case EVENT_SCAN_KEY_LONG_PRESS:
-    558          				hw_platform_stop_led_blink(LED_GREEN);
-    559          				//切换到Memory Mode
-    560          				exit_from_BT_Mode(2);
-    561          				device_current_state = STATE_Memory_Mode;
-    562          				hw_platform_beep_ctrl(300,3000);
-    563          				enter_into_Memory_Mode();
-    564          				break;
-    565          			case EVENT_ERASE_KEY_SINGLE_CLICK:
-    566          				break;
-    567          			case EVENT_ERASE_KEY_LONG_PRESS:
-    568          				//已经是配对模式，什么都不做
-    569          				break;
-    570          			case EVENT_RESET_KEY_PRESS:
-    571          				//@todo...
-    572          				break;
-    573          			case EVENT_BT_CONNECTED:
-    574          				//切换到蓝牙连接状态
-    575          				exit_from_BT_Mode(2);
-    576          				device_current_state = STATE_BT_Mode_Connect;
-    577          				enter_into_BT_Mode(1);
-    578          				break;
-    579          			case EVENT_BT_DISCONNECTED:
-    580          				break;
-    581          			case EVENT_USB_CABLE_INSERT:
-    582          				//切换到USB HID模式
-    583          				exit_from_BT_Mode(2);
-    584          				last_state = STATE_BT_Mode_WaitPair;
-    585          				device_current_state = STATE_HID_Mode;
-    586          				enter_into_USB_HID_Mode();
-    587          				break;
-    588          			case EVENT_USB_CABLE_REMOVE:
-    589          				break;
-    590          			case EVENT_LOW_POWER:
-    591          				lowpower_tip();
-    592          				break;
-    593          			default:
-    594          				break;
-    595          			}
-    596          		}
-    597          		else if(device_current_state ==  STATE_Memory_Mode)
-    598          		{
-    599          			switch(event)
-    600          			{
-    601          			//case EVENT_SCAN_KEY_SINGLE_CLICK:
-    602          				//扫描条码
-    603          			//	ret = scanner_get_barcode(barcode,MAX_BARCODE_LEN,codetype,&codelen);
-    604          			//	hw_platform_stop_led_blink(LED_GREEN);
-    605          			//	if (ret != 0)
-    606          			//	{
-    607          			//		break;
-    608          			//	}
-    609          			case EVENT_SCAN_GOT_BARCODE:
-    610          				scan_barcode_ok_tip();
-    611          				if (lowpower_state)
-    612          				{
-    613          					lowpower_tip();
-    614          				}
-    615          				//扫描到条码了
-    616          				//将获取到的条码保存到memory
-    617          				memset((void*)&batch_node,0,sizeof(TBATCH_NODE));
-    618          				strcpy((char*)batch_node.barcode,(char const*)barcode);
-    619          				ret = record_add((unsigned char*)&batch_node);
-    620          				if (ret)
-    621          				{
-    622          					//记录保存失败，给出提示给用户
-    623          					//@todo...
-    624          
-    625          				}
-    626          				break;
-    627          			case EVENT_SCAN_KEY_LONG_PRESS:
-    628          				hw_platform_stop_led_blink(LED_GREEN);
-    629          				//切换至蓝牙模式
-    630          				exit_from_Memory_Mode();
-    631          				device_current_state = STATE_BT_Mode_Disconnect;
-    632          				enter_into_BT_Mode(0);
-    633          				break;
-    634          			case EVENT_ERASE_KEY_SINGLE_CLICK:
-    635          				//删除扫到的条码对应的最后一笔资料
-    636          				ret = scanner_get_barcode(barcode,MAX_BARCODE_LEN,codetype,&codelen);
-    637          				if (ret != 0)
-    638          				{
-    639          					break;
-    640          				}
-    641          				scan_barcode_ok_tip();
-    642          				if (lowpower_state)
-    643          				{
-    644          					lowpower_tip();
-    645          				}
-    646          				OSSchedLock();
-    647          				rec = rec_searchby_tag(barcode,&index);
-    648          				OSSchedUnlock();
-    649          				if (rec)
-    650          				{
-    651          					ret = delete_one_node(index);
-    652          					if (ret)
-    653          					{
-    654          						//提示用户，删除失败
-    655          						//@todo...
-    656          					}
-    657          				}
-    658          				break;
-    659          			case EVENT_ERASE_KEY_LONG_PRESS:
-    660          				//删除所有的条码记录
-    661          				ret = record_clear();
-    662          				if (ret)
-    663          				{
-    664          					//提示用户，删除失败
-    665          					//@todo...
-    666          				}
-    667          				hw_platform_beep_ctrl(300,3000);
-    668          				break;
-    669          			case EVENT_RESET_KEY_PRESS:
-    670          				//@todo...
-    671          				break;
-    672          			case EVENT_BT_CONNECTED:
-    673          				break;
-    674          			case EVENT_BT_DISCONNECTED:
-    675          				break;
-    676          			case EVENT_USB_CABLE_INSERT:
-    677          				//切换到USB HID模式
-    678          				exit_from_Memory_Mode();
-    679          				last_state = STATE_Memory_Mode;
-    680          				device_current_state = STATE_HID_Mode;
-    681          				enter_into_USB_HID_Mode();
+    536          			default:
+    537          				break;
+    538          			}
+    539          		}
+    540          		else if(device_current_state ==  STATE_BT_Mode_WaitPair)
+    541          		{
+    542          			switch(event)
+    543          			{
+    544          			case EVENT_SCAN_KEY_SINGLE_CLICK:
+    545          				exit_from_BT_Mode(2);
+    546          				device_current_state = STATE_BT_Mode_Disconnect;
+    547          				//hw_platform_beep_ctrl(300,3000);
+    548          				enter_into_BT_Mode(0);
+    549          			//case EVENT_SCAN_KEY_DOUBLE_CLICK:
+    550          			//	ret = scanner_get_barcode(barcode,MAX_BARCODE_LEN,codetype,&codelen);	//扫描条码
+    551          			//	hw_platform_stop_led_blink(LED_GREEN);
+    552          			//	if (ret == 0)
+    553          			case EVENT_SCAN_GOT_BARCODE:
+    554          				
+    555          				scan_barcode_ok_tip();
+    556          				
+    557          				if (lowpower_state)
+    558          				{
+    559          					lowpower_tip();
+    560          				}
+    561          				//只是扫描到条码而已，什么都不做
+    562          				break;
+    563          			case EVENT_SCAN_KEY_LONG_PRESS:
+    564          				//hw_platform_stop_led_blink(LED_GREEN);
+    565          				//切换到Memory Mode
+    566          				exit_from_BT_Mode(2);
+    567          				device_current_state = STATE_Memory_Mode;
+    568          				hw_platform_beep_ctrl(300,3000);
+    569          				enter_into_Memory_Mode();
+    570          				break;
+    571          			case EVENT_ERASE_KEY_SINGLE_CLICK:
+    572          				//exit_from_BT_Mode(2);
+    573          				//device_current_state = STATE_BT_Mode_Disconnect;
+    574          				//hw_platform_beep_ctrl(300,3000);
+    575          				//enter_into_BT_Mode(0);
+    576          				break;
+    577          			case EVENT_ERASE_KEY_LONG_PRESS:
+    578          				//已经是配对模式，什么都不做
+    579          				break;
+    580          			case EVENT_RESET_KEY_PRESS:
+    581          				//@todo...
+    582          				break;
+    583          			case EVENT_BT_CONNECTED:
+    584          				//切换到蓝牙连接状态
+    585          				exit_from_BT_Mode(2);
+    586          				device_current_state = STATE_BT_Mode_Connect;
+    587          				enter_into_BT_Mode(1);
+    588          				break;
+    589          			case EVENT_BT_DISCONNECTED:
+    590          				break;
+    591          			case EVENT_USB_CABLE_INSERT:
+    592          				//切换到USB HID模式
+    593          				exit_from_BT_Mode(2);
+    594          				last_state = STATE_BT_Mode_WaitPair;
+    595          				device_current_state = STATE_HID_Mode;
+    596          				enter_into_USB_HID_Mode();
+    597          				break;
+    598          			case EVENT_USB_CABLE_REMOVE:
+    599          				break;
+    600          			case EVENT_LOW_POWER:
+    601          				lowpower_tip();
+    602          				break;
+    603          			default:
+    604          				break;
+    605          			}
+    606          		}
+    607          		else if(device_current_state ==  STATE_Memory_Mode)
+    608          		{
+    609          			switch(event)
+    610          			{
+    611          			//case EVENT_SCAN_KEY_SINGLE_CLICK:
+    612          				//扫描条码
+    613          			//	ret = scanner_get_barcode(barcode,MAX_BARCODE_LEN,codetype,&codelen);
+    614          			//	hw_platform_stop_led_blink(LED_GREEN);
+    615          			//	if (ret != 0)
+    616          			//	{
+    617          			//		break;
+    618          			//	}
+    619          			case EVENT_SCAN_GOT_BARCODE:
+    620          				scan_barcode_ok_tip();
+    621          				if (lowpower_state)
+    622          				{
+    623          					lowpower_tip();
+    624          				}
+    625          				//扫描到条码了
+    626          				//将获取到的条码保存到memory
+    627          				memset((void*)&batch_node,0,sizeof(TBATCH_NODE));
+    628          				strcpy((char*)batch_node.barcode,(char const*)barcode);
+    629          				ret = record_add((unsigned char*)&batch_node);
+    630          				if (ret)
+    631          				{
+    632          					//记录保存失败，给出提示给用户
+    633          					//@todo...
+    634          
+    635          				}
+    636          				break;
+    637          			case EVENT_SCAN_KEY_LONG_PRESS:
+    638          				//hw_platform_stop_led_blink(LED_GREEN);
+    639          				//切换至蓝牙模式
+    640          				exit_from_Memory_Mode();
+    641          				device_current_state = STATE_BT_Mode_Disconnect;
+    642          				enter_into_BT_Mode(0);
+    643          				break;
+    644          			//case EVENT_ERASE_KEY_SINGLE_CLICK:
+    645          			//	//删除扫到的条码对应的最后一笔资料
+    646          			//	ret = scanner_get_barcode(barcode,MAX_BARCODE_LEN,codetype,&codelen);
+    647          			//	if (ret != 0)
+    648          			//	{
+    649          			//		break;
+    650          			//	}
+    651          			case EVENT_ERASE_GOT_BARCODE:
+    652          				scan_barcode_ok_tip();
+    653          				if (lowpower_state)
+    654          				{
+    655          					lowpower_tip();
+    656          				}
+    657          				OSSchedLock();
+    658          				rec = rec_searchby_tag(barcode,&index);
+    659          				OSSchedUnlock();
+    660          				if (rec)
+    661          				{
+    662          					ret = delete_one_node(index);
+    663          					if (ret)
+    664          					{
+    665          						//提示用户，删除失败
+    666          						//@todo...
+    667          					}
+    668          				}
+    669          				break;
+    670          			case EVENT_ERASE_KEY_LONG_PRESS:
+    671          				//删除所有的条码记录
+    672          				ret = record_clear();
+    673          				if (ret)
+    674          				{
+    675          					//提示用户，删除失败
+    676          					//@todo...
+    677          				}
+    678          				hw_platform_beep_ctrl(300,3000);
+    679          				break;
+    680          			case EVENT_RESET_KEY_PRESS:
+    681          				//@todo...
     682          				break;
-    683          			case EVENT_USB_CABLE_REMOVE:
+    683          			case EVENT_BT_CONNECTED:
     684          				break;
-    685          			case EVENT_LOW_POWER:
-    686          				lowpower_tip();
-    687          				break;
-    688          			default:
-    689          				break;
-    690          			}
-    691          		}
-    692          		else if(device_current_state ==  STATE_HID_Mode)
-    693          		{
-    694          			switch(event)
-    695          			{
-    696          			//case EVENT_SCAN_KEY_SINGLE_CLICK:
-    697          			//	ret = scanner_get_barcode(barcode,MAX_BARCODE_LEN,codetype,&codelen);
-    698          			//	hw_platform_stop_led_blink(LED_GREEN);
-    699          			//	if(ret !=0)	//扫描条码
-    700          			//	{
-    701          			//		break;
-    702          			//	}
-    703          			case EVENT_SCAN_GOT_BARCODE:
-    704          				scan_barcode_ok_tip();
-    705          				//将扫描到的条码通过HID 接口发送出去
-    706          				barcode_hid_send(barcode);
-    707          				break;
-    708          			case EVENT_SCAN_KEY_LONG_PRESS:
-    709          				hw_platform_stop_led_blink(LED_GREEN);
-    710          				break;
-    711          			case EVENT_ERASE_KEY_SINGLE_CLICK:
-    712          				break;
-    713          			case EVENT_ERASE_KEY_LONG_PRESS:
-    714          				//将所有保存在Memory中的条码，全部上传到PC
-    715          				hw_platform_beep_ctrl(300,3000);
-    716          				cnt = record_module_count();
-    717          				for (i = 0; i < cnt;i++)
-    718          				{
-    719          					rec = get_node((i==0)?0:2,0);
-    720          					if (rec)
-    721          					{
-    722          						barcode_hid_send(((TBATCH_NODE*)rec)->barcode);
-    723          					}
-    724          					else
-    725          					{
-    726          						//提示用户读取失败一次
-    727          						//@todo...
-    728          					}
-    729          				}
-    730          				hw_platform_beep_ctrl(300,3000);
-    731          				break;
-    732          			case EVENT_RESET_KEY_PRESS:
-    733          				//@todo...
-    734          				break;
-    735          			case EVENT_BT_CONNECTED:
-    736          				break;
-    737          			case EVENT_BT_DISCONNECTED:
-    738          				break;
-    739          			case EVENT_USB_CABLE_INSERT:
-    740          				break;
-    741          			case EVENT_USB_CABLE_REMOVE:
-    742          				//切换到之前的状态
-    743          				exit_from_USB_HID_Mode();
-    744          				device_current_state = last_state;
-    745          				if (device_current_state == STATE_Memory_Mode)
-    746          				{
-    747          					enter_into_Memory_Mode();
-    748          				}
-    749          				else if (device_current_state == STATE_BT_Mode_WaitPair)
-    750          				{
-    751          					enter_into_BT_Mode(2);
-    752          				}
-    753          				else
-    754          				{
-    755          					enter_into_BT_Mode(0);
-    756          				}
-    757          				break;
-    758          			case EVENT_LOW_POWER:
-    759          				break;
-    760          			default:
-    761          				break;
-    762          			}
-    763          		}
-    764          	}
-    765          }
-    766          
-    767          /**
-    768          * @brief	获取部分异步事件的线程
-    769          * @note     另外一些异步事件的检测在中断服务程序中post或者另外的线程post出来
-    770          *			比如：按键事件会在定时器中断的服务程序post出来
-    771          *				  USB线的插入（实际上是USB HID device被枚举成功）会在USB的中断服务程序给出
-    772          *				  蓝牙连接的状态变化会在蓝牙模块的维护线程给出
-    773          *				  此线程只负责一些周期性的状态检查事件，电池电量低、USB线是否被拔出
-    774          */
-    775          void Event_capture_thread(void *p)
-    776          {
-    777          #ifdef DEBUG_VER
-    778          	printf("Enter into Event_capture_thread!\r\n");
-    779          #endif
-    780          	while (1)
-    781          	{
-    782          		if (device_current_state == STATE_HID_Mode)
-    783          		{
-    784          			lowpower_state = 0;
-    785          			lowpower_cnt = 0;
-    786          			//判断USB线的拔出
-    787          			if (bDeviceState == UNCONNECTED)
-    788          			{
-    789          #ifdef DEBUG_VER
-    790          				printf("usb cable remove detected!\r\n");
-    791          #endif
-    792          				OSQPost(pEvent_Queue,(void*)EVENT_USB_CABLE_REMOVE);
-    793          			}
-    794          
-    795          			if (hw_platform_ChargeState_Detect())
-    796          			{
-    797          				//充电完成
-    798          				hw_platform_led_ctrl(LED_RED,0);
-    799          			}
-    800          
-    801          			OSTimeDlyHMSM(0,0,0,50);	//50ms的频率运行此线程
-    802          		}
-    803          		else
-    804          		{
-    805          			//判断电池电量低
-    806          			if (hw_platform_get_PowerClass() == 0)
+    685          			case EVENT_BT_DISCONNECTED:
+    686          				break;
+    687          			case EVENT_USB_CABLE_INSERT:
+    688          				//切换到USB HID模式
+    689          				exit_from_Memory_Mode();
+    690          				last_state = STATE_Memory_Mode;
+    691          				device_current_state = STATE_HID_Mode;
+    692          				enter_into_USB_HID_Mode();
+    693          				break;
+    694          			case EVENT_USB_CABLE_REMOVE:
+    695          				break;
+    696          			case EVENT_LOW_POWER:
+    697          				lowpower_tip();
+    698          				break;
+    699          			default:
+    700          				break;
+    701          			}
+    702          		}
+    703          		else if(device_current_state ==  STATE_HID_Mode)
+    704          		{
+    705          			switch(event)
+    706          			{
+    707          			//case EVENT_SCAN_KEY_SINGLE_CLICK:
+    708          			//	ret = scanner_get_barcode(barcode,MAX_BARCODE_LEN,codetype,&codelen);
+    709          			//	hw_platform_stop_led_blink(LED_GREEN);
+    710          			//	if(ret !=0)	//扫描条码
+    711          			//	{
+    712          			//		break;
+    713          			//	}
+    714          			case EVENT_SCAN_GOT_BARCODE:
+    715          				scan_barcode_ok_tip();
+    716          				//将扫描到的条码通过HID 接口发送出去
+    717          				barcode_hid_send(barcode);
+    718          				break;
+    719          			case EVENT_SCAN_KEY_LONG_PRESS:
+    720          				//hw_platform_stop_led_blink(LED_GREEN);
+    721          				break;
+    722          			case EVENT_ERASE_KEY_SINGLE_CLICK:
+    723          				break;
+    724          			case EVENT_ERASE_KEY_LONG_PRESS:
+    725          				//将所有保存在Memory中的条码，全部上传到PC
+    726          				hw_platform_beep_ctrl(300,3000);
+    727          				cnt = record_module_count();
+    728          				for (i = 0; i < cnt;i++)
+    729          				{
+    730          					rec = get_node((i==0)?0:2,0);
+    731          					if (rec)
+    732          					{
+    733          						barcode_hid_send(((TBATCH_NODE*)rec)->barcode);
+    734          					}
+    735          					else
+    736          					{
+    737          						//提示用户读取失败一次
+    738          						//@todo...
+    739          					}
+    740          				}
+    741          				hw_platform_beep_ctrl(300,3000);
+    742          				break;
+    743          			case EVENT_RESET_KEY_PRESS:
+    744          				//@todo...
+    745          				break;
+    746          			case EVENT_BT_CONNECTED:
+    747          				break;
+    748          			case EVENT_BT_DISCONNECTED:
+    749          				break;
+    750          			case EVENT_USB_CABLE_INSERT:
+    751          				break;
+    752          			case EVENT_USB_CABLE_REMOVE:
+    753          				//切换到之前的状态
+    754          				exit_from_USB_HID_Mode();
+    755          				device_current_state = last_state;
+    756          				if (device_current_state == STATE_Memory_Mode)
+    757          				{
+    758          					enter_into_Memory_Mode();
+    759          				}
+    760          				else if (device_current_state == STATE_BT_Mode_WaitPair)
+    761          				{
+    762          					enter_into_BT_Mode(2);
+    763          				}
+    764          				else
+    765          				{
+    766          					enter_into_BT_Mode(0);
+    767          				}
+    768          				break;
+    769          			case EVENT_LOW_POWER:
+    770          				break;
+    771          			default:
+    772          				break;
+    773          			}
+    774          		}
+    775          	}
+    776          }
+    777          
+    778          /**
+    779          * @brief	获取部分异步事件的线程
+    780          * @note     另外一些异步事件的检测在中断服务程序中post或者另外的线程post出来
+    781          *			比如：按键事件会在定时器中断的服务程序post出来
+    782          *				  USB线的插入（实际上是USB HID device被枚举成功）会在USB的中断服务程序给出
+    783          *				  蓝牙连接的状态变化会在蓝牙模块的维护线程给出
+    784          *				  此线程只负责一些周期性的状态检查事件，电池电量低、USB线是否被拔出
+    785          */
+    786          void Event_capture_thread(void *p)
+    787          {
+    788          #ifdef DEBUG_VER
+    789          	printf("Enter into Event_capture_thread!\r\n");
+    790          #endif
+    791          	while (1)
+    792          	{
+    793          		if (device_current_state == STATE_HID_Mode)
+    794          		{
+    795          			lowpower_state = 0;
+    796          			lowpower_cnt = 0;
+    797          			//判断USB线的拔出
+    798          			if (bDeviceState == UNCONNECTED)
+    799          			{
+    800          #ifdef DEBUG_VER
+    801          				printf("usb cable remove detected!\r\n");
+    802          #endif
+    803          				OSQPost(pEvent_Queue,(void*)EVENT_USB_CABLE_REMOVE);
+    804          			}
+    805          
+    806          			if (hw_platform_ChargeState_Detect())
     807          			{
-    808          				lowpower_cnt++;
-    809          				if (lowpower_cnt>10)
-    810          				{
-    811          #ifdef DEBUG_VER
-    812          					printf("low power detected!\r\n");
-    813          #endif
-    814          					if (lowpower_state == 0)
-    815          					{
-    816          						OSQPost(pEvent_Queue,(void*)EVENT_LOW_POWER);
-    817          						lowpower_state = 1;
-    818          					}
-    819          					
-    820          				}
-    821          			}
-    822          			else
-    823          			{
-    824          				lowpower_cnt = 0;
-    825          			}
-    826          
-    827          			if (bDeviceState == CONFIGURED)
-    828          			{
-    829          #ifdef DEBUG_VER
-    830          				printf("USB HID Enum OK detected!\r\n");
-    831          #endif
-    832          				OSQPost(pEvent_Queue,(void*)EVENT_USB_CABLE_INSERT);
-    833          			}
-    834          			OSTimeDlyHMSM(0,0,0,50);	//50ms的频率运行此线程
-    835          		}
-    836          	}
-    837          }
-    838          
-    839          
-    840          /*
-    841           * @brief 蓝牙模块维护线程
-    842           * @note  此线程需要完成两个任务：
-    843           *        1 : 监测蓝牙模块是否有返回连接状态变化的指示信号回来，如果监测到了，发出事件消息出来
-    844           *        2 ：检测是否有数据需要通过蓝牙模块发送，如果有就发送出去
-    845          */
-    846          void BT_Daemon_thread(void *p)
-    847          {
-    848          #if(BT_MODULE == USE_BT816)
-    849          	static unsigned int last_status;
-    850          #endif
-    851          	int ret;
-    852              unsigned int len;
-    853          	unsigned char	err;
-    854          	unsigned char	*pbarcode;
+    808          				//充电完成
+    809          				hw_platform_led_ctrl(LED_RED,0);
+    810          			}
+    811          
+    812          			OSTimeDlyHMSM(0,0,0,50);	//50ms的频率运行此线程
+    813          		}
+    814          		else
+    815          		{
+    816          			if(hw_platform_USBcable_Insert_Detect())
+    817          			{
+    818          				//正在充电
+    819          				if (hw_platform_ChargeState_Detect())
+    820          				{
+    821          					//充电完成
+    822          					hw_platform_led_ctrl(LED_RED,0);
+    823          				}
+    824          				else
+    825          				{
+    826          					hw_platform_led_ctrl(LED_RED,1);
+    827          				}
+    828          			}
+    829          			else
+    830          			{
+    831          				hw_platform_led_ctrl(LED_RED,0);
+    832          				//判断电池电量低
+    833          				if (hw_platform_get_PowerClass() == 0)
+    834          				{
+    835          					lowpower_cnt++;
+    836          					if (lowpower_cnt>10)
+    837          					{
+    838          #ifdef DEBUG_VER
+    839          						printf("low power detected!\r\n");
+    840          #endif
+    841          						if (lowpower_state == 0)
+    842          						{
+    843          							OSQPost(pEvent_Queue,(void*)EVENT_LOW_POWER);
+    844          							lowpower_state = 1;
+    845          						}
+    846          
+    847          					}
+    848          				}
+    849          				else
+    850          				{
+    851          					lowpower_cnt = 0;
+    852          				}
+    853          			}
+    854          			
     855          
-    856          #if(BT_MODULE == USE_WBTDS01)
-    857          	ret = WBTD_init();
-    858          #else
-    859          	ret = BT816_init();
-    860          	last_status = BT_MODULE_STATUS_DISCONNECT;
-    861          #endif
-    862          	if (ret)
-    863          	{
-    864          #if(BT_MODULE == USE_WBTDS01)
-    865          		WBTD_Reset();
-    866          		ret = WBTD_init();
-    867          #else
-    868          		ret = BT816_init();
-    869          #endif
-    870          		assert(ret == 0);
-    871          	}
-    872          
-    873          #ifdef DEBUG_VER
-    874          	printf("BT Module init Success!\r\n");
-    875          #endif
-    876          
+    856          			if (bDeviceState == CONFIGURED)
+    857          			{
+    858          #ifdef DEBUG_VER
+    859          				printf("USB HID Enum OK detected!\r\n");
+    860          #endif
+    861          				OSQPost(pEvent_Queue,(void*)EVENT_USB_CABLE_INSERT);
+    862          			}
+    863          			OSTimeDlyHMSM(0,0,0,50);	//50ms的频率运行此线程
+    864          		}
+    865          	}
+    866          }
+    867          
+    868          
+    869          /*
+    870           * @brief 蓝牙模块维护线程
+    871           * @note  此线程需要完成两个任务：
+    872           *        1 : 监测蓝牙模块是否有返回连接状态变化的指示信号回来，如果监测到了，发出事件消息出来
+    873           *        2 ：检测是否有数据需要通过蓝牙模块发送，如果有就发送出去
+    874          */
+    875          void BT_Daemon_thread(void *p)
+    876          {
     877          #if(BT_MODULE == USE_BT816)
-    878          	//BT816_hid_connect_last_host();		//试图连接最近一次的蓝牙主机
+    878          	static unsigned int last_status;
     879          #endif
-    880          
-    881          
-    882          	//for test SPP mode
-    883          	//while(1)
-    884          	//{
-    885          	//	if (spp_buffer_head)
-    886          	//	{
-    887          	//		printf("spp reclen=%d\r\n",spp_buffer_head);
-    888          
-    889          	//		for (len = 0; len < spp_buffer_head;len++)
-    890          	//		{
-    891          	//			printf("0x%x,",spp_rec_buffer[len]);
-    892          	//		}
-    893          	//		printf("\r\n");
-    894          
-    895          	//		spp_buffer_head = 0;
-    896          	//	}
-    897          
-    898          	//	OSTimeDlyHMSM(0,0,0,50);
-    899          	//}
-    900          
-    901          	while (1)
-    902          	{
-    903          #if(BT_MODULE == USE_WBTDS01)
-    904          		ret = WBTD_got_notify_type();
-    905          		if ((ret == BT_MODULE_STATUS_CONNECTED) || (ret == BT_MODULE_STATUS_DISCONNECT))
-    906          		{
-    907          #ifdef DEBUG_VER
-    908          			printf("BT Module Status = %s!\r\n",(ret==1)?"Connected":"Disconnect");
-    909          #endif
-    910          			OSQPost(pEvent_Queue,(void*)((ret == BT_MODULE_STATUS_CONNECTED)?EVENT_BT_CONNECTED:EVENT_BT_DISCONNECTED));
-    911          		}
-    912          #else
-    913          		ret = BT816_hid_status();
-    914          		if ((ret == BT_MODULE_STATUS_CONNECTED)||(ret == BT_MODULE_STATUS_DISCONNECT))
-    915          		{
-    916          			if (ret != last_status)
-    917          			{
-    918          				last_status = ret;
-    919          
-    920          #ifdef DEBUG_VER
-    921          				printf("BT Module Status = %s!\r\n",(ret==BT_MODULE_STATUS_CONNECTED)?"Connected":"Disconnect");
-    922          #endif
-    923          				OSQPost(pEvent_Queue,(void*)((ret == BT_MODULE_STATUS_CONNECTED)?EVENT_BT_CONNECTED:EVENT_BT_DISCONNECTED));
-    924          			}
-    925          			else
-    926          			{
-    927          				if ((ret == BT_MODULE_STATUS_DISCONNECT)&&(device_current_state != STATE_BT_Mode_WaitPair))
-    928          				{
-    929          					//发送一个键值，试图重连蓝牙主机
-    930          					//BT816_hid_send("1",1);
-    931          					BT816_hid_connect_last_host();
-    932          				}
-    933          			}
-    934          		}
-    935          #endif
-    936          
-    937          
-    938          		pbarcode = (unsigned char*)OSQPend(pBarcode_Queue,20,&err);
-    939          		if (pbarcode)
-    940          		{
-    941          #ifdef DEBUG_VER
-    942          			printf("BT Module got data(%s) to send!\r\n",pbarcode);
-    943          #endif
-    944          #if(BT_MODULE == USE_WBTDS01)
-    945          			if (WBTD_hid_send(pbarcode,strlen((char const*)pbarcode),&len))
-    946          #else
-    947          			if (BT816_hid_send(pbarcode,strlen((char const*)pbarcode)))
-    948          #endif
-    949          			{
-    950          				//发送失败应该怎么处理，什么都不做了么????!!!!
-    951          				//@todo...
-    952          #ifdef DEBUG_VER
-    953          				printf("BT Module send data Fail!\r\n");
-    954          #endif
-    955          			}
-    956          			else
-    957          			{
-    958          				pull_barcode_from_cash(pbarcode);
-    959          				//OSTimeDlyHMSM(0,0,0,50);
-    960          
-    961          #ifdef DEBUG_VER
-    962          				printf("BT Module send data Success!\r\n");
-    963          #endif
-    964          			}
-    965          		}
-    966          	}
-    967          }
-    968          
-    969          
-    970          /*
-    971           * @brief进入U盘模式
-    972          */
-    973          void u_disk_proc(void)
-    974          {
-    975          	//g_mass_storage_device_type = MASSTORAGE_DEVICE_TYPE_SPI_FLASH;
-    976          	//usb_device_init(USB_MASSSTORAGE);
-    977          
-    978          	OSSchedLock();
-    979          
-    980          	while(hw_platform_USBcable_Insert_Detect() == 1)
-    981          	{	
-    982          		if(bDeviceState != CONFIGURED)
-    983          		{
-    984          			break;
-    985          		}
-    986          
-    987          		delay_ms(1);
-    988          	}
+    880          	int ret;
+    881              unsigned int len;
+    882          	unsigned char	err;
+    883          	unsigned char	*pbarcode;
+    884          
+    885          #if(BT_MODULE == USE_WBTDS01)
+    886          	ret = WBTD_init();
+    887          #else
+    888          	ret = BT816_init();
+    889          	last_status = BT_MODULE_STATUS_DISCONNECT;
+    890          #endif
+    891          	if (ret)
+    892          	{
+    893          #if(BT_MODULE == USE_WBTDS01)
+    894          		WBTD_Reset();
+    895          		ret = WBTD_init();
+    896          #else
+    897          		ret = BT816_init();
+    898          #endif
+    899          		assert(ret == 0);
+    900          	}
+    901          
+    902          #ifdef DEBUG_VER
+    903          	printf("BT Module init Success!\r\n");
+    904          #endif
+    905          
+    906          #if(BT_MODULE == USE_BT816)
+    907          	//BT816_hid_connect_last_host();		//试图连接最近一次的蓝牙主机
+    908          #endif
+    909          
+    910          
+    911          	//for test SPP mode
+    912          	//while(1)
+    913          	//{
+    914          	//	if (spp_buffer_head)
+    915          	//	{
+    916          	//		printf("spp reclen=%d\r\n",spp_buffer_head);
+    917          
+    918          	//		for (len = 0; len < spp_buffer_head;len++)
+    919          	//		{
+    920          	//			printf("0x%x,",spp_rec_buffer[len]);
+    921          	//		}
+    922          	//		printf("\r\n");
+    923          
+    924          	//		spp_buffer_head = 0;
+    925          	//	}
+    926          
+    927          	//	OSTimeDlyHMSM(0,0,0,50);
+    928          	//}
+    929          
+    930          	while (1)
+    931          	{
+    932          #if(BT_MODULE == USE_WBTDS01)
+    933          		ret = WBTD_got_notify_type();
+    934          		if ((ret == BT_MODULE_STATUS_CONNECTED) || (ret == BT_MODULE_STATUS_DISCONNECT))
+    935          		{
+    936          #ifdef DEBUG_VER
+    937          			printf("BT Module Status = %s!\r\n",(ret==1)?"Connected":"Disconnect");
+    938          #endif
+    939          			OSQPost(pEvent_Queue,(void*)((ret == BT_MODULE_STATUS_CONNECTED)?EVENT_BT_CONNECTED:EVENT_BT_DISCONNECTED));
+    940          		}
+    941          #else
+    942          		ret = BT816_hid_status();
+    943          		if ((ret == BT_MODULE_STATUS_CONNECTED)||(ret == BT_MODULE_STATUS_DISCONNECT))
+    944          		{
+    945          			if (ret != last_status)
+    946          			{
+    947          				last_status = ret;
+    948          
+    949          #ifdef DEBUG_VER
+    950          				printf("BT Module Status = %s!\r\n",(ret==BT_MODULE_STATUS_CONNECTED)?"Connected":"Disconnect");
+    951          #endif
+    952          				OSQPost(pEvent_Queue,(void*)((ret == BT_MODULE_STATUS_CONNECTED)?EVENT_BT_CONNECTED:EVENT_BT_DISCONNECTED));
+    953          			}
+    954          			else
+    955          			{
+    956          				if ((ret == BT_MODULE_STATUS_DISCONNECT)&&(device_current_state == STATE_BT_Mode_Disconnect))
+    957          				{
+    958          					//发送一个键值，试图重连蓝牙主机
+    959          					//BT816_hid_send("1",1);
+    960          					BT816_hid_connect_last_host();
+    961          				}
+    962          			}
+    963          		}
+    964          #endif
+    965          
+    966          
+    967          		pbarcode = (unsigned char*)OSQPend(pBarcode_Queue,20,&err);
+    968          		if (pbarcode)
+    969          		{
+    970          #ifdef DEBUG_VER
+    971          			printf("BT Module got data(%s) to send!\r\n",pbarcode);
+    972          #endif
+    973          #if(BT_MODULE == USE_WBTDS01)
+    974          			if (WBTD_hid_send(pbarcode,strlen((char const*)pbarcode),&len))
+    975          #else
+    976          			if (BT816_hid_send(pbarcode,strlen((char const*)pbarcode)))
+    977          #endif
+    978          			{
+    979          				//发送失败应该怎么处理，什么都不做了么????!!!!
+    980          				//@todo...
+    981          #ifdef DEBUG_VER
+    982          				printf("BT Module send data Fail!\r\n");
+    983          #endif
+    984          			}
+    985          			else
+    986          			{
+    987          				pull_barcode_from_cash(pbarcode);
+    988          				//OSTimeDlyHMSM(0,0,0,50);
     989          
-    990          	OSSchedUnlock();
-    991          }
-    992          
-    993          /*
-    994           * @brief 低电量提示,红灯持续5S的闪烁
-    995           * @return 0:提示期间没有USB线的插入		1:提示期间有USB线的插入
-    996          */
-    997          int lowpower_tip(void)
-    998          {
-    999          	int i;
-   1000          	OSSchedLock();
-   1001          	hw_platform_start_led_blink(LED_RED,5);
-   1002          	for (i = 0; i<20;i++)
-   1003          	{
-   1004          		hw_platform_beep_ctrl(50,1000);
-   1005          		if (hw_platform_USBcable_Insert_Detect())
-   1006          		{
-   1007          			hw_platform_stop_led_blink(LED_RED);
-   1008          			OSSchedUnlock();
-   1009          			return 1;
-   1010          		}
-   1011          	}
-   1012          	hw_platform_stop_led_blink(LED_RED);
-   1013          	OSSchedUnlock();
-   1014          	return 0;
-   1015          }
-   1016          
-   1017          /*
-   1018           * @brief 系统错误的提示
-   1019          */
-   1020          void system_err_tip(void)
-   1021          {
-   1022          	while(1)
-   1023          	{
-   1024          		//@todo...
-   1025          	}
-   1026          }
-   1027          
-   1028          
-   1029          // Cortex System Control register address
-   1030          #define SCB_SysCtrl					((u32)0xE000ED10)
-   1031          // SLEEPDEEP bit mask
-   1032          #define SysCtrl_SLEEPDEEP_Set		((u32)0x00000004)
-   1033          
-   1034          /*
-   1035           * @brief 初始化线程
-   1036           */
-   1037          void app_init_thread(void *p)
-   1038          {
-   1039          	int ret;
-   1040          #ifdef DEBUG_VER
-   1041          	printf("app init thread startup...\r\n");
-   1042          #endif
-   1043          
-   1044          	OS_CPU_SysTickInit();
+    990          #ifdef DEBUG_VER
+    991          				printf("BT Module send data Success!\r\n");
+    992          #endif
+    993          			}
+    994          		}
+    995          	}
+    996          }
+    997          
+    998          
+    999          /*
+   1000           * @brief进入U盘模式
+   1001          */
+   1002          void u_disk_proc(void)
+   1003          {
+   1004          	//g_mass_storage_device_type = MASSTORAGE_DEVICE_TYPE_SPI_FLASH;
+   1005          	//usb_device_init(USB_MASSSTORAGE);
+   1006          
+   1007          	OSSchedLock();
+   1008          
+   1009          	while(hw_platform_USBcable_Insert_Detect() == 1)
+   1010          	{	
+   1011          		if(bDeviceState != CONFIGURED)
+   1012          		{
+   1013          			break;
+   1014          		}
+   1015          
+   1016          		delay_ms(1);
+   1017          	}
+   1018          
+   1019          	OSSchedUnlock();
+   1020          }
+   1021          
+   1022          /*
+   1023           * @brief 低电量提示,红灯持续5S的闪烁
+   1024           * @return 0:提示期间没有USB线的插入		1:提示期间有USB线的插入
+   1025          */
+   1026          int lowpower_tip(void)
+   1027          {
+   1028          	int i;
+   1029          	OSSchedLock();
+   1030          	hw_platform_start_led_blink(LED_RED,5);
+   1031          	for (i = 0; i<20;i++)
+   1032          	{
+   1033          		hw_platform_beep_ctrl(50,1000);
+   1034          		if (hw_platform_USBcable_Insert_Detect())
+   1035          		{
+   1036          			hw_platform_stop_led_blink(LED_RED);
+   1037          			OSSchedUnlock();
+   1038          			return 1;
+   1039          		}
+   1040          	}
+   1041          	hw_platform_stop_led_blink(LED_RED);
+   1042          	OSSchedUnlock();
+   1043          	return 0;
+   1044          }
    1045          
-   1046          	app_init();
-   1047          
-   1048          	Keypad_Init();
-   1049          
-   1050          	ret = record_module_init();
-   1051          	if (ret != 0)
+   1046          /*
+   1047           * @brief 系统错误的提示
+   1048          */
+   1049          void system_err_tip(void)
+   1050          {
+   1051          	while(1)
    1052          	{
-   1053          		system_err_tip();
+   1053          		//@todo...
    1054          	}
-   1055          
-   1056          	if (recover_record_by_logfile())
-   1057          	{
-   1058          		system_err_tip();
-   1059          	}
-   1060          
-   1061          	if (ReadTerminalPara())
-   1062          	{
-   1063          		if (DefaultTerminalPara())
-   1064          		{
-   1065          			system_err_tip();
-   1066          		}
-   1067          	}
-   1068          
-   1069          	if (g_param.last_state == 1)
-   1070          	{
-   1071          		device_current_state = STATE_Memory_Mode;	//脱机状态
-   1072          		enter_into_Memory_Mode();
-   1073          	}
-   1074          	else
-   1075          	{
-   1076          		device_current_state = STATE_BT_Mode_Disconnect;	//蓝牙模式未连接状态
-   1077          		hw_platform_start_led_blink(LED_BLUE,150);
-   1078          	}
-   1079          
-   1080          	scanner_mod_init();
-   1081          
-   1082          	//usb_device_init(USB_KEYBOARD);
-   1083          
-   1084          	OSTaskCreateExt(State_Machine_thread,
-   1085          		(void *)0,
-   1086          		&thread_statemachine_stk[STACK_SIZE_TASKSM-1],
-   1087          		8,
-   1088          		8,
-   1089          		&thread_statemachine_stk[0],
-   1090          		STACK_SIZE_TASKSM,
-   1091          		(void *)0,
-   1092          		(INT16U)(OS_TASK_OPT_STK_CHK | OS_TASK_OPT_STK_CLR));
-   1093          
-   1094          	OSTaskCreateExt(Event_capture_thread,
-   1095          		(void *)0,
-   1096          		&thread_eventcapture_stk[STACK_SIZE_TASKEC-1],
-   1097          		7,
-   1098          		7,
-   1099          		&thread_eventcapture_stk[0],
-   1100          		STACK_SIZE_TASKEC,
-   1101          		(void *)0,
-   1102          		(INT16U)(OS_TASK_OPT_STK_CHK | OS_TASK_OPT_STK_CLR));
-   1103          
-   1104          	OSTaskCreateExt(BT_Daemon_thread,
-   1105          		(void *)0,
-   1106          		&thread_bt_stk[STACK_SIZE_TASKBT-1],
-   1107          		6,
-   1108          		6,
-   1109          		&thread_bt_stk[0],
-   1110          		STACK_SIZE_TASKBT,
-   1111          		(void *)0,
-   1112          		(INT16U)(OS_TASK_OPT_STK_CHK | OS_TASK_OPT_STK_CLR));
-   1113          
-   1114          	OSTimeDlyHMSM(0,0,0,10);
-   1115          	OSTaskDel(OS_PRIO_SELF);
-   1116          }
-   1117          
-   1118          /*
-   1119           * @brief 启动应用
-   1120           */
-   1121          void app_startup(void)
-   1122          {
-   1123          	memset((void*)thread_eventcapture_stk, 0xAA, sizeof(thread_eventcapture_stk));
-   1124          	memset((void*)thread_statemachine_stk, 0xBB, sizeof(thread_statemachine_stk));
-   1125          	memset((void*)thread_bt_stk, 0xCC, sizeof(thread_bt_stk));
-   1126          
-   1127          	OSInit();
-   1128          
-   1129          	OSDebugInit();
-   1130          
-   1131          	p_init_thread_stk = (OS_STK*)Jmalloc(STACK_SIZE_TASKINI*sizeof(OS_STK));
-   1132          	assert(p_init_thread_stk != 0);
-   1133          
-   1134          	OSTaskCreateExt(app_init_thread,
-   1135          		(void *)0,
-   1136          		&p_init_thread_stk[STACK_SIZE_TASKINI-1],
-   1137          		5,
-   1138          		5,
-   1139          		&p_init_thread_stk[0],
-   1140          		STACK_SIZE_TASKINI,
-   1141          		(void *)0,
-   1142          		(INT16U)(OS_TASK_OPT_STK_CHK | OS_TASK_OPT_STK_CLR));
-   1143          
-   1144          	OSStart();
+   1055          }
+   1056          
+   1057          
+   1058          // Cortex System Control register address
+   1059          #define SCB_SysCtrl					((u32)0xE000ED10)
+   1060          // SLEEPDEEP bit mask
+   1061          #define SysCtrl_SLEEPDEEP_Set		((u32)0x00000004)
+   1062          
+   1063          /*
+   1064           * @brief 初始化线程
+   1065           */
+   1066          void app_init_thread(void *p)
+   1067          {
+   1068          	int ret;
+   1069          #ifdef DEBUG_VER
+   1070          	printf("app init thread startup...\r\n");
+   1071          #endif
+   1072          
+   1073          	OS_CPU_SysTickInit();
+   1074          
+   1075          	app_init();
+   1076          
+   1077          	Keypad_Init();
+   1078          
+   1079          	ret = record_module_init();
+   1080          	if (ret != 0)
+   1081          	{
+   1082          		system_err_tip();
+   1083          	}
+   1084          
+   1085          	if (recover_record_by_logfile())
+   1086          	{
+   1087          		system_err_tip();
+   1088          	}
+   1089          
+   1090          	if (ReadTerminalPara())
+   1091          	{
+   1092          		if (DefaultTerminalPara())
+   1093          		{
+   1094          			system_err_tip();
+   1095          		}
+   1096          	}
+   1097          
+   1098          	if (g_param.last_state == 1)
+   1099          	{
+   1100          		device_current_state = STATE_Memory_Mode;	//脱机状态
+   1101          		enter_into_Memory_Mode();
+   1102          	}
+   1103          	else
+   1104          	{
+   1105          		device_current_state = STATE_BT_Mode_Disconnect;	//蓝牙模式未连接状态
+   1106          		hw_platform_start_led_blink(LED_BLUE,150);
+   1107          	}
+   1108          
+   1109          	scanner_mod_init();
+   1110          
+   1111          	//usb_device_init(USB_KEYBOARD);
+   1112          
+   1113          	OSTaskCreateExt(State_Machine_thread,
+   1114          		(void *)0,
+   1115          		&thread_statemachine_stk[STACK_SIZE_TASKSM-1],
+   1116          		8,
+   1117          		8,
+   1118          		&thread_statemachine_stk[0],
+   1119          		STACK_SIZE_TASKSM,
+   1120          		(void *)0,
+   1121          		(INT16U)(OS_TASK_OPT_STK_CHK | OS_TASK_OPT_STK_CLR));
+   1122          
+   1123          	OSTaskCreateExt(Event_capture_thread,
+   1124          		(void *)0,
+   1125          		&thread_eventcapture_stk[STACK_SIZE_TASKEC-1],
+   1126          		7,
+   1127          		7,
+   1128          		&thread_eventcapture_stk[0],
+   1129          		STACK_SIZE_TASKEC,
+   1130          		(void *)0,
+   1131          		(INT16U)(OS_TASK_OPT_STK_CHK | OS_TASK_OPT_STK_CLR));
+   1132          
+   1133          	OSTaskCreateExt(BT_Daemon_thread,
+   1134          		(void *)0,
+   1135          		&thread_bt_stk[STACK_SIZE_TASKBT-1],
+   1136          		6,
+   1137          		6,
+   1138          		&thread_bt_stk[0],
+   1139          		STACK_SIZE_TASKBT,
+   1140          		(void *)0,
+   1141          		(INT16U)(OS_TASK_OPT_STK_CHK | OS_TASK_OPT_STK_CLR));
+   1142          
+   1143          	OSTimeDlyHMSM(0,0,0,10);
+   1144          	OSTaskDel(OS_PRIO_SELF);
    1145          }
    1146          
+   1147          /*
+   1148           * @brief 启动应用
+   1149           */
+   1150          void app_startup(void)
+   1151          {
+   1152          	memset((void*)thread_eventcapture_stk, 0xAA, sizeof(thread_eventcapture_stk));
+   1153          	memset((void*)thread_statemachine_stk, 0xBB, sizeof(thread_statemachine_stk));
+   1154          	memset((void*)thread_bt_stk, 0xCC, sizeof(thread_bt_stk));
+   1155          
+   1156          	OSInit();
+   1157          
+   1158          	OSDebugInit();
+   1159          
+   1160          	p_init_thread_stk = (OS_STK*)Jmalloc(STACK_SIZE_TASKINI*sizeof(OS_STK));
+   1161          	assert(p_init_thread_stk != 0);
+   1162          
+   1163          	OSTaskCreateExt(app_init_thread,
+   1164          		(void *)0,
+   1165          		&p_init_thread_stk[STACK_SIZE_TASKINI-1],
+   1166          		5,
+   1167          		5,
+   1168          		&p_init_thread_stk[0],
+   1169          		STACK_SIZE_TASKINI,
+   1170          		(void *)0,
+   1171          		(INT16U)(OS_TASK_OPT_STK_CHK | OS_TASK_OPT_STK_CLR));
+   1172          
+   1173          	OSStart();
+   1174          }
+   1175          
 
    Maximum stack usage in bytes:
 
@@ -1187,7 +1216,7 @@ E:\H520B\FW\src\App\app.c
      --------                -------
      BT_Daemon_thread            16
      Event_capture_thread         8
-     State_Machine_thread        56
+     State_Machine_thread        32
      app_init                     8
      app_init_thread             32
      app_startup                 32
@@ -1237,12 +1266,12 @@ E:\H520B\FW\src\App\app.c
      exit_from_Memory_Mode                          2
      enter_into_USB_HID_Mode                       96
      exit_from_USB_HID_Mode                        12
-     enter_into_BT_Mode                            78
+     enter_into_BT_Mode                           102
      exit_from_BT_Mode                             42
      barcode_hid_send                              92
      app_init                                     176
-     State_Machine_thread                        1196
-     Event_capture_thread                         160
+     State_Machine_thread                        1192
+     Event_capture_thread                         204
      BT_Daemon_thread                             156
      last_status                                    4
      u_disk_proc                                   38
@@ -1251,18 +1280,18 @@ E:\H520B\FW\src\App\app.c
      app_init_thread                              232
      app_startup                                  136
      ??DataTable20                                  4
-     ??DataTable68                                  4
-     ??DataTable71                                  4
-     ??DataTable74                                  4
+     ??DataTable69                                  4
+     ??DataTable72                                  4
      ??DataTable75                                  4
      ??DataTable76                                  4
      ??DataTable77                                  4
-     ??DataTable79                                  4
-     ??DataTable83                                  4
+     ??DataTable78                                  4
+     ??DataTable80                                  4
      ??DataTable84                                  4
      ??DataTable85                                  4
-     ??DataTable88                                  4
-     ??DataTable90                                  4
+     ??DataTable86                                  4
+     ??DataTable89                                  4
+     ??DataTable91                                  4
      ?<Constant "(int)barcode_addr >= ...">        44
      ?<Constant "E:\\H520B\\FW\\src\\App\\a...">   28
      ?<Constant "(int)barcode_addr <= ...">        60
@@ -1279,11 +1308,11 @@ E:\H520B\FW\src\App\app.c
  
  3 970 bytes in section .bss
    334 bytes in section .rodata
- 2 880 bytes in section .text
+ 2 944 bytes in section .text
  
- 2 846 bytes of CODE  memory (+ 34 bytes shared)
+ 2 910 bytes of CODE  memory (+ 34 bytes shared)
    334 bytes of CONST memory
  3 970 bytes of DATA  memory
 
 Errors: none
-Warnings: 1
+Warnings: 3
